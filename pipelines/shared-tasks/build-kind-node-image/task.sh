@@ -34,7 +34,7 @@ ssh-keygen -t rsa -b 4096 -q -N "" -f "$ssh_key_file"
 future_time="$(date --utc --date '+3 hours' '+%FT%T%z')"
 echo \
   "${ssh_user}:$(cat "${ssh_key_file}.pub") google-ssh {\"userName\":\"${ssh_user}\",\"expireOn\":\"${future_time}\"}" \
-  > /tmp/ssh-key-values
+  >/tmp/ssh-key-values
 gcloud compute instances add-metadata "$instance_name" \
   --metadata-from-file ssh-keys=/tmp/ssh-key-values \
   --zone "$INSTANCE_ZONE" --project "$GCP_PROJECT"
@@ -45,6 +45,18 @@ gcloud_instance_ip=$(gcloud compute instances describe \
   --format='get(networkInterfaces[0].networkIP)')
 
 ssh_dest="${ssh_user}@${gcloud_instance_ip}"
+
+# Wait for the ssh server of the new instance to be ready.
+attempts=0
+while ! ssh -i "$ssh_key_file" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$ssh_dest" echo connection test; do
+  echo "Waiting for ssh server to start ..."
+  attempts=$((attempts + 1))
+  if [[ $attempts -gt 25 ]]; then
+    echo "ERROR: ssh server never accepted connections after waiting for a while"
+    exit 1
+  fi
+  sleep 2
+done
 
 # Copy the build script to the VM.
 echo "Copying $local_build_script to $instance_name as $remote_build_script..."
