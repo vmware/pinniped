@@ -1,11 +1,26 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # This procedure is inspired from https://github.com/aojea/kind-images/blob/master/.circleci/config.yml
 
 set -euo pipefail
+
+# Put the original apt source list back.
+sudo cp /etc/apt/sources.list.bak /etc/apt/sources.list
+
+# Note that sources.list.bak file should have this content for debian 11,
+# noted here in case the file ever gets removed from the OS disk image:
+
+# deb https://deb.debian.org/debian bullseye main
+# deb-src https://deb.debian.org/debian bullseye main
+# deb https://deb.debian.org/debian-security bullseye-security main
+# deb-src https://deb.debian.org/debian-security bullseye-security main
+# deb https://deb.debian.org/debian bullseye-updates main
+# deb-src https://deb.debian.org/debian bullseye-updates main
+# deb https://deb.debian.org/debian bullseye-backports main
+# deb-src https://deb.debian.org/debian bullseye-backports main
 
 # Choose the tag for the new image that we will build below.
 full_repo="${PUSH_TO_IMAGE_REGISTRY}/${PUSH_TO_IMAGE_REPO}"
