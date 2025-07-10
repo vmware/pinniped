@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -175,6 +175,12 @@ func TestSupervisorOIDCDiscovery_Disruptive(t *testing.T) {
 // Never run this test in parallel since deleting all federation domains is disruptive, see main_test.go.
 func TestSupervisorTLSTerminationWithSNI_Disruptive(t *testing.T) {
 	env := testlib.IntegrationEnv(t)
+
+	// This test is flaky on EKS, so skip it.
+	if env.KubernetesDistribution == testlib.EKSDistro {
+		t.Skipf("skipping integration test on EKS")
+	}
+
 	pinnipedClient := testlib.NewSupervisorClientset(t)
 	kubeClient := testlib.NewKubernetesClientset(t)
 
@@ -285,6 +291,12 @@ func TestSupervisorTLSTerminationWithSNI_Disruptive(t *testing.T) {
 // Never run this test in parallel since deleting all federation domains is disruptive, see main_test.go.
 func TestSupervisorTLSTerminationWithDefaultCerts_Disruptive(t *testing.T) {
 	env := testlib.IntegrationEnv(t)
+
+	// This test is flaky on EKS, so skip it.
+	if env.KubernetesDistribution == testlib.EKSDistro {
+		t.Skipf("skipping integration test on EKS")
+	}
+
 	pinnipedClient := testlib.NewSupervisorClientset(t)
 	kubeClient := testlib.NewKubernetesClientset(t)
 
