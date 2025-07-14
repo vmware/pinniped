@@ -1,4 +1,4 @@
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 ---
@@ -29,10 +29,10 @@ params:
 
   # Set up a LoadBalancer for the Supervisor.
   RESERVED_LOAD_BALANCER_STATIC_IP: # An IP reserved for this purpose in our GCP project.
-  LOAD_BALANCER_DNS_NAME: # A DNS entry in our GCP project for the above IP address.
+  LOAD_BALANCER_DNS_NAME: # A DNS name for the above IP address. Must be created manually in the DNS provider.
   # Set up an Ingress for the Supervisor, as an alternate way to access it.
   INGRESS_STATIC_IP_GCLOUD_NAME: # The name of a static IP reservation in our GCP project used for this purpose.
-  INGRESS_DNS_ENTRY_GCLOUD_NAME: # A DNS entry in our GCP project for the IP address represented by the above static IP reservation name.
+  INGRESS_DNS_NAME: # A DNS name for the above static IP. Must be created manually in the DNS provider.
 
   # Set to a non-empty value to remove the CPU requests from these deployments.
   SUPERVISOR_AND_CONCIERGE_NO_CPU_REQUEST:
