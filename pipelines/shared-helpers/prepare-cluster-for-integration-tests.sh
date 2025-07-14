@@ -306,6 +306,18 @@ metadata:
     cloud.google.com/backend-config: '{"default":"healthcheck-backendconfig"}'
 EOF
 
+# Save this file for possible later use. When we want to make a Supervisor load balancer service,
+# we need to make sure that we tell it that it should use an internal IP address.
+cat <<EOF >>/tmp/add-annotations-for-supervisor-lb-service-overlay.yaml
+#@ load("@ytt:overlay", "overlay")
+#@overlay/match by=overlay.subset({"kind": "Service", "metadata":{"name":"${supervisor_app_name}-loadbalancer"}}), expects=1
+---
+metadata:
+  annotations:
+    #@overlay/match missing_ok=True
+    networking.gke.io/load-balancer-type: "Internal"
+EOF
+
 if [[ "${DEPLOY_LOCAL_USER_AUTHENTICATOR:-no}" == "yes" ]]; then
   #
   # Deploy local-user-authenticator
@@ -858,6 +870,10 @@ if [[ -n "${SUPERVISOR_AND_CONCIERGE_NO_CPU_REQUEST:-}" ]]; then
 fi
 if [[ "${SUPERVISOR_INGRESS:-no}" == "yes" && "$cluster_has_gke_backend_config" == "yes" ]]; then
   supervisor_optional_ytt_values+=("--file=/tmp/add-annotations-for-gke-ingress-overlay.yaml")
+fi
+if [[ "${USE_LOAD_BALANCERS_FOR_DEX_AND_SUPERVISOR:-no}" != "yes" && "${SUPERVISOR_LOAD_BALANCER:-no}" == "yes" ]]; then
+  # When using the ytt templates to create a LB service, then also tell the service to use an internal IP.
+  supervisor_optional_ytt_values+=("--file=/tmp/add-annotations-for-supervisor-lb-service-overlay.yaml")
 fi
 
 echo "Deploying the Supervisor app to the cluster..."
