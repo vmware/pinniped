@@ -6,7 +6,9 @@ metadata:
   namespace: kube-system
 data:
   # 240.0.0.0/4 is needed to allow the pod to reach the Cloud SQL server's private IP.
+  # I was told to also add the whole primary IP range of the cluster's subnet, which is 10.31.141.64/27.
   config: |
     nonMasqueradeCIDRs:
      - 240.0.0.0/4
+     - 10.31.141.64/27
     resyncInterval: 60s
