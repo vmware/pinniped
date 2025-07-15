@@ -360,6 +360,79 @@ func TestController(t *testing.T) {
 			Groups: customGroupsClaim,
 		},
 	}
+	someJWTAuthenticatorSpecWithEveryOptionalValue := &authenticationv1alpha1.JWTAuthenticatorSpec{
+		Issuer:   goodIssuer,
+		Audience: goodAudience,
+		TLS:      goodOIDCIssuerServerTLSSpec,
+		Claims: authenticationv1alpha1.JWTTokenClaims{
+			Username: "my-custom-username-claim",
+			Groups:   customGroupsClaim,
+			Extra: []authenticationv1alpha1.ExtraMapping{
+				{
+					Key:             "example.com/key-name", // must be a domain and path
+					ValueExpression: `"extra-value"`,        // needs to be a valid CEL expression that returns a string or list of strings
+				},
+			},
+		},
+		ClaimValidationRules: []authenticationv1alpha1.ClaimValidationRule{
+			{
+				Claim:         "iss", // note: can't specify this and Expression/Message at the same time
+				RequiredValue: goodIssuer,
+			},
+		},
+		UserValidationRules: []authenticationv1alpha1.UserValidationRule{
+			{
+				Expression: "true", // must be a valid CEL expression that returns a boolean
+				Message:    "user-msg1",
+			},
+		},
+	}
+	invalidClaimsExtraJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
+		Issuer:   goodIssuer,
+		Audience: goodAudience,
+		TLS:      goodOIDCIssuerServerTLSSpec,
+		Claims: authenticationv1alpha1.JWTTokenClaims{
+			Extra: []authenticationv1alpha1.ExtraMapping{
+				{
+					Key:             "this-is-an-invalid-key", // this should cause a validation error in the Kubernetes library validator
+					ValueExpression: `"extra-value"`,
+				},
+			},
+		},
+	}
+	invalidClaimValidationRulesJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
+		Issuer:   goodIssuer,
+		Audience: goodAudience,
+		TLS:      goodOIDCIssuerServerTLSSpec,
+		ClaimValidationRules: []authenticationv1alpha1.ClaimValidationRule{
+			{
+				Expression: "this is an invalid cel expression",
+			},
+		},
+	}
+	invalidUserValidationRulesJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
+		Issuer:   goodIssuer,
+		Audience: goodAudience,
+		TLS:      goodOIDCIssuerServerTLSSpec,
+		UserValidationRules: []authenticationv1alpha1.UserValidationRule{
+			{
+				Expression: "this is an invalid cel expression",
+			},
+		},
+	}
+	invalidClaimsExtraContainsEqualSignJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
+		Issuer:   goodIssuer,
+		Audience: goodAudience,
+		TLS:      goodOIDCIssuerServerTLSSpec,
+		Claims: authenticationv1alpha1.JWTTokenClaims{
+			Extra: []authenticationv1alpha1.ExtraMapping{
+				{
+					Key:             "example.com/key=contains-equals-sign", // this should cause a validation error in our own code
+					ValueExpression: `"extra-value"`,
+				},
+			},
+		},
+	}
 	otherJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
 		Issuer:   someOtherIssuer,
 		Audience: goodAudience,
@@ -549,6 +622,16 @@ func TestController(t *testing.T) {
 			Message:            "unable to validate; see other conditions for details",
 		}
 	}
+	sadAuthenticatorValid := func(msg string, time metav1.Time, observedGeneration int64) metav1.Condition {
+		return metav1.Condition{
+			Type:               "AuthenticatorValid",
+			Status:             "False",
+			ObservedGeneration: observedGeneration,
+			LastTransitionTime: time,
+			Reason:             "InvalidAuthenticator",
+			Message:            msg,
+		}
+	}
 	// NOTE: we can't reach this error the way our code is written.
 	// We check many things and fail early, resulting in an "Unknown" Authenticator status.
 	// The only possible fail for the Authenticator itself would require us to allow more
@@ -717,6 +800,7 @@ func TestController(t *testing.T) {
 		wantActions                         func() []coretesting.Action
 		wantUsernameClaim                   string
 		wantGroupsClaim                     string
+		wantExtras                          map[string][]string
 		wantNamesOfJWTAuthenticatorsInCache []string
 		skipTestingCachedAuthenticator      bool
 	}{
@@ -1109,6 +1193,43 @@ func TestController(t *testing.T) {
 			wantNamesOfJWTAuthenticatorsInCache: []string{"test-name"},
 		},
 		{
+			name: "Sync: JWTAuthenticator with every optional value: loop will complete successfully and update status conditions",
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *someJWTAuthenticatorSpecWithEveryOptionalValue,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Ready"}`, goodIssuer),
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"added or updated jwt authenticator in cache","jwtAuthenticator":"test-name","issuer":"%s","isOverwrite":false}`, goodIssuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *someJWTAuthenticatorSpecWithEveryOptionalValue,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+						Phase:      "Ready",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+			wantUsernameClaim:                   "my-custom-username-claim",
+			wantGroupsClaim:                     someJWTAuthenticatorSpecWithGroupsClaim.Claims.Groups,
+			wantExtras:                          map[string][]string{"example.com/key-name": {"extra-value"}},
+			wantNamesOfJWTAuthenticatorsInCache: []string{"test-name"},
+		},
+		{
 			name: "Sync: JWTAuthenticator with new spec.tls fields: loop will close previous instance of JWTAuthenticator and complete successfully and update status conditions",
 			cache: func(t *testing.T, cache *authncache.Cache, wantClose bool) {
 				oldCA, err := base64.StdEncoding.DecodeString(otherJWTAuthenticatorSpec.TLS.CertificateAuthorityData)
@@ -1260,6 +1381,114 @@ func TestController(t *testing.T) {
 				require.NoError(t, err)
 				cacheValue := newCacheValue(t, *someJWTAuthenticatorSpec, string(oldCA), wantClose)
 				cacheValue.claims.Groups = "some-old-groups-value"
+				cache.Store(
+					authncache.Key{
+						Name:     "test-name",
+						Kind:     "JWTAuthenticator",
+						APIGroup: authenticationv1alpha1.SchemeGroupVersion.Group,
+					},
+					cacheValue,
+				)
+			},
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *someJWTAuthenticatorSpec,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Ready"}`, goodIssuer),
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"added or updated jwt authenticator in cache","jwtAuthenticator":"test-name","issuer":"%s","isOverwrite":true}`, goodIssuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *someJWTAuthenticatorSpec,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+						Phase:      "Ready",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+			wantNamesOfJWTAuthenticatorsInCache: []string{"test-name"},
+			wantClose:                           true,
+		},
+		{
+			name: "Sync: JWTAuthenticator with new spec.userValidationRules field: loop will close previous instance of JWTAuthenticator and complete successfully and update status conditions",
+			cache: func(t *testing.T, cache *authncache.Cache, wantClose bool) {
+				oldCA, err := base64.StdEncoding.DecodeString(someJWTAuthenticatorSpec.TLS.CertificateAuthorityData)
+				require.NoError(t, err)
+				cacheValue := newCacheValue(t, *someJWTAuthenticatorSpec, string(oldCA), wantClose)
+				cacheValue.userValidationRules = []authenticationv1alpha1.UserValidationRule{
+					{
+						Expression: "true",
+						Message:    "some old rule",
+					},
+				}
+				cache.Store(
+					authncache.Key{
+						Name:     "test-name",
+						Kind:     "JWTAuthenticator",
+						APIGroup: authenticationv1alpha1.SchemeGroupVersion.Group,
+					},
+					cacheValue,
+				)
+			},
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *someJWTAuthenticatorSpec,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Ready"}`, goodIssuer),
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"added or updated jwt authenticator in cache","jwtAuthenticator":"test-name","issuer":"%s","isOverwrite":true}`, goodIssuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *someJWTAuthenticatorSpec,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+						Phase:      "Ready",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+			wantNamesOfJWTAuthenticatorsInCache: []string{"test-name"},
+			wantClose:                           true,
+		},
+		{
+			name: "Sync: JWTAuthenticator with new spec.claimValidationRules field: loop will close previous instance of JWTAuthenticator and complete successfully and update status conditions",
+			cache: func(t *testing.T, cache *authncache.Cache, wantClose bool) {
+				oldCA, err := base64.StdEncoding.DecodeString(someJWTAuthenticatorSpec.TLS.CertificateAuthorityData)
+				require.NoError(t, err)
+				cacheValue := newCacheValue(t, *someJWTAuthenticatorSpec, string(oldCA), wantClose)
+				cacheValue.claimValidationRules = []authenticationv1alpha1.ClaimValidationRule{
+					{
+						Claim:         "iss",
+						RequiredValue: "some old value",
+					},
+				}
 				cache.Store(
 					authncache.Key{
 						Name:     "test-name",
@@ -2281,6 +2510,196 @@ func TestController(t *testing.T) {
 			wantSyncErr: testutil.WantExactErrorString("error for JWTAuthenticator test-name: could not fetch keys: fetching keys oidc: get keys failed: 404 Not Found 404 page not found\n"),
 		},
 		{
+			name: "newCachedJWTAuthenticator: validateAuthenticationConfiguration: for any error in claims.extra: loop will fail sync, will write failed and unknown status conditions, but will not enqueue a resync due to user config error",
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimsExtraJWTAuthenticatorSpec,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"invalid jwt authenticator","jwtAuthenticator":"test-name","issuer":"%s","removedFromCache":false}`, invalidClaimsExtraJWTAuthenticatorSpec.Issuer),
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Error"}`, invalidClaimsExtraJWTAuthenticatorSpec.Issuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimsExtraJWTAuthenticatorSpec,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: conditionstestutil.Replace(
+							allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+							[]metav1.Condition{
+								sadReadyCondition(frozenMetav1Now, 0),
+								happyIssuerURLValid(frozenMetav1Now, 0),
+								happyDiscoveryURLValid(frozenMetav1Now, 0),
+								sadAuthenticatorValid(
+									`could not initialize jwt authenticator: claims.extra[0].key: Invalid value: "this-is-an-invalid-key": must be a domain-prefixed path (such as "acme.io/foo")`,
+									frozenMetav1Now,
+									0,
+								),
+								happyJWKSURLValid(frozenMetav1Now, 0),
+								happyJWKSFetch(frozenMetav1Now, 0),
+							},
+						),
+						Phase: "Error",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+		},
+		{
+			name: "newCachedJWTAuthenticator: validateAuthenticationConfiguration: for any error in claimValidationRules: loop will fail sync, will write failed and unknown status conditions, but will not enqueue a resync due to user config error",
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimValidationRulesJWTAuthenticatorSpec,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"invalid jwt authenticator","jwtAuthenticator":"test-name","issuer":"%s","removedFromCache":false}`, invalidClaimValidationRulesJWTAuthenticatorSpec.Issuer),
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Error"}`, invalidClaimValidationRulesJWTAuthenticatorSpec.Issuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimValidationRulesJWTAuthenticatorSpec,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: conditionstestutil.Replace(
+							allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+							[]metav1.Condition{
+								sadReadyCondition(frozenMetav1Now, 0),
+								happyIssuerURLValid(frozenMetav1Now, 0),
+								happyDiscoveryURLValid(frozenMetav1Now, 0),
+								sadAuthenticatorValid(
+									"could not initialize jwt authenticator: claimValidationRules[0].expression: Invalid value: \"this is an invalid cel expression\": "+
+										"compilation failed: ERROR: <input>:1:6: Syntax error: mismatched input 'is' expecting <EOF>\n | this is an invalid cel expression\n | .....^",
+									frozenMetav1Now,
+									0,
+								),
+								happyJWKSURLValid(frozenMetav1Now, 0),
+								happyJWKSFetch(frozenMetav1Now, 0),
+							},
+						),
+						Phase: "Error",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+		},
+		{
+			name: "newCachedJWTAuthenticator: validateAuthenticationConfiguration: for any error in userValidationRules: loop will fail sync, will write failed and unknown status conditions, but will not enqueue a resync due to user config error",
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidUserValidationRulesJWTAuthenticatorSpec,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"invalid jwt authenticator","jwtAuthenticator":"test-name","issuer":"%s","removedFromCache":false}`, invalidUserValidationRulesJWTAuthenticatorSpec.Issuer),
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Error"}`, invalidUserValidationRulesJWTAuthenticatorSpec.Issuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidUserValidationRulesJWTAuthenticatorSpec,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: conditionstestutil.Replace(
+							allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+							[]metav1.Condition{
+								sadReadyCondition(frozenMetav1Now, 0),
+								happyIssuerURLValid(frozenMetav1Now, 0),
+								happyDiscoveryURLValid(frozenMetav1Now, 0),
+								sadAuthenticatorValid(
+									"could not initialize jwt authenticator: userValidationRules[0].expression: Invalid value: \"this is an invalid cel expression\": "+
+										"compilation failed: ERROR: <input>:1:6: Syntax error: mismatched input 'is' expecting <EOF>\n | this is an invalid cel expression\n | .....^",
+									frozenMetav1Now,
+									0,
+								),
+								happyJWKSURLValid(frozenMetav1Now, 0),
+								happyJWKSFetch(frozenMetav1Now, 0),
+							},
+						),
+						Phase: "Error",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+		},
+		{
+			name: "newCachedJWTAuthenticator: when any claims.extra[].key contains an equals sign: loop will fail sync, will write failed and unknown status conditions, but will not enqueue a resync due to user config error",
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimsExtraContainsEqualSignJWTAuthenticatorSpec,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"invalid jwt authenticator","jwtAuthenticator":"test-name","issuer":"%s","removedFromCache":false}`, invalidClaimsExtraContainsEqualSignJWTAuthenticatorSpec.Issuer),
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Error"}`, invalidClaimsExtraContainsEqualSignJWTAuthenticatorSpec.Issuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimsExtraContainsEqualSignJWTAuthenticatorSpec,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: conditionstestutil.Replace(
+							allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+							[]metav1.Condition{
+								sadReadyCondition(frozenMetav1Now, 0),
+								happyIssuerURLValid(frozenMetav1Now, 0),
+								happyDiscoveryURLValid(frozenMetav1Now, 0),
+								sadAuthenticatorValid(
+									`could not initialize jwt authenticator: claims.extra[0]: Invalid value: "": Pinniped does not allow extra key names to contain equals sign`,
+									frozenMetav1Now,
+									0,
+								),
+								happyJWKSURLValid(frozenMetav1Now, 0),
+								happyJWKSFetch(frozenMetav1Now, 0),
+							},
+						),
+						Phase: "Error",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+		},
+		{
 			name: "updateStatus: called with matching original and updated conditions: will not make request to update conditions",
 			jwtAuthenticators: []runtime.Object{
 				&authenticationv1alpha1.JWTAuthenticator{
@@ -2512,6 +2931,7 @@ func TestController(t *testing.T) {
 					goodUsername,
 					tt.wantUsernameClaim,
 					tt.wantGroupsClaim,
+					tt.wantExtras,
 					goodIssuer,
 				) {
 					t.Run(test.name, func(t *testing.T) {
@@ -2593,6 +3013,7 @@ func testTableForAuthenticateTokenTests(
 	goodUsername string,
 	expectedUsernameClaim string,
 	expectedGroupsClaim string,
+	expectedExtras map[string][]string,
 	issuer string,
 ) []struct {
 	name                      string
@@ -2616,7 +3037,8 @@ func testTableForAuthenticateTokenTests(
 			name: "good token without groups and with EC signature",
 			wantResponse: &authenticator.Response{
 				User: &user.DefaultInfo{
-					Name: goodUsername,
+					Name:  goodUsername,
+					Extra: expectedExtras,
 				},
 			},
 			wantAuthenticated: true,
@@ -2630,7 +3052,8 @@ func testTableForAuthenticateTokenTests(
 			},
 			wantResponse: &authenticator.Response{
 				User: &user.DefaultInfo{
-					Name: goodUsername,
+					Name:  goodUsername,
+					Extra: expectedExtras,
 				},
 			},
 			wantAuthenticated: true,
@@ -2644,6 +3067,7 @@ func testTableForAuthenticateTokenTests(
 				User: &user.DefaultInfo{
 					Name:   goodUsername,
 					Groups: []string{group0, group1},
+					Extra:  expectedExtras,
 				},
 			},
 			wantAuthenticated: true,
@@ -2657,6 +3081,7 @@ func testTableForAuthenticateTokenTests(
 				User: &user.DefaultInfo{
 					Name:   goodUsername,
 					Groups: []string{"some-distributed-group-1", "some-distributed-group-2"},
+					Extra:  expectedExtras,
 				},
 			},
 			wantAuthenticated: true,
@@ -2684,6 +3109,7 @@ func testTableForAuthenticateTokenTests(
 				User: &user.DefaultInfo{
 					Name:   goodUsername,
 					Groups: []string{group0},
+					Extra:  expectedExtras,
 				},
 			},
 			wantAuthenticated: true,
@@ -2695,7 +3121,8 @@ func testTableForAuthenticateTokenTests(
 			},
 			wantResponse: &authenticator.Response{
 				User: &user.DefaultInfo{
-					Name: goodUsername,
+					Name:  goodUsername,
+					Extra: expectedExtras,
 				},
 			},
 			wantAuthenticated: true,
@@ -2828,10 +3255,12 @@ func newCacheValue(t *testing.T, spec authenticationv1alpha1.JWTAuthenticatorSpe
 	})
 
 	return &cachedJWTAuthenticator{
-		issuer:       spec.Issuer,
-		audience:     spec.Audience,
-		claims:       spec.Claims,
-		caBundleHash: tlsconfigutil.NewCABundleHash([]byte(caBundle)),
+		issuer:               spec.Issuer,
+		audience:             spec.Audience,
+		claims:               spec.Claims,
+		userValidationRules:  spec.UserValidationRules,
+		claimValidationRules: spec.ClaimValidationRules,
+		caBundleHash:         tlsconfigutil.NewCABundleHash([]byte(caBundle)),
 		cancel: func() {
 			wasClosed = true
 		},

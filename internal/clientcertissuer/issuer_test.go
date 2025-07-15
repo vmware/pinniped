@@ -1,4 +1,4 @@
-// Copyright 2023-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package clientcertissuer
@@ -67,6 +67,11 @@ func TestName(t *testing.T) {
 func TestIssueClientCertPEM(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
+	username := "test-username"
+	groups := []string{"group1", "group2"}
+	extras := []string{"extra1=val1", "extra2=val2"}
+	ttl := 32 * time.Second
+
 	tests := []struct {
 		name             string
 		buildIssuerMocks func() ClientCertIssuers
@@ -85,7 +90,7 @@ func TestIssueClientCertPEM(t *testing.T) {
 				errClientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 				errClientCertIssuer.EXPECT().Name().Return("error cert issuer")
 				errClientCertIssuer.EXPECT().
-					IssueClientCertPEM("username", []string{"group1", "group2"}, 32*time.Second).
+					IssueClientCertPEM(username, groups, extras, ttl).
 					Return(nil, errors.New("error from wrapped cert issuer"))
 				return ClientCertIssuers{errClientCertIssuer}
 			},
@@ -96,7 +101,7 @@ func TestIssueClientCertPEM(t *testing.T) {
 			buildIssuerMocks: func() ClientCertIssuers {
 				validClientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 				validClientCertIssuer.EXPECT().
-					IssueClientCertPEM("username", []string{"group1", "group2"}, 32*time.Second).
+					IssueClientCertPEM(username, groups, extras, ttl).
 					Return(&cert.PEM{CertPEM: []byte("cert"), KeyPEM: []byte("key")}, nil)
 				return ClientCertIssuers{validClientCertIssuer}
 			},
@@ -109,12 +114,12 @@ func TestIssueClientCertPEM(t *testing.T) {
 				errClientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 				errClientCertIssuer.EXPECT().Name().Return("error cert issuer")
 				errClientCertIssuer.EXPECT().
-					IssueClientCertPEM("username", []string{"group1", "group2"}, 32*time.Second).
+					IssueClientCertPEM(username, groups, extras, ttl).
 					Return(nil, errors.New("error from wrapped cert issuer"))
 
 				validClientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 				validClientCertIssuer.EXPECT().
-					IssueClientCertPEM("username", []string{"group1", "group2"}, 32*time.Second).
+					IssueClientCertPEM(username, groups, extras, ttl).
 					Return(&cert.PEM{CertPEM: []byte("cert"), KeyPEM: []byte("key")}, nil)
 				return ClientCertIssuers{
 					errClientCertIssuer,
@@ -130,13 +135,13 @@ func TestIssueClientCertPEM(t *testing.T) {
 				err1ClientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 				err1ClientCertIssuer.EXPECT().Name().Return("error1 cert issuer")
 				err1ClientCertIssuer.EXPECT().
-					IssueClientCertPEM("username", []string{"group1", "group2"}, 32*time.Second).
+					IssueClientCertPEM(username, groups, extras, ttl).
 					Return(nil, errors.New("error1 from wrapped cert issuer"))
 
 				err2ClientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 				err2ClientCertIssuer.EXPECT().Name().Return("error2 cert issuer")
 				err2ClientCertIssuer.EXPECT().
-					IssueClientCertPEM("username", []string{"group1", "group2"}, 32*time.Second).
+					IssueClientCertPEM(username, groups, extras, ttl).
 					Return(nil, errors.New("error2 from wrapped cert issuer"))
 
 				return ClientCertIssuers{
@@ -154,7 +159,7 @@ func TestIssueClientCertPEM(t *testing.T) {
 			t.Parallel()
 
 			pem, err := testcase.buildIssuerMocks().
-				IssueClientCertPEM("username", []string{"group1", "group2"}, 32*time.Second)
+				IssueClientCertPEM(username, groups, extras, ttl)
 
 			if testcase.wantErrorMessage != "" {
 				require.ErrorContains(t, err, testcase.wantErrorMessage)

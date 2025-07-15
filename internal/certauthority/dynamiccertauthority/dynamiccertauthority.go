@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package dynamiccertauthority implements a x509 certificate authority capable of issuing
@@ -34,7 +34,7 @@ func (c *ca) Name() string {
 
 // IssueClientCertPEM issues a new client certificate for the given identity and duration, returning it as a
 // pair of PEM-formatted byte slices for the certificate and private key, along with the notBefore and notAfter values.
-func (c *ca) IssueClientCertPEM(username string, groups []string, ttl time.Duration) (*cert.PEM, error) {
+func (c *ca) IssueClientCertPEM(username string, groups []string, extras []string, ttl time.Duration) (*cert.PEM, error) {
 	caCrtPEM, caKeyPEM := c.provider.CurrentCertKeyContent()
 	// in the future we could split dynamiccert.Private into two interfaces (Private and PrivateRead)
 	// and have this code take PrivateRead as input.  We would then add ourselves as a listener to
@@ -44,5 +44,5 @@ func (c *ca) IssueClientCertPEM(username string, groups []string, ttl time.Durat
 		return nil, err
 	}
 
-	return ca.IssueClientCertPEM(username, groups, ttl)
+	return ca.IssueClientCertPEM(username, groups, extras, ttl)
 }

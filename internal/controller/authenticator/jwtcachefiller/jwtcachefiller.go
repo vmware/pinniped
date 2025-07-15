@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package jwtcachefiller implements a controller for filling an authncache.Cache with each
@@ -23,12 +23,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/apis/apiserver"
+	"k8s.io/apiserver/pkg/apis/apiserver/validation"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	authenticationcel "k8s.io/apiserver/pkg/authentication/cel"
 	"k8s.io/apiserver/plugin/pkg/authenticator/token/oidc"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/utils/clock"
-	"k8s.io/utils/ptr"
 
 	authenticationv1alpha1 "go.pinniped.dev/generated/latest/apis/concierge/authentication/v1alpha1"
 	oidcapi "go.pinniped.dev/generated/latest/apis/supervisor/oidc"
@@ -108,11 +110,13 @@ type tokenAuthenticatorCloser interface {
 
 type cachedJWTAuthenticator struct {
 	authenticator.Token
-	issuer       string
-	audience     string
-	claims       authenticationv1alpha1.JWTTokenClaims
-	caBundleHash tlsconfigutil.CABundleHash
-	cancel       context.CancelFunc
+	issuer               string
+	audience             string
+	claims               authenticationv1alpha1.JWTTokenClaims
+	userValidationRules  []authenticationv1alpha1.UserValidationRule
+	claimValidationRules []authenticationv1alpha1.ClaimValidationRule
+	caBundleHash         tlsconfigutil.CABundleHash
+	cancel               context.CancelFunc
 }
 
 func (c *cachedJWTAuthenticator) Close() {
@@ -353,7 +357,9 @@ func (c *jwtCacheFillerController) havePreviouslyValidated(
 	// If any spec field has changed, then we need a new in-memory authenticator.
 	if authenticatorFromCache.issuer == spec.Issuer &&
 		authenticatorFromCache.audience == spec.Audience &&
-		authenticatorFromCache.claims == spec.Claims &&
+		equality.Semantic.DeepEqual(authenticatorFromCache.claims, spec.Claims) &&
+		equality.Semantic.DeepEqual(authenticatorFromCache.userValidationRules, spec.UserValidationRules) &&
+		equality.Semantic.DeepEqual(authenticatorFromCache.claimValidationRules, spec.ClaimValidationRules) &&
 		tlsBundleOk && // if there was any error while validating the latest CA bundle, then do not consider it previously validated
 		authenticatorFromCache.caBundleHash.Equal(caBundleHash) {
 		return true, true
@@ -657,33 +663,46 @@ func (c *jwtCacheFillerController) newCachedJWTAuthenticator(
 		return nil, conditions, nil
 	}
 
-	usernameClaim := spec.Claims.Username
-	if usernameClaim == "" {
-		usernameClaim = defaultUsernameClaim
+	apiServerJWTAuthenticator := convertJWTAuthenticatorSpecType(spec)
+
+	// Reuse the validation code from Kubernetes structured auth config. Most importantly,
+	// this validates the claim mapping extras, claim validation rules, and user validation
+	// rules for us.
+	errList := validation.ValidateAuthenticationConfiguration(
+		authenticationcel.NewDefaultCompiler(),
+		&apiserver.AuthenticationConfiguration{JWT: []apiserver.JWTAuthenticator{apiServerJWTAuthenticator}},
+		[]string{},
+	)
+
+	// In addition to all the validations checked by ValidateAuthenticationConfiguration(),
+	// we do not want to allow equal signs in key names. This is because we want to be able to
+	// add the keyname to a client certificate's OU as "keyName=value".
+	for i, mapping := range spec.Claims.Extra {
+		if strings.Contains(mapping.Key, "=") {
+			// Use the same field path that ValidateAuthenticationConfiguration() would build, for consistency.
+			fieldPath := field.NewPath("jwt").Index(0).Child("claimMappings").Child("extra").Index(i)
+			errList = append(errList, field.Invalid(fieldPath, "", "Pinniped does not allow extra key names to contain equals sign"))
+		}
 	}
-	groupsClaim := spec.Claims.Groups
-	if groupsClaim == "" {
-		groupsClaim = defaultGroupsClaim
+
+	if errList != nil {
+		rewriteJWTAuthenticatorErrorPrefixes(errList)
+
+		errText := "could not initialize jwt authenticator"
+		err := errList.ToAggregate()
+		msg := fmt.Sprintf("%s: %s", errText, err.Error())
+		conditions = append(conditions, &metav1.Condition{
+			Type:    typeAuthenticatorValid,
+			Status:  metav1.ConditionFalse,
+			Reason:  reasonInvalidAuthenticator,
+			Message: msg,
+		})
+		return nil, conditions, nil
 	}
 
 	cancelCtx, cancel := context.WithCancel(context.Background())
 	oidcAuthenticator, err := oidc.New(cancelCtx, oidc.Options{
-		JWTAuthenticator: apiserver.JWTAuthenticator{
-			Issuer: apiserver.Issuer{
-				URL:       spec.Issuer,
-				Audiences: []string{spec.Audience},
-			},
-			ClaimMappings: apiserver.ClaimMappings{
-				Username: apiserver.PrefixedClaimOrExpression{
-					Claim:  usernameClaim,
-					Prefix: ptr.To(""),
-				},
-				Groups: apiserver.PrefixedClaimOrExpression{
-					Claim:  groupsClaim,
-					Prefix: ptr.To(""),
-				},
-			},
-		},
+		JWTAuthenticator:     apiServerJWTAuthenticator,
 		KeySet:               keySet,
 		SupportedSigningAlgs: defaultSupportedSigningAlgos(),
 		Client:               client,
@@ -706,15 +725,35 @@ func (c *jwtCacheFillerController) newCachedJWTAuthenticator(
 		// resync err, lots of possible issues that may or may not be machine related
 		return nil, conditions, fmt.Errorf("%s: %w", errText, err)
 	}
+
 	conditions = append(conditions, successfulAuthenticatorValidCondition())
+
 	return &cachedJWTAuthenticator{
-		Token:        oidcAuthenticator,
-		issuer:       spec.Issuer,
-		audience:     spec.Audience,
-		claims:       spec.Claims,
-		caBundleHash: caBundleHash,
-		cancel:       cancel,
+		Token:                oidcAuthenticator,
+		issuer:               spec.Issuer,
+		audience:             spec.Audience,
+		claims:               spec.Claims,
+		userValidationRules:  spec.UserValidationRules,
+		claimValidationRules: spec.ClaimValidationRules,
+		caBundleHash:         caBundleHash,
+		cancel:               cancel,
 	}, conditions, nil
+}
+
+// We don't have any control over the error prefixes created by ValidateAuthenticationConfiguration(), but we
+// can rewrite them to make them more consistent with our JWTAuthenticator CRD field names where they don't agree.
+func rewriteJWTAuthenticatorErrorPrefixes(errList field.ErrorList) {
+	// ValidateAuthenticationConfiguration() will prefix all our errors with "jwt[0]." because we always pass it
+	// exactly one jwtAuthenticator to validate.
+	undesirablePrefix := fmt.Sprintf("%s.", field.NewPath("jwt").Index(0).String())
+
+	for _, err := range errList {
+		err.Field = strings.TrimPrefix(err.Field, undesirablePrefix)
+		if strings.HasPrefix(err.Field, "claimMappings.") {
+			// Pinniped's CRD calls this field "claims". Otherwise, our field names are the same.
+			err.Field = strings.Replace(err.Field, "claimMappings.", "claims.", 1)
+		}
+	}
 }
 
 func (c *jwtCacheFillerController) updateStatus(

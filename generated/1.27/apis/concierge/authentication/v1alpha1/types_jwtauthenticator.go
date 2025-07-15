@@ -18,7 +18,7 @@ const (
 	JWTAuthenticatorPhaseError JWTAuthenticatorPhase = "Error"
 )
 
-// Status of a JWT authenticator.
+// JWTAuthenticatorStatus is the status of a JWT authenticator.
 type JWTAuthenticatorStatus struct {
 	// Represents the observations of the authenticator's current state.
 	// +patchMergeKey=type
@@ -26,46 +26,168 @@ type JWTAuthenticatorStatus struct {
 	// +listType=map
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+
 	// Phase summarizes the overall status of the JWTAuthenticator.
 	// +kubebuilder:default=Pending
 	// +kubebuilder:validation:Enum=Pending;Ready;Error
 	Phase JWTAuthenticatorPhase `json:"phase,omitempty"`
 }
 
-// Spec for configuring a JWT authenticator.
+// JWTAuthenticatorSpec is the spec for configuring a JWT authenticator.
 type JWTAuthenticatorSpec struct {
-	// Issuer is the OIDC issuer URL that will be used to discover public signing keys. Issuer is
+	// issuer is the OIDC issuer URL that will be used to discover public signing keys. Issuer is
 	// also used to validate the "iss" JWT claim.
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:Pattern=`^https://`
 	Issuer string `json:"issuer"`
 
-	// Audience is the required value of the "aud" JWT claim.
+	// audience is the required value of the "aud" JWT claim.
 	// +kubebuilder:validation:MinLength=1
 	Audience string `json:"audience"`
 
-	// Claims allows customization of the claims that will be mapped to user identity
+	// claims allows customization of the claims that will be mapped to user identity
 	// for Kubernetes access.
 	// +optional
 	Claims JWTTokenClaims `json:"claims"`
 
-	// TLS configuration for communicating with the OIDC provider.
+	// claimValidationRules are rules that are applied to validate token claims to authenticate users.
+	// This is similar to claimValidationRules from Kubernetes AuthenticationConfiguration as documented in
+	// https://kubernetes.io/docs/reference/access-authn-authz/authentication.
+	// This is an advanced configuration option. During an end-user login flow, mistakes in this
+	// configuration will cause the user's login to fail.
+	// +optional
+	ClaimValidationRules []ClaimValidationRule `json:"claimValidationRules,omitempty"`
+
+	// userValidationRules are rules that are applied to final user before completing authentication.
+	// These allow invariants to be applied to incoming identities such as preventing the
+	// use of the system: prefix that is commonly used by Kubernetes components.
+	// The validation rules are logically ANDed together and must all return true for the validation to pass.
+	// This is similar to claimValidationRules from Kubernetes AuthenticationConfiguration as documented in
+	// https://kubernetes.io/docs/reference/access-authn-authz/authentication.
+	// This is an advanced configuration option. During an end-user login flow, mistakes in this
+	// configuration will cause the user's login to fail.
+	// +optional
+	UserValidationRules []UserValidationRule `json:"userValidationRules,omitempty"`
+
+	// tls is the configuration for communicating with the OIDC provider via TLS.
 	// +optional
 	TLS *TLSSpec `json:"tls,omitempty"`
+}
+
+// ClaimValidationRule provides the configuration for a single claim validation rule.
+type ClaimValidationRule struct {
+	// claim is the name of a required claim.
+	// Same as --oidc-required-claim flag.
+	// Only string claim keys are supported.
+	// Mutually exclusive with expression and message.
+	// +optional
+	Claim string `json:"claim,omitempty"`
+
+	// requiredValue is the value of a required claim.
+	// Same as --oidc-required-claim flag.
+	// Only string claim values are supported.
+	// If claim is set and requiredValue is not set, the claim must be present with a value set to the empty string.
+	// Mutually exclusive with expression and message.
+	// +optional
+	RequiredValue string `json:"requiredValue,omitempty"`
+
+	// expression represents the expression which will be evaluated by CEL.
+	// Must produce a boolean.
+	//
+	// CEL expressions have access to the contents of the token claims, organized into CEL variable:
+	// - 'claims' is a map of claim names to claim values.
+	//   For example, a variable named 'sub' can be accessed as 'claims.sub'.
+	//   Nested claims can be accessed using dot notation, e.g. 'claims.foo.bar'.
+	// Must return true for the validation to pass.
+	//
+	// Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/
+	//
+	// Mutually exclusive with claim and requiredValue.
+	// +optional
+	Expression string `json:"expression,omitempty"`
+
+	// message customizes the returned error message when expression returns false.
+	// message is a literal string.
+	// Mutually exclusive with claim and requiredValue.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+// UserValidationRule provides the configuration for a single user info validation rule.
+type UserValidationRule struct {
+	// expression represents the expression which will be evaluated by CEL.
+	// Must return true for the validation to pass.
+	//
+	// CEL expressions have access to the contents of UserInfo, organized into CEL variable:
+	// - 'user' - authentication.k8s.io/v1, Kind=UserInfo object
+	//    Refer to https://github.com/kubernetes/api/blob/release-1.28/authentication/v1/types.go#L105-L122 for the definition.
+	//    API documentation: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#userinfo-v1-authentication-k8s-io
+	//
+	// Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/
+	//
+	// +required
+	Expression string `json:"expression"`
+
+	// message customizes the returned error message when rule returns false.
+	// message is a literal string.
+	// +optional
+	Message string `json:"message,omitempty"`
 }
 
 // JWTTokenClaims allows customization of the claims that will be mapped to user identity
 // for Kubernetes access.
 type JWTTokenClaims struct {
-	// Groups is the name of the claim which should be read to extract the user's
+	// groups is the name of the claim which should be read to extract the user's
 	// group membership from the JWT token. When not specified, it will default to "groups".
 	// +optional
 	Groups string `json:"groups"`
 
-	// Username is the name of the claim which should be read to extract the
+	// username is the name of the claim which should be read to extract the
 	// username from the JWT token. When not specified, it will default to "username".
 	// +optional
 	Username string `json:"username"`
+
+	// extra is similar to claimMappings.extra from Kubernetes AuthenticationConfiguration as documented in
+	// https://kubernetes.io/docs/reference/access-authn-authz/authentication. However, note that the
+	// Pinniped Concierge issues client certificates to users for the purpose of authenticating, and
+	// the Kubernetes API server does not have any mechanism for transmitting auth extras via client
+	// certificates. When configured, these extras will appear in client certificates issued by the
+	// Pinniped Supervisor in the x509 Subject field as Organizational Units (OU). However, when this
+	// client certificate is presented to Kubernetes for authentication, Kubernetes will ignore these
+	// extras. This is probably only useful if you are using a custom authenticating proxy in front
+	// of your Kubernetes API server which can translate these OUs into auth extras, as described by
+	// https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy.
+	// This is an advanced configuration option. During an end-user login flow, each of these CEL expressions
+	// must evaluate to either a string or an array of strings, or else the user's login will fail.
+	// +optional
+	Extra []ExtraMapping `json:"extra,omitempty"`
+}
+
+// ExtraMapping provides the configuration for a single extra mapping.
+type ExtraMapping struct {
+	// key is a string to use as the extra attribute key.
+	// key must be a domain-prefix path (e.g. example.org/foo). All characters before the first "/" must be a valid
+	// subdomain as defined by RFC 1123. All characters trailing the first "/" must
+	// be valid HTTP Path characters as defined by RFC 3986.
+	// key must be lowercase.
+	// Required to be unique.
+	// +required
+	Key string `json:"key"`
+
+	// valueExpression is a CEL expression to extract extra attribute value.
+	// valueExpression must produce a string or string array value.
+	// "", [], and null values are treated as the extra mapping not being present.
+	// Empty string values contained within a string array are filtered out.
+	//
+	// CEL expressions have access to the contents of the token claims, organized into CEL variable:
+	// - 'claims' is a map of claim names to claim values.
+	//   For example, a variable named 'sub' can be accessed as 'claims.sub'.
+	//   Nested claims can be accessed using dot notation, e.g. 'claims.foo.bar'.
+	//
+	// Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/
+	//
+	// +required
+	ValueExpression string `json:"valueExpression"`
 }
 
 // JWTAuthenticator describes the configuration of a JWT authenticator.
@@ -86,14 +208,14 @@ type JWTAuthenticator struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec for configuring the authenticator.
+	// spec for configuring the authenticator.
 	Spec JWTAuthenticatorSpec `json:"spec"`
 
-	// Status of the authenticator.
+	// status of the authenticator.
 	Status JWTAuthenticatorStatus `json:"status,omitempty"`
 }
 
-// List of JWTAuthenticator objects.
+// JWTAuthenticatorList is a list of JWTAuthenticator objects.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type JWTAuthenticatorList struct {
 	metav1.TypeMeta `json:",inline"`

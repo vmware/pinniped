@@ -1,4 +1,4 @@
-// Copyright 2020-2021 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package testutil
@@ -122,9 +122,16 @@ func (v *ValidCert) RequireCommonName(commonName string) {
 	require.Equal(v.t, commonName, v.parsed.Subject.CommonName)
 }
 
+// RequireOrganizations asserts that the certificate contains the provided orgs in the subject.
 func (v *ValidCert) RequireOrganizations(orgs []string) {
 	v.t.Helper()
 	require.Equal(v.t, orgs, v.parsed.Subject.Organization)
+}
+
+// RequireOrganizationalUnits asserts that the certificate contains the provided organizational units in the subject.
+func (v *ValidCert) RequireOrganizationalUnits(ous []string) {
+	v.t.Helper()
+	require.Equal(v.t, ous, v.parsed.Subject.OrganizationalUnit)
 }
 
 // CreateCertificate creates a certificate with the provided time bounds, and returns the PEM

@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package certauthority
@@ -326,7 +326,7 @@ func TestIssue(t *testing.T) {
 				require.Equal(t, now.Add(-5*time.Minute), got.Leaf.NotBefore) // always back-dated
 				require.Equal(t, now.Add(10*time.Minute), got.Leaf.NotAfter)
 			}
-			got, err = tt.ca.IssueClientCert("test-user", []string{"group1", "group2"}, 10*time.Minute)
+			got, err = tt.ca.IssueClientCert("test-user", []string{"group1", "group2"}, []string{"extra1=val1", "extra2=val2"}, 10*time.Minute)
 			if tt.wantErr != "" {
 				require.EqualError(t, err, tt.wantErr)
 				require.Nil(t, got)
@@ -378,28 +378,29 @@ func TestIssueMethods(t *testing.T) {
 	t.Run("client certs", func(t *testing.T) {
 		user := "test-username"
 		groups := []string{"group1", "group2"}
+		extras := []string{"extra1=val1", "extra2=val2"}
 
-		clientCert, err := ca.IssueClientCert(user, groups, ttl)
+		clientCert, err := ca.IssueClientCert(user, groups, extras, ttl)
 		require.NoError(t, err)
 		certPEM, keyPEM, err := ToPEM(clientCert)
 		require.NoError(t, err)
-		validateClientCert(t, ca.Bundle(), certPEM, keyPEM, user, groups, ttl)
+		validateClientCert(t, ca.Bundle(), certPEM, keyPEM, user, groups, extras, ttl)
 
-		pem, err := ca.IssueClientCertPEM(user, groups, ttl)
+		pem, err := ca.IssueClientCertPEM(user, groups, extras, ttl)
 		require.NoError(t, err)
-		validateClientCert(t, ca.Bundle(), pem.CertPEM, pem.KeyPEM, user, groups, ttl)
+		validateClientCert(t, ca.Bundle(), pem.CertPEM, pem.KeyPEM, user, groups, extras, ttl)
 
-		pem, err = ca.IssueClientCertPEM(user, nil, ttl)
+		pem, err = ca.IssueClientCertPEM(user, nil, nil, ttl)
 		require.NoError(t, err)
-		validateClientCert(t, ca.Bundle(), pem.CertPEM, pem.KeyPEM, user, nil, ttl)
+		validateClientCert(t, ca.Bundle(), pem.CertPEM, pem.KeyPEM, user, nil, nil, ttl)
 
-		pem, err = ca.IssueClientCertPEM(user, []string{}, ttl)
+		pem, err = ca.IssueClientCertPEM(user, []string{}, []string{}, ttl)
 		require.NoError(t, err)
-		validateClientCert(t, ca.Bundle(), pem.CertPEM, pem.KeyPEM, user, nil, ttl)
+		validateClientCert(t, ca.Bundle(), pem.CertPEM, pem.KeyPEM, user, nil, nil, ttl)
 
-		pem, err = ca.IssueClientCertPEM("", []string{}, ttl)
+		pem, err = ca.IssueClientCertPEM("", []string{}, []string{}, ttl)
 		require.NoError(t, err)
-		validateClientCert(t, ca.Bundle(), pem.CertPEM, pem.KeyPEM, "", nil, ttl)
+		validateClientCert(t, ca.Bundle(), pem.CertPEM, pem.KeyPEM, "", nil, nil, ttl)
 	})
 
 	t.Run("server certs", func(t *testing.T) {
@@ -434,13 +435,14 @@ func TestIssueMethods(t *testing.T) {
 	})
 }
 
-func validateClientCert(t *testing.T, caBundle []byte, certPEM []byte, keyPEM []byte, expectedUser string, expectedGroups []string, expectedTTL time.Duration) {
+func validateClientCert(t *testing.T, caBundle []byte, certPEM []byte, keyPEM []byte, expectedUser string, expectedGroups []string, expectedExtras []string, expectedTTL time.Duration) {
 	const fudgeFactor = 10 * time.Second
 	v := testutil.ValidateClientCertificate(t, string(caBundle), string(certPEM))
 	v.RequireLifetime(time.Now(), time.Now().Add(expectedTTL), certBackdate+fudgeFactor)
 	v.RequireMatchesPrivateKey(string(keyPEM))
 	v.RequireCommonName(expectedUser)
 	v.RequireOrganizations(expectedGroups)
+	v.RequireOrganizationalUnits(expectedExtras)
 	v.RequireEmptyDNSNames()
 	v.RequireEmptyIPs()
 }
