@@ -40,14 +40,14 @@ SUBNET_REGION="us-west1"
 #  - Maintenance window start and recurrence - to avoid downtime during business hours
 #  - Issue client certificate - to make it possible to use an admin kubeconfig without the GKE auth plugin
 #  - tags, authorized networks, private nodes, private endpoint, network, subnet, and secondary ranges
+#  - service account
 gcloud container --project "$PINNIPED_GCP_PROJECT" clusters create "gke-acceptance-cluster" \
   --zone "$CLUSTER_ZONE" \
   --no-enable-basic-auth \
-  --cluster-version "1.33.1-gke.1584000" \
+  --cluster-version "1.32.4-gke.1415000" \
   --release-channel "regular" \
   --machine-type "e2-medium" \
   --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "100" --metadata disable-legacy-endpoints=true \
-  --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" \
   --num-nodes "1" \
   --logging=SYSTEM,WORKLOAD --monitoring=SYSTEM,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA,CADVISOR,KUBELET \
   --no-enable-intra-node-visibility \
@@ -55,7 +55,9 @@ gcloud container --project "$PINNIPED_GCP_PROJECT" clusters create "gke-acceptan
   --security-posture=standard --workload-vulnerability-scanning=disabled \
   --addons HorizontalPodAutoscaling,HttpLoadBalancing,GcePersistentDiskCsiDriver \
   --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 \
-  --binauthz-evaluation-mode=DISABLED --enable-managed-prometheus --enable-shielded-nodes --node-locations "$CLUSTER_ZONE" \
+  --binauthz-evaluation-mode=DISABLED --enable-managed-prometheus \
+  --enable-shielded-nodes --shielded-integrity-monitoring --no-shielded-secure-boot \
+  --node-locations "$CLUSTER_ZONE" \
   --maintenance-window-start "2020-07-01T03:00:00Z" --maintenance-window-end "2020-07-01T11:00:00Z" \
   --maintenance-window-recurrence "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU" \
   --issue-client-certificate \
@@ -68,4 +70,5 @@ gcloud container --project "$PINNIPED_GCP_PROJECT" clusters create "gke-acceptan
   --network "projects/${SHARED_VPC_PROJECT}/global/networks/${SHARED_VPC_NAME}" \
   --subnetwork "projects/${SHARED_VPC_PROJECT}/regions/${SUBNET_REGION}/subnetworks/${SUBNET_NAME}" \
   --cluster-secondary-range-name "services" \
-  --services-secondary-range-name "pods"
+  --services-secondary-range-name "pods" \
+  --service-account "terraform@${PINNIPED_GCP_PROJECT}.iam.gserviceaccount.com"
