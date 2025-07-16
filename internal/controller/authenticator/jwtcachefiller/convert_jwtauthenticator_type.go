@@ -15,45 +15,65 @@ import (
 // but is otherwise a straight conversion. The Pinniped type includes TLS configuration which does not need
 // to be converted because that is applied elsewhere.
 func convertJWTAuthenticatorSpecType(spec *authenticationv1alpha1.JWTAuthenticatorSpec) apiserver.JWTAuthenticator {
-	usernameClaim := spec.Claims.Username
-	if usernameClaim == "" {
-		usernameClaim = defaultUsernameClaim
+	return apiserver.JWTAuthenticator{
+		Issuer:               convertIssuerType(spec),
+		ClaimMappings:        convertClaimMappingsType(spec.Claims),
+		ClaimValidationRules: convertClaimValidationRulesType(spec.ClaimValidationRules),
+		UserValidationRules:  convertUserValidationRulesType(spec.UserValidationRules),
 	}
+}
 
-	groupsClaim := spec.Claims.Groups
-	if groupsClaim == "" {
-		groupsClaim = defaultGroupsClaim
-	}
-
+func convertIssuerType(spec *authenticationv1alpha1.JWTAuthenticatorSpec) apiserver.Issuer {
 	var aud []string
 	if len(spec.Audience) > 0 {
 		aud = []string{spec.Audience}
 	}
 
-	jwtAuthenticator := apiserver.JWTAuthenticator{
-		Issuer: apiserver.Issuer{
-			URL:       spec.Issuer,
-			Audiences: aud,
-		},
-		ClaimMappings: apiserver.ClaimMappings{
-			Username: apiserver.PrefixedClaimOrExpression{
-				Claim:  usernameClaim,
-				Prefix: ptr.To(""),
-			},
-			Groups: apiserver.PrefixedClaimOrExpression{
-				Claim:  groupsClaim,
-				Prefix: ptr.To(""),
-			},
-			Extra: convertExtraType(spec.Claims.Extra),
-		},
-		ClaimValidationRules: convertClaimValidationRulesType(spec.ClaimValidationRules),
-		UserValidationRules:  convertUserValidationRules(spec.UserValidationRules),
+	return apiserver.Issuer{
+		URL:       spec.Issuer,
+		Audiences: aud,
 	}
-
-	return jwtAuthenticator
 }
 
-func convertUserValidationRules(rules []authenticationv1alpha1.UserValidationRule) []apiserver.UserValidationRule {
+func convertClaimMappingsType(claims authenticationv1alpha1.JWTTokenClaims) apiserver.ClaimMappings {
+	usernameClaim := claims.Username
+	if usernameClaim == "" && claims.UsernameExpression == "" {
+		usernameClaim = defaultUsernameClaim
+	}
+
+	var usernamePrefix *string
+	if usernameClaim != "" {
+		// Must be set only when username claim name is set.
+		usernamePrefix = ptr.To("")
+	}
+
+	groupsClaim := claims.Groups
+	if groupsClaim == "" && claims.GroupsExpression == "" {
+		groupsClaim = defaultGroupsClaim
+	}
+
+	var groupsPrefix *string
+	if groupsClaim != "" {
+		// Must be set only when groups claim name is set.
+		groupsPrefix = ptr.To("")
+	}
+
+	return apiserver.ClaimMappings{
+		Username: apiserver.PrefixedClaimOrExpression{
+			Claim:      usernameClaim,
+			Prefix:     usernamePrefix,
+			Expression: claims.UsernameExpression,
+		},
+		Groups: apiserver.PrefixedClaimOrExpression{
+			Claim:      groupsClaim,
+			Prefix:     groupsPrefix,
+			Expression: claims.GroupsExpression,
+		},
+		Extra: convertExtraType(claims.Extra),
+	}
+}
+
+func convertUserValidationRulesType(rules []authenticationv1alpha1.UserValidationRule) []apiserver.UserValidationRule {
 	if len(rules) == 0 {
 		return nil
 	}

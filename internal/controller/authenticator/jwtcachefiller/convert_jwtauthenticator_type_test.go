@@ -21,7 +21,7 @@ func Test_convertJWTAuthenticatorSpecType(t *testing.T) {
 		want apiserver.JWTAuthenticator
 	}{
 		{
-			name: "defaults the username and groups claims",
+			name: "defaults the username and groups claims when the usernameExpression and groupExpression are not set",
 			spec: &authenticationv1alpha1.JWTAuthenticatorSpec{
 				Issuer: "https://example.com",
 			},
@@ -37,6 +37,33 @@ func Test_convertJWTAuthenticatorSpecType(t *testing.T) {
 					Groups: apiserver.PrefixedClaimOrExpression{
 						Claim:  "groups",
 						Prefix: ptr.To(""),
+					},
+				},
+			},
+		},
+		{
+			name: "does not default the username and groups claims an prefixes when the usernameExpression and groupExpression are set",
+			spec: &authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer: "https://example.com",
+				Claims: authenticationv1alpha1.JWTTokenClaims{
+					UsernameExpression: `"foo"`,
+					GroupsExpression:   `["foo"]`,
+				},
+			},
+			want: apiserver.JWTAuthenticator{
+				Issuer: apiserver.Issuer{
+					URL: "https://example.com",
+				},
+				ClaimMappings: apiserver.ClaimMappings{
+					Username: apiserver.PrefixedClaimOrExpression{
+						Claim:      "",
+						Prefix:     nil,
+						Expression: `"foo"`,
+					},
+					Groups: apiserver.PrefixedClaimOrExpression{
+						Claim:      "",
+						Prefix:     nil,
+						Expression: `["foo"]`,
 					},
 				},
 			},

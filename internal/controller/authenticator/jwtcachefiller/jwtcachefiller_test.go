@@ -360,13 +360,13 @@ func TestController(t *testing.T) {
 			Groups: customGroupsClaim,
 		},
 	}
-	someJWTAuthenticatorSpecWithEveryOptionalValue := &authenticationv1alpha1.JWTAuthenticatorSpec{
+	someJWTAuthenticatorSpecWithManyOptionalValues := &authenticationv1alpha1.JWTAuthenticatorSpec{
 		Issuer:   goodIssuer,
 		Audience: goodAudience,
 		TLS:      goodOIDCIssuerServerTLSSpec,
 		Claims: authenticationv1alpha1.JWTTokenClaims{
-			Username: "my-custom-username-claim",
-			Groups:   customGroupsClaim,
+			Username: "my-custom-username-claim", // note: can't specify this and usernameExpression at the same time
+			Groups:   customGroupsClaim,          // note: can't specify this and groupsExpression at the same time
 			Extra: []authenticationv1alpha1.ExtraMapping{
 				{
 					Key:             "example.com/key-name", // must be a domain and path
@@ -385,6 +385,15 @@ func TestController(t *testing.T) {
 				Expression: "true", // must be a valid CEL expression that returns a boolean
 				Message:    "user-msg1",
 			},
+		},
+	}
+	someJWTAuthenticatorSpecWithUsernameAndGroupExpressions := &authenticationv1alpha1.JWTAuthenticatorSpec{
+		Issuer:   goodIssuer,
+		Audience: goodAudience,
+		TLS:      goodOIDCIssuerServerTLSSpec,
+		Claims: authenticationv1alpha1.JWTTokenClaims{
+			UsernameExpression: "claims.otherUsernameClaim",
+			GroupsExpression:   "has(claims.otherGroupsClaim) ? claims.otherGroupsClaim : []", // handles the case where the claim does not exist in the JWT
 		},
 	}
 	invalidClaimsExtraJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
@@ -418,6 +427,17 @@ func TestController(t *testing.T) {
 			{
 				Expression: "this is an invalid cel expression",
 			},
+		},
+	}
+	invalidClaimsMutualExclusiveRulesBothSetJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
+		Issuer:   goodIssuer,
+		Audience: goodAudience,
+		TLS:      goodOIDCIssuerServerTLSSpec,
+		Claims: authenticationv1alpha1.JWTTokenClaims{
+			Username:           "user",
+			UsernameExpression: `"user"`,
+			Groups:             "groups",
+			GroupsExpression:   `["group1"]`,
 		},
 	}
 	invalidClaimsExtraContainsEqualSignJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
@@ -1193,13 +1213,13 @@ func TestController(t *testing.T) {
 			wantNamesOfJWTAuthenticatorsInCache: []string{"test-name"},
 		},
 		{
-			name: "Sync: JWTAuthenticator with every optional value: loop will complete successfully and update status conditions",
+			name: "Sync: JWTAuthenticator with many optional values: loop will complete successfully and update status conditions",
 			jwtAuthenticators: []runtime.Object{
 				&authenticationv1alpha1.JWTAuthenticator{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "test-name",
 					},
-					Spec: *someJWTAuthenticatorSpecWithEveryOptionalValue,
+					Spec: *someJWTAuthenticatorSpecWithManyOptionalValues,
 				},
 			},
 			wantLogLines: []string{
@@ -1211,7 +1231,7 @@ func TestController(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "test-name",
 					},
-					Spec: *someJWTAuthenticatorSpecWithEveryOptionalValue,
+					Spec: *someJWTAuthenticatorSpecWithManyOptionalValues,
 					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
 						Conditions: allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
 						Phase:      "Ready",
@@ -1227,6 +1247,42 @@ func TestController(t *testing.T) {
 			wantUsernameClaim:                   "my-custom-username-claim",
 			wantGroupsClaim:                     someJWTAuthenticatorSpecWithGroupsClaim.Claims.Groups,
 			wantExtras:                          map[string][]string{"example.com/key-name": {"extra-value"}},
+			wantNamesOfJWTAuthenticatorsInCache: []string{"test-name"},
+		},
+		{
+			name: "Sync: JWTAuthenticator with usernameExpression and groupsExpression values: loop will complete successfully and update status conditions",
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *someJWTAuthenticatorSpecWithUsernameAndGroupExpressions,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Ready"}`, goodIssuer),
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"added or updated jwt authenticator in cache","jwtAuthenticator":"test-name","issuer":"%s","isOverwrite":false}`, goodIssuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *someJWTAuthenticatorSpecWithUsernameAndGroupExpressions,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+						Phase:      "Ready",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+			wantUsernameClaim:                   "otherUsernameClaim",
+			wantGroupsClaim:                     "otherGroupsClaim",
 			wantNamesOfJWTAuthenticatorsInCache: []string{"test-name"},
 		},
 		{
@@ -2653,6 +2709,53 @@ func TestController(t *testing.T) {
 			},
 		},
 		{
+			name: "newCachedJWTAuthenticator: validateAuthenticationConfiguration: when username and usernameExpression and/or groups and groupsExpression are both set: loop will fail sync, will write failed and unknown status conditions, but will not enqueue a resync due to user config error",
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimsMutualExclusiveRulesBothSetJWTAuthenticatorSpec,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"invalid jwt authenticator","jwtAuthenticator":"test-name","issuer":"%s","removedFromCache":false}`, invalidClaimsMutualExclusiveRulesBothSetJWTAuthenticatorSpec.Issuer),
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Error"}`, invalidClaimsMutualExclusiveRulesBothSetJWTAuthenticatorSpec.Issuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimsMutualExclusiveRulesBothSetJWTAuthenticatorSpec,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: conditionstestutil.Replace(
+							allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+							[]metav1.Condition{
+								sadReadyCondition(frozenMetav1Now, 0),
+								happyIssuerURLValid(frozenMetav1Now, 0),
+								happyDiscoveryURLValid(frozenMetav1Now, 0),
+								sadAuthenticatorValid(
+									`could not initialize jwt authenticator: [claims.username: Invalid value: "": claim and expression can't both be set, claims.groups: Invalid value: "": claim and expression can't both be set]`,
+									frozenMetav1Now,
+									0,
+								),
+								happyJWKSURLValid(frozenMetav1Now, 0),
+								happyJWKSFetch(frozenMetav1Now, 0),
+							},
+						),
+						Phase: "Error",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+		},
+		{
 			name: "newCachedJWTAuthenticator: when any claims.extra[].key contains an equals sign: loop will fail sync, will write failed and unknown status conditions, but will not enqueue a resync due to user config error",
 			jwtAuthenticators: []runtime.Object{
 				&authenticationv1alpha1.JWTAuthenticator{
@@ -2903,6 +3006,15 @@ func TestController(t *testing.T) {
 				cachedAuthenticator, ok := temp.(tokenAuthenticatorCloser)
 				require.True(t, ok)
 
+				usernameClaimIsCelExpression := false
+				if temp.(*cachedJWTAuthenticator).claims.UsernameExpression != "" {
+					usernameClaimIsCelExpression = true
+				}
+				groupsClaimIsCelExpression := false
+				if temp.(*cachedJWTAuthenticator).claims.GroupsExpression != "" {
+					groupsClaimIsCelExpression = true
+				}
+
 				// Schedule it to be closed at the end of the test.
 				t.Cleanup(cachedAuthenticator.Close)
 
@@ -2930,12 +3042,18 @@ func TestController(t *testing.T) {
 					group1,
 					goodUsername,
 					tt.wantUsernameClaim,
+					usernameClaimIsCelExpression,
 					tt.wantGroupsClaim,
+					groupsClaimIsCelExpression,
 					tt.wantExtras,
 					goodIssuer,
 				) {
 					t.Run(test.name, func(t *testing.T) {
 						t.Parallel()
+
+						if test.skip != nil {
+							test.skip(t) // give the test a chance to skip itself if it wants to
+						}
 
 						wellKnownClaims := josejwt.Claims{
 							Issuer:    goodIssuer,
@@ -3012,7 +3130,9 @@ func testTableForAuthenticateTokenTests(
 	group1 string,
 	goodUsername string,
 	expectedUsernameClaim string,
+	usernameClaimIsCelExpression bool,
 	expectedGroupsClaim string,
+	groupsClaimIsCelExpression bool,
 	expectedExtras map[string][]string,
 	issuer string,
 ) []struct {
@@ -3023,7 +3143,22 @@ func testTableForAuthenticateTokenTests(
 	wantAuthenticated         bool
 	wantErr                   testutil.RequireErrorStringFunc
 	distributedGroupsClaimURL string
+	skip                      func(t *testing.T)
 } {
+	expectedErrForBadTokenWithGroupsAsMap := func() testutil.RequireErrorStringFunc {
+		if groupsClaimIsCelExpression {
+			return testutil.WantExactErrorString(`oidc: error evaluating group claim expression: expression must return a string or a list of strings`)
+		}
+		return testutil.WantExactErrorString(`oidc: parse groups claim "` + expectedGroupsClaim + `": json: cannot unmarshal object into Go value of type string`)
+	}
+
+	expectedErrForTokenDoesNotHaveUsernameClaim := func() testutil.RequireErrorStringFunc {
+		if usernameClaimIsCelExpression {
+			return testutil.WantMatchingErrorString(`oidc: error evaluating username claim expression: expression '.+' resulted in error: no such key: ` + expectedUsernameClaim)
+		}
+		return testutil.WantExactErrorString(`oidc: parse username claims "` + expectedUsernameClaim + `": claim not present`)
+	}
+
 	tests := []struct {
 		name                      string
 		jwtClaims                 func(wellKnownClaims *josejwt.Claims, groups *any, username *string)
@@ -3032,6 +3167,7 @@ func testTableForAuthenticateTokenTests(
 		wantAuthenticated         bool
 		wantErr                   testutil.RequireErrorStringFunc
 		distributedGroupsClaimURL string
+		skip                      func(t *testing.T)
 	}{
 		{
 			name: "good token without groups and with EC signature",
@@ -3085,13 +3221,23 @@ func testTableForAuthenticateTokenTests(
 				},
 			},
 			wantAuthenticated: true,
+			skip: func(t *testing.T) {
+				if groupsClaimIsCelExpression {
+					t.Skip("skipping test because Kubernetes does not support using a CEL expression for groups mapping with distributed claims")
+				}
+			},
 		},
 		{
 			name: "distributed groups returns a 404",
 			jwtClaims: func(claims *josejwt.Claims, groups *any, username *string) {
 			},
 			distributedGroupsClaimURL: issuer + "/not_found_claim_source",
-			wantErr:                   testutil.WantMatchingErrorString(`oidc: could not expand distributed claims: while getting distributed claim "` + expectedGroupsClaim + `": error while getting distributed claim JWT: 404 Not Found`),
+			wantErr:                   testutil.WantExactErrorString(`oidc: could not expand distributed claims: while getting distributed claim "` + expectedGroupsClaim + `": error while getting distributed claim JWT: 404 Not Found`),
+			skip: func(t *testing.T) {
+				if groupsClaimIsCelExpression {
+					t.Skip("skipping test because Kubernetes does not support using a CEL expression for groups mapping with distributed claims")
+				}
+			},
 		},
 		{
 			name: "distributed groups doesn't return the right claim",
@@ -3099,6 +3245,11 @@ func testTableForAuthenticateTokenTests(
 			},
 			distributedGroupsClaimURL: issuer + "/wrong_claim_source",
 			wantErr:                   testutil.WantMatchingErrorString(`oidc: could not expand distributed claims: jwt returned by distributed claim endpoint "` + issuer + `/wrong_claim_source" did not contain claim: `),
+			skip: func(t *testing.T) {
+				if groupsClaimIsCelExpression {
+					t.Skip("skipping test because Kubernetes does not support using a CEL expression for groups mapping with distributed claims")
+				}
+			},
 		},
 		{
 			name: "good token with groups as string",
@@ -3132,7 +3283,7 @@ func testTableForAuthenticateTokenTests(
 			jwtClaims: func(_ *josejwt.Claims, groups *any, username *string) {
 				*groups = map[string]string{"not an array": "or a string"}
 			},
-			wantErr: testutil.WantMatchingErrorString(`oidc: parse groups claim "` + expectedGroupsClaim + `": json: cannot unmarshal object into Go value of type string`),
+			wantErr: expectedErrForBadTokenWithGroupsAsMap(),
 		},
 		{
 			name: "bad token with wrong issuer",
@@ -3147,14 +3298,14 @@ func testTableForAuthenticateTokenTests(
 			jwtClaims: func(claims *josejwt.Claims, _ *any, username *string) {
 				claims.Audience = nil
 			},
-			wantErr: testutil.WantMatchingErrorString(`oidc: verify token: oidc: expected audience "some-audience" got \[\]`),
+			wantErr: testutil.WantExactErrorString(`oidc: verify token: oidc: expected audience "some-audience" got []`),
 		},
 		{
 			name: "bad token with wrong audience",
 			jwtClaims: func(claims *josejwt.Claims, _ *any, username *string) {
 				claims.Audience = []string{"wrong-audience"}
 			},
-			wantErr: testutil.WantMatchingErrorString(`oidc: verify token: oidc: expected audience "some-audience" got \["wrong-audience"\]`),
+			wantErr: testutil.WantExactErrorString(`oidc: verify token: oidc: expected audience "some-audience" got ["wrong-audience"]`),
 		},
 		{
 			name: "bad token with nbf in the future",
@@ -3182,7 +3333,7 @@ func testTableForAuthenticateTokenTests(
 			jwtClaims: func(claims *josejwt.Claims, _ *any, username *string) {
 				*username = ""
 			},
-			wantErr: testutil.WantMatchingErrorString(`oidc: parse username claims "` + expectedUsernameClaim + `": claim not present`),
+			wantErr: expectedErrForTokenDoesNotHaveUsernameClaim(),
 		},
 		{
 			name: "signing key is wrong",
@@ -3192,7 +3343,7 @@ func testTableForAuthenticateTokenTests(
 				require.NoError(t, err)
 				*algo = jose.ES256
 			},
-			wantErr: testutil.WantMatchingErrorString(`oidc: verify token: failed to verify signature: failed to verify id token signature`),
+			wantErr: testutil.WantExactErrorString(`oidc: verify token: failed to verify signature: failed to verify id token signature`),
 		},
 		{
 			name: "signing algo is unsupported",
@@ -3202,7 +3353,7 @@ func testTableForAuthenticateTokenTests(
 				require.NoError(t, err)
 				*algo = jose.ES384
 			},
-			wantErr: testutil.WantMatchingErrorString(`oidc: verify token: oidc: id token signed with unsupported algorithm, expected \["RS256" "ES256"\] got "ES384"`),
+			wantErr: testutil.WantExactErrorString(`oidc: verify token: oidc: id token signed with unsupported algorithm, expected ["RS256" "ES256"] got "ES384"`),
 		},
 	}
 
