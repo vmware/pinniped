@@ -209,6 +209,7 @@ func TestAuditLogsDuringLogin_Disruptive(t *testing.T) {
 			"personalInfo": map[string]any{
 				"username": "redacted",
 				"groups":   []any{"redacted 2 values"},
+				"extras":   map[string]any{"redacted": "redacted 1 keys"},
 			},
 		},
 	}, allConciergeTCRLogs)
@@ -342,6 +343,25 @@ func TestAuditLogsDuringLogin_Disruptive(t *testing.T) {
 	for _, log := range allConciergeTCRLogs {
 		require.NotEmpty(t, log["issuedClientCert"])
 		delete(log, "issuedClientCert")
+
+		// The value at the extras key "authentication.kubernetes.io/credential-id" will be a JWT ID,
+		// which is hard to predict, so just assert that it is there without worrying about its exact value.
+		require.Contains(t, log, "personalInfo")
+		personalInfo, ok := log["personalInfo"].(map[string]any)
+		require.True(t, ok)
+		require.NotNil(t, personalInfo["extras"])
+		extras, ok := personalInfo["extras"].(map[string]any)
+		require.True(t, ok)
+		require.Contains(t, extras, "authentication.kubernetes.io/credential-id")
+		require.Len(t, extras, 1) // should be the only key
+		id := extras["authentication.kubernetes.io/credential-id"]
+		idValues, ok := id.([]any)
+		require.True(t, ok)
+		require.Len(t, idValues, 1)
+		require.Regexp(t, "JTI=.+", idValues[0])
+		// Now that we have made assertions about all the expected extras,
+		// delete it so we can compare the rest using equals below.
+		delete(personalInfo, "extras")
 	}
 
 	// All values in the personalInfo map should not be redacted anymore.
@@ -357,6 +377,7 @@ func TestAuditLogsDuringLogin_Disruptive(t *testing.T) {
 			"personalInfo": map[string]any{
 				"username": expectedUsername,
 				"groups":   expectedGroups,
+				// note: also has an "extras" key, which we deleted from the actual value above
 			},
 		},
 	}, allConciergeTCRLogs)

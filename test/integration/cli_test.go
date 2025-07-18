@@ -222,7 +222,7 @@ func TestCLILoginOIDC_Browser(t *testing.T) {
 	cacheKey := oidcclient.SessionCacheKey{
 		Issuer:      env.CLIUpstreamOIDC.Issuer,
 		ClientID:    env.CLIUpstreamOIDC.ClientID,
-		Scopes:      []string{"email", "offline_access", "openid", "profile"},
+		Scopes:      []string{"email", "groups", "offline_access", "openid", "profile"}, // in alphabetical order
 		RedirectURI: strings.ReplaceAll(env.CLIUpstreamOIDC.CallbackURL, "127.0.0.1", "localhost"),
 	}
 	cached := cache.GetToken(cacheKey)
@@ -413,7 +413,7 @@ func oidcLoginCommand(ctx context.Context, t *testing.T, pinnipedExe string, ses
 	cmd := exec.CommandContext(ctx, pinnipedExe, "login", "oidc",
 		"--issuer", env.CLIUpstreamOIDC.Issuer,
 		"--client-id", env.CLIUpstreamOIDC.ClientID,
-		"--scopes", "offline_access,openid,email,profile",
+		"--scopes", "offline_access,openid,email,profile,groups",
 		"--listen-port", callbackURL.Port(),
 		"--session-cache", sessionCachePath,
 		"--credential-cache", t.TempDir()+"/credentials.yaml",

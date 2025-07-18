@@ -304,12 +304,15 @@ func loadEnvVars(t *testing.T, result *TestEnv) {
 	result.ShellContainerImage = needEnv(t, "PINNIPED_TEST_SHELL_CONTAINER_IMAGE")
 
 	result.CLIUpstreamOIDC = TestOIDCUpstream{
-		Issuer:      needEnv(t, "PINNIPED_TEST_CLI_OIDC_ISSUER"),
-		CABundle:    base64Decoded(t, os.Getenv("PINNIPED_TEST_CLI_OIDC_ISSUER_CA_BUNDLE")),
-		ClientID:    needEnv(t, "PINNIPED_TEST_CLI_OIDC_CLIENT_ID"),
-		CallbackURL: needEnv(t, "PINNIPED_TEST_CLI_OIDC_CALLBACK_URL"),
-		Username:    needEnv(t, "PINNIPED_TEST_CLI_OIDC_USERNAME"),
-		Password:    needEnv(t, "PINNIPED_TEST_CLI_OIDC_PASSWORD"),
+		Issuer:         needEnv(t, "PINNIPED_TEST_CLI_OIDC_ISSUER"),
+		CABundle:       base64Decoded(t, os.Getenv("PINNIPED_TEST_CLI_OIDC_ISSUER_CA_BUNDLE")),
+		UsernameClaim:  os.Getenv("PINNIPED_TEST_CLI_OIDC_USERNAME_CLAIM"),
+		GroupsClaim:    os.Getenv("PINNIPED_TEST_CLI_OIDC_GROUPS_CLAIM"),
+		ClientID:       needEnv(t, "PINNIPED_TEST_CLI_OIDC_CLIENT_ID"),
+		CallbackURL:    needEnv(t, "PINNIPED_TEST_CLI_OIDC_CALLBACK_URL"),
+		Username:       needEnv(t, "PINNIPED_TEST_CLI_OIDC_USERNAME"),
+		Password:       needEnv(t, "PINNIPED_TEST_CLI_OIDC_PASSWORD"),
+		ExpectedGroups: filterEmpty(strings.Split(strings.ReplaceAll(os.Getenv("PINNIPED_TEST_CLI_OIDC_EXPECTED_GROUPS"), " ", ""), ",")),
 	}
 
 	result.SupervisorUpstreamOIDC = TestOIDCUpstream{

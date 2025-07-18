@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 #
@@ -535,6 +535,9 @@ export PINNIPED_TEST_CLI_OIDC_CLIENT_ID=pinniped-cli
 export PINNIPED_TEST_CLI_OIDC_CALLBACK_URL=http://127.0.0.1:48095/callback
 export PINNIPED_TEST_CLI_OIDC_USERNAME=pinny@example.com
 export PINNIPED_TEST_CLI_OIDC_PASSWORD=${dex_test_password}
+export PINNIPED_TEST_CLI_OIDC_USERNAME_CLAIM=email
+export PINNIPED_TEST_CLI_OIDC_GROUPS_CLAIM=groups
+export PINNIPED_TEST_CLI_OIDC_EXPECTED_GROUPS= # Dex's local user store does not let us configure groups.
 export PINNIPED_TEST_SUPERVISOR_UPSTREAM_OIDC_ISSUER=https://dex.tools.svc.cluster.local/dex
 export PINNIPED_TEST_SUPERVISOR_UPSTREAM_OIDC_ISSUER_CA_BUNDLE="${test_ca_bundle_pem}"
 export PINNIPED_TEST_SUPERVISOR_UPSTREAM_OIDC_ADDITIONAL_SCOPES="offline_access,email"

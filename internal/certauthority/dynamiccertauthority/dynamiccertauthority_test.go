@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package dynamiccertauthority
@@ -91,8 +91,7 @@ func TestCAIssuePEM(t *testing.T) {
 	}
 	for _, step := range steps {
 		t.Run(step.name, func(t *testing.T) {
-			// Can't run these steps in parallel, because each one depends on the previous steps being
-			// run.
+			// Can't run these steps in parallel, because each one depends on the previous steps being run.
 
 			pem, err := issuePEM(provider, ca, step.caCrtPEM, step.caKeyPEM)
 
@@ -108,6 +107,7 @@ func TestCAIssuePEM(t *testing.T) {
 				crtAssertions := testutil.ValidateClientCertificate(t, string(caCrtPEM), string(pem.CertPEM))
 				crtAssertions.RequireCommonName("some-username")
 				crtAssertions.RequireOrganizations([]string{"some-group1", "some-group2"})
+				crtAssertions.RequireOrganizationalUnits([]string{"extra1=val1", "extra2=val2"})
 				crtAssertions.RequireLifetime(time.Now(), time.Now().Add(time.Hour*24), time.Minute*10)
 				crtAssertions.RequireMatchesPrivateKey(string(pem.KeyPEM))
 			}
@@ -124,5 +124,10 @@ func issuePEM(provider dynamiccert.Provider, ca clientcertissuer.ClientCertIssue
 	}
 
 	// otherwise check to see if there is an issuing error
-	return ca.IssueClientCertPEM("some-username", []string{"some-group1", "some-group2"}, time.Hour*24)
+	return ca.IssueClientCertPEM(
+		"some-username",
+		[]string{"some-group1", "some-group2"},
+		[]string{"extra1=val1", "extra2=val2"},
+		time.Hour*24,
+	)
 }
