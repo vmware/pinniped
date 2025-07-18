@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package testlib
@@ -6,7 +6,6 @@ package testlib
 import (
 	"context"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -251,32 +250,6 @@ func WaitForWebhookAuthenticatorStatusConditions(ctx context.Context, t *testing
 				expectConditions, fd.Status.Conditions, i)
 		}
 	}, 60*time.Second, 1*time.Second, "wanted WebhookAuthenticator conditions")
-}
-
-// CreateTestJWTAuthenticatorForCLIUpstream creates and returns a test JWTAuthenticator which will be automatically
-// deleted at the end of the current test's lifetime.
-//
-// CreateTestJWTAuthenticatorForCLIUpstream gets the OIDC issuer info from IntegrationEnv().CLIUpstreamOIDC.
-func CreateTestJWTAuthenticatorForCLIUpstream(ctx context.Context, t *testing.T) *authenticationv1alpha1.JWTAuthenticator {
-	t.Helper()
-	testEnv := IntegrationEnv(t)
-	spec := authenticationv1alpha1.JWTAuthenticatorSpec{
-		Issuer:   testEnv.CLIUpstreamOIDC.Issuer,
-		Audience: testEnv.CLIUpstreamOIDC.ClientID,
-		// The default UsernameClaim is "username" but the upstreams that we use for
-		// integration tests won't necessarily have that claim, so use "sub" here.
-		Claims: authenticationv1alpha1.JWTTokenClaims{Username: "sub"},
-	}
-	// If the test upstream does not have a CA bundle specified, then don't configure one in the
-	// JWTAuthenticator. Leaving TLSSpec set to nil will result in OIDC discovery using the OS's root
-	// CA store.
-	if testEnv.CLIUpstreamOIDC.CABundle != "" {
-		spec.TLS = &authenticationv1alpha1.TLSSpec{
-			CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(testEnv.CLIUpstreamOIDC.CABundle)),
-		}
-	}
-	authenticator := CreateTestJWTAuthenticator(ctx, t, spec, authenticationv1alpha1.JWTAuthenticatorPhaseReady)
-	return authenticator
 }
 
 // CreateTestJWTAuthenticator creates and returns a test JWTAuthenticator which will be automatically deleted
