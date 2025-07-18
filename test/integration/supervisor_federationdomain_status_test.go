@@ -566,7 +566,10 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 
 	// Certain non-CEL validation failures will prevent CEL validations from running,
 	// and the Kubernetes API server will return this error message for those cases.
-	const couldNotRunCELValidationsErrMessage = `<nil>: Invalid value: "null": some validation rules were not checked because the object was invalid; correct the existing errors to complete validation`
+	const couldNotRunCELValidationsErrMessage = "some validation rules were not checked because the object was invalid; correct the existing errors to complete validation"
+	const oldCouldNotRunCELValidationsErrMessage = `<nil>: Invalid value: "null": ` + couldNotRunCELValidationsErrMessage
+	// Starting in beta version of Kube 1.34, they removed the quotes around the null in this message.
+	const newCouldNotRunCELValidationsErrMessage = `<nil>: Invalid value: null: ` + couldNotRunCELValidationsErrMessage
 
 	tests := []struct {
 		name     string
@@ -580,7 +583,9 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 
 		// These errors are appended to any other wanted errors when k8sAPIServerSupportsCEL is true
 		wantCELErrorsForKube25Through28Inclusive []string
+		wantCELErrorsForKube29Through33Inclusive []string
 		wantCELErrorsForKube29OrNewer            []string
+		wantCELErrorsForKube34OrNewer            []string
 	}{
 		{
 			name: "issuer cannot be empty",
@@ -686,8 +691,9 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 			wantKube23OrOlderErrs:                    []string{`spec.identityProviders.transforms.constants.name: Invalid value: "12345678901234567890123456789012345678901234567890123456789012345": spec.identityProviders.transforms.constants.name in body should be at most 64 chars long`},
 			wantKube24Through31InclusiveErrs:         []string{`spec.identityProviders[0].transforms.constants[0].name: Too long: may not be longer than 64`},
 			wantKube32OrNewerErrs:                    []string{`spec.identityProviders[0].transforms.constants[0].name: Too long: may not be more than 64 bytes`},
-			wantCELErrorsForKube25Through28Inclusive: []string{couldNotRunCELValidationsErrMessage},
-			wantCELErrorsForKube29OrNewer:            []string{couldNotRunCELValidationsErrMessage},
+			wantCELErrorsForKube25Through28Inclusive: []string{oldCouldNotRunCELValidationsErrMessage},
+			wantCELErrorsForKube29Through33Inclusive: []string{oldCouldNotRunCELValidationsErrMessage},
+			wantCELErrorsForKube34OrNewer:            []string{newCouldNotRunCELValidationsErrMessage},
 		},
 		{
 			name: "IDP transform constant names must be a legal CEL variable name",
@@ -737,8 +743,9 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 					},
 				},
 			},
-			wantErrs:                      []string{`spec.identityProviders[0].transforms.constants[0].type: Unsupported value: "this is invalid": supported values: "string", "stringList"`},
-			wantCELErrorsForKube29OrNewer: []string{couldNotRunCELValidationsErrMessage}, // this should not be checked on kind 1.25, 1.26, 1.27, 1.28
+			wantErrs:                                 []string{`spec.identityProviders[0].transforms.constants[0].type: Unsupported value: "this is invalid": supported values: "string", "stringList"`},
+			wantCELErrorsForKube29Through33Inclusive: []string{oldCouldNotRunCELValidationsErrMessage},
+			wantCELErrorsForKube34OrNewer:            []string{newCouldNotRunCELValidationsErrMessage},
 		},
 		{
 			name: "IDP transform expression types must be one of the allowed enum strings",
@@ -762,7 +769,7 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 				},
 			},
 			wantErrs:                      []string{`spec.identityProviders[0].transforms.expressions[0].type: Unsupported value: "this is invalid": supported values: "policy/v1", "username/v1", "groups/v1"`},
-			wantCELErrorsForKube29OrNewer: []string{couldNotRunCELValidationsErrMessage}, // this should not be checked on kind 1.25, 1.26, 1.27, 1.28
+			wantCELErrorsForKube29OrNewer: []string{oldCouldNotRunCELValidationsErrMessage}, // this should not be checked on kind 1.25, 1.26, 1.27, 1.28
 		},
 		{
 			name: "IDP transform expressions cannot be empty",
@@ -907,8 +914,15 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 
 			if minor >= 25 && minor <= 28 && len(tt.wantCELErrorsForKube25Through28Inclusive) > 0 {
 				wantErr = append(wantErr, tt.wantCELErrorsForKube25Through28Inclusive...)
-			} else if minor >= 29 && len(tt.wantCELErrorsForKube29OrNewer) > 0 {
+			}
+			if minor >= 29 && minor <= 33 && len(tt.wantCELErrorsForKube29Through33Inclusive) > 0 {
+				wantErr = append(wantErr, tt.wantCELErrorsForKube29Through33Inclusive...)
+			}
+			if minor >= 29 && len(tt.wantCELErrorsForKube29OrNewer) > 0 {
 				wantErr = append(wantErr, tt.wantCELErrorsForKube29OrNewer...)
+			}
+			if minor >= 34 && len(tt.wantCELErrorsForKube34OrNewer) > 0 {
+				wantErr = append(wantErr, tt.wantCELErrorsForKube34OrNewer...)
 			}
 
 			// Did not want any error.
