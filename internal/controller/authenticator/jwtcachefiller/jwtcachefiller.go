@@ -680,13 +680,18 @@ func (c *jwtCacheFillerController) newCachedJWTAuthenticator(
 	for i, mapping := range spec.Claims.Extra {
 		if strings.Contains(mapping.Key, "=") {
 			// Use the same field path that ValidateAuthenticationConfiguration() would build, for consistency.
-			fieldPath := field.NewPath("jwt").Index(0).Child("claimMappings").Child("extra").Index(i)
-			errList = append(errList, field.Invalid(fieldPath, "", "Pinniped does not allow extra key names to contain equals sign"))
+			fieldPath := field.NewPath("jwt").Index(0).
+				Child("claimMappings").
+				Child("extra").Index(i).
+				Child("key")
+			errList = append(errList, field.Invalid(fieldPath, mapping.Key,
+				"Pinniped does not allow extra key names to contain equals sign",
+			))
 		}
 	}
 
 	if errList != nil {
-		rewriteJWTAuthenticatorErrorPrefixes(errList)
+		rewriteJWTAuthenticatorErrors(errList)
 
 		errText := "could not initialize jwt authenticator"
 		err := errList.ToAggregate()
@@ -740,18 +745,35 @@ func (c *jwtCacheFillerController) newCachedJWTAuthenticator(
 	}, conditions, nil
 }
 
-// We don't have any control over the error prefixes created by ValidateAuthenticationConfiguration(), but we
+// We don't have any control over the error strings created by ValidateAuthenticationConfiguration(), but we
 // can rewrite them to make them more consistent with our JWTAuthenticator CRD field names where they don't agree.
-func rewriteJWTAuthenticatorErrorPrefixes(errList field.ErrorList) {
+func rewriteJWTAuthenticatorErrors(errList field.ErrorList) {
 	// ValidateAuthenticationConfiguration() will prefix all our errors with "jwt[0]." because we always pass it
 	// exactly one jwtAuthenticator to validate.
 	undesirablePrefix := fmt.Sprintf("%s.", field.NewPath("jwt").Index(0).String())
 
+	// Replace these to make the spec names consistent with how they are named in the JWTAuthenticator CRD.
+	replacements := []struct {
+		str  string
+		repl string
+	}{
+		// replace these more specific strings first
+		{str: "claimMappings.username.expression", repl: "claims.usernameExpression"},
+		{str: "claimMappings.groups.expression", repl: "claims.groupsExpression"},
+
+		// then replace these less specific strings (substrings of the strings above) if they still exist
+		{str: "claimMappings.username", repl: "claims.username"},
+		{str: "claimMappings.groups", repl: "claims.groups"},
+
+		// and also replace this one
+		{str: "claimMappings.extra", repl: "claims.extra"},
+	}
+
 	for _, err := range errList {
 		err.Field = strings.TrimPrefix(err.Field, undesirablePrefix)
-		if strings.HasPrefix(err.Field, "claimMappings.") {
-			// Pinniped's CRD calls this field "claims". Otherwise, our field names are the same.
-			err.Field = strings.Replace(err.Field, "claimMappings.", "claims.", 1)
+		for _, spec := range replacements {
+			err.Field = strings.ReplaceAll(err.Field, spec.str, spec.repl)
+			err.Detail = strings.ReplaceAll(err.Detail, spec.str, spec.repl)
 		}
 	}
 }

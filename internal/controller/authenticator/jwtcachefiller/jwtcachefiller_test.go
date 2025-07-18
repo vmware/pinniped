@@ -440,12 +440,24 @@ func TestController(t *testing.T) {
 			GroupsExpression:   `["group1"]`,
 		},
 	}
+	invalidClaimsUsernameExpressUsesClaimsDotEmailWrongJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
+		Issuer:   goodIssuer,
+		Audience: goodAudience,
+		TLS:      goodOIDCIssuerServerTLSSpec,
+		Claims: authenticationv1alpha1.JWTTokenClaims{
+			UsernameExpression: "claims.email",
+		},
+	}
 	invalidClaimsExtraContainsEqualSignJWTAuthenticatorSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
 		Issuer:   goodIssuer,
 		Audience: goodAudience,
 		TLS:      goodOIDCIssuerServerTLSSpec,
 		Claims: authenticationv1alpha1.JWTTokenClaims{
 			Extra: []authenticationv1alpha1.ExtraMapping{
+				{
+					Key:             "example.com/legal-key",
+					ValueExpression: `"extra-value"`,
+				},
 				{
 					Key:             "example.com/key=contains-equals-sign", // this should cause a validation error in our own code
 					ValueExpression: `"extra-value"`,
@@ -2756,6 +2768,55 @@ func TestController(t *testing.T) {
 			},
 		},
 		{
+			name: "newCachedJWTAuthenticator: validateAuthenticationConfiguration: when usernameExpression uses claims.email without using claims.email_verified elsewhere: loop will fail sync, will write failed and unknown status conditions, but will not enqueue a resync due to user config error",
+			jwtAuthenticators: []runtime.Object{
+				&authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimsUsernameExpressUsesClaimsDotEmailWrongJWTAuthenticatorSpec,
+				},
+			},
+			wantLogLines: []string{
+				fmt.Sprintf(`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).syncIndividualJWTAuthenticator","message":"invalid jwt authenticator","jwtAuthenticator":"test-name","issuer":"%s","removedFromCache":false}`, invalidClaimsUsernameExpressUsesClaimsDotEmailWrongJWTAuthenticatorSpec.Issuer),
+				fmt.Sprintf(`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"jwtcachefiller-controller","caller":"jwtcachefiller/jwtcachefiller.go:<line>$jwtcachefiller.(*jwtCacheFillerController).updateStatus","message":"jwtauthenticator status successfully updated","jwtAuthenticator":"test-name","issuer":"%s","phase":"Error"}`, invalidClaimsUsernameExpressUsesClaimsDotEmailWrongJWTAuthenticatorSpec.Issuer),
+			},
+			wantActions: func() []coretesting.Action {
+				updateStatusAction := coretesting.NewUpdateAction(jwtAuthenticatorsGVR, "", &authenticationv1alpha1.JWTAuthenticator{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-name",
+					},
+					Spec: *invalidClaimsUsernameExpressUsesClaimsDotEmailWrongJWTAuthenticatorSpec,
+					Status: authenticationv1alpha1.JWTAuthenticatorStatus{
+						Conditions: conditionstestutil.Replace(
+							allHappyConditionsSuccess(goodIssuer, frozenMetav1Now, 0),
+							[]metav1.Condition{
+								sadReadyCondition(frozenMetav1Now, 0),
+								happyIssuerURLValid(frozenMetav1Now, 0),
+								happyDiscoveryURLValid(frozenMetav1Now, 0),
+								sadAuthenticatorValid(
+									`could not initialize jwt authenticator: claims.usernameExpression: Invalid value: "claims.email": `+
+										`claims.email_verified must be used in claims.usernameExpression or claims.extra[*].valueExpression or `+
+										`claimValidationRules[*].expression when claims.email is used in claims.usernameExpression`,
+									frozenMetav1Now,
+									0,
+								),
+								happyJWKSURLValid(frozenMetav1Now, 0),
+								happyJWKSFetch(frozenMetav1Now, 0),
+							},
+						),
+						Phase: "Error",
+					},
+				})
+				updateStatusAction.Subresource = "status"
+				return []coretesting.Action{
+					coretesting.NewListAction(jwtAuthenticatorsGVR, jwtAUthenticatorGVK, "", metav1.ListOptions{}),
+					coretesting.NewWatchAction(jwtAuthenticatorsGVR, "", metav1.ListOptions{Watch: true}),
+					updateStatusAction,
+				}
+			},
+		},
+		{
 			name: "newCachedJWTAuthenticator: when any claims.extra[].key contains an equals sign: loop will fail sync, will write failed and unknown status conditions, but will not enqueue a resync due to user config error",
 			jwtAuthenticators: []runtime.Object{
 				&authenticationv1alpha1.JWTAuthenticator{
@@ -2783,7 +2844,7 @@ func TestController(t *testing.T) {
 								happyIssuerURLValid(frozenMetav1Now, 0),
 								happyDiscoveryURLValid(frozenMetav1Now, 0),
 								sadAuthenticatorValid(
-									`could not initialize jwt authenticator: claims.extra[0]: Invalid value: "": Pinniped does not allow extra key names to contain equals sign`,
+									`could not initialize jwt authenticator: claims.extra[1].key: Invalid value: "example.com/key=contains-equals-sign": Pinniped does not allow extra key names to contain equals sign`,
 									frozenMetav1Now,
 									0,
 								),

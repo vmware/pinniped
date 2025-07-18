@@ -74,11 +74,9 @@ ClaimValidationRule provides the configuration for a single claim validation rul
 |===
 | Field | Description
 | *`claim`* __string__ | claim is the name of a required claim. +
-Same as --oidc-required-claim flag. +
 Only string claim keys are supported. +
 Mutually exclusive with expression and message. +
 | *`requiredValue`* __string__ | requiredValue is the value of a required claim. +
-Same as --oidc-required-claim flag. +
 Only string claim values are supported. +
 If claim is set and requiredValue is not set, the claim must be present with a value set to the empty string. +
 Mutually exclusive with expression and message. +
@@ -119,6 +117,7 @@ subdomain as defined by RFC 1123. All characters trailing the first "/" must +
 be valid HTTP Path characters as defined by RFC 3986. +
 key must be lowercase. +
 Required to be unique. +
+Additionally, the key must not contain an equals sign ("="). +
 | *`valueExpression`* __string__ | valueExpression is a CEL expression to extract extra attribute value. +
 valueExpression must produce a string or string array value. +
 "", [], and null values are treated as the extra mapping not being present. +
@@ -244,8 +243,13 @@ unless usernameExpression is specified. +
 Mutually exclusive with usernameExpression. Use either username or usernameExpression to +
 determine the user's username from the JWT token. +
 | *`usernameExpression`* __string__ | usernameExpression represents an expression which will be evaluated by CEL. +
-
 The expression's result will become the user's username. +
+
+usernameExpression is similar to claimMappings.username.expression from Kubernetes AuthenticationConfiguration +
+as documented in https://kubernetes.io/docs/reference/access-authn-authz/authentication. +
+This is an advanced configuration option. During an end-user login flow, each of these CEL expressions +
+must evaluate to the expected type without errors, or else the user's login will fail. +
+Additionally, mistakes in this configuration can cause the users to have unintended usernames. +
 
 The expression must produce a non-empty string value. +
 If the expression uses 'claims.email', then 'claims.email_verified' must be used in +
@@ -271,8 +275,13 @@ unless groupsExpression is specified. +
 Mutually exclusive with groupsExpression. Use either groups or groupsExpression to +
 determine the user's group membership from the JWT token. +
 | *`groupsExpression`* __string__ | groupsExpression represents an expression which will be evaluated by CEL. +
-
 The expression's result will become the user's group memberships. +
+
+groupsExpression is similar to claimMappings.groups.expression from Kubernetes AuthenticationConfiguration +
+as documented in https://kubernetes.io/docs/reference/access-authn-authz/authentication. +
+This is an advanced configuration option. During an end-user login flow, each of these CEL expressions +
+must evaluate to one of the expected types without errors, or else the user's login will fail. +
+Additionally, mistakes in this configuration can cause the users to have unintended group memberships. +
 
 The expression must produce a string or string array value. +
 "", [], and null values are treated as the group mapping not being present. +
@@ -286,18 +295,44 @@ Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/ +
 
 Mutually exclusive with groups. Use either groups or groupsExpression to +
 determine the user's group membership from the JWT token. +
-| *`extra`* __xref:{anchor_prefix}-go-pinniped-dev-generated-1-30-apis-concierge-authentication-v1alpha1-extramapping[$$ExtraMapping$$] array__ | extra is similar to claimMappings.extra from Kubernetes AuthenticationConfiguration as documented in +
-https://kubernetes.io/docs/reference/access-authn-authz/authentication. However, note that the +
-Pinniped Concierge issues client certificates to users for the purpose of authenticating, and +
-the Kubernetes API server does not have any mechanism for transmitting auth extras via client +
-certificates. When configured, these extras will appear in client certificates issued by the +
-Pinniped Supervisor in the x509 Subject field as Organizational Units (OU). However, when this +
-client certificate is presented to Kubernetes for authentication, Kubernetes will ignore these +
-extras. This is probably only useful if you are using a custom authenticating proxy in front +
-of your Kubernetes API server which can translate these OUs into auth extras, as described by +
+| *`extra`* __xref:{anchor_prefix}-go-pinniped-dev-generated-1-30-apis-concierge-authentication-v1alpha1-extramapping[$$ExtraMapping$$] array__ | extra is similar to claimMappings.extra from Kubernetes AuthenticationConfiguration +
+as documented in https://kubernetes.io/docs/reference/access-authn-authz/authentication. +
+
+However, note that the Pinniped Concierge issues client certificates to users for the purpose +
+of authenticating, and the Kubernetes API server does not have any mechanism for transmitting +
+auth extras via client certificates. When configured, these extras will appear in client +
+certificates issued by the Pinniped Supervisor in the x509 Subject field as Organizational +
+Units (OU). However, when this client certificate is presented to Kubernetes for authentication, +
+Kubernetes will ignore these extras. This is probably only useful if you are using a custom +
+authenticating proxy in front of your Kubernetes API server which can translate these OUs into +
+auth extras, as described by +
 https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy. +
 This is an advanced configuration option. During an end-user login flow, each of these CEL expressions +
 must evaluate to either a string or an array of strings, or else the user's login will fail. +
+
+These keys must be a domain-prefixed path (such as "acme.io/foo") and must not contain an equals sign ("="). +
+
+expression must produce a string or string array value. +
+If the value is empty, the extra mapping will not be present. +
+
+Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/ +
+
+hard-coded extra key/value +
+- key: "acme.io/foo" +
+valueExpression: "'bar'" +
+This will result in an extra attribute - acme.io/foo: ["bar"] +
+
+hard-coded key, value copying claim value +
+- key: "acme.io/foo" +
+valueExpression: "claims.some_claim" +
+This will result in an extra attribute - acme.io/foo: [value of some_claim] +
+
+hard-coded key, value derived from claim value +
+- key: "acme.io/admin" +
+valueExpression: '(has(claims.is_admin) && claims.is_admin) ? "true":""' +
+This will result in: +
+- if is_admin claim is present and true, extra attribute - acme.io/admin: ["true"] +
+- if is_admin claim is present and false or is_admin claim is not present, no extra attribute will be added +
 |===
 
 
