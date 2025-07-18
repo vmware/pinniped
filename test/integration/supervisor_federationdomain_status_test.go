@@ -555,6 +555,7 @@ func TestSupervisorFederationDomainStatus_Disruptive(t *testing.T) {
 	}
 }
 
+//nolint:gocyclo // we have a lot of "if" conditions here, but it's okay
 func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 	env := testlib.IntegrationEnv(t)
 	fdClient := testlib.NewSupervisorClientset(t).ConfigV1alpha1().FederationDomains(env.SupervisorNamespace)
@@ -566,7 +567,10 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 
 	// Certain non-CEL validation failures will prevent CEL validations from running,
 	// and the Kubernetes API server will return this error message for those cases.
-	const couldNotRunCELValidationsErrMessage = `<nil>: Invalid value: "null": some validation rules were not checked because the object was invalid; correct the existing errors to complete validation`
+	const couldNotRunCELValidationsErrMessage = "some validation rules were not checked because the object was invalid; correct the existing errors to complete validation"
+	const oldCouldNotRunCELValidationsErrMessage = `<nil>: Invalid value: "null": ` + couldNotRunCELValidationsErrMessage
+	// Starting in beta version of Kube 1.34, they removed the quotes around the null in this message.
+	const newCouldNotRunCELValidationsErrMessage = `<nil>: Invalid value: null: ` + couldNotRunCELValidationsErrMessage
 
 	tests := []struct {
 		name     string
@@ -576,11 +580,14 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 		// optionally override wantErr for one or more specific versions of Kube, due to changing validation error text
 		wantKube23OrOlderErrs            []string
 		wantKube24Through31InclusiveErrs []string
-		wantKube32OrNewerErrs            []string
+		wantKube32Through33InclusiveErrs []string
+		wantKube34OrNewerErrs            []string
 
 		// These errors are appended to any other wanted errors when k8sAPIServerSupportsCEL is true
 		wantCELErrorsForKube25Through28Inclusive []string
+		wantCELErrorsForKube29Through33Inclusive []string
 		wantCELErrorsForKube29OrNewer            []string
+		wantCELErrorsForKube34OrNewer            []string
 	}{
 		{
 			name: "issuer cannot be empty",
@@ -644,6 +651,7 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 			// For some unknown reason, Kubernetes versions 1.23 and older return errors *with indices* for this test case only.
 			wantKube23OrOlderErrs: []string{`spec.identityProviders[0].transforms.constants[1]: Duplicate value: map[string]interface {}{"name":"notUnique"}`},
 			wantErrs:              []string{`spec.identityProviders[0].transforms.constants[1]: Duplicate value: map[string]interface {}{"name":"notUnique"}`},
+			wantKube34OrNewerErrs: []string{`spec.identityProviders[0].transforms.constants[1]: Duplicate value: {"name":"notUnique"}`},
 		},
 		{
 			name: "IDP transform constant names cannot be empty",
@@ -685,9 +693,10 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 			},
 			wantKube23OrOlderErrs:                    []string{`spec.identityProviders.transforms.constants.name: Invalid value: "12345678901234567890123456789012345678901234567890123456789012345": spec.identityProviders.transforms.constants.name in body should be at most 64 chars long`},
 			wantKube24Through31InclusiveErrs:         []string{`spec.identityProviders[0].transforms.constants[0].name: Too long: may not be longer than 64`},
-			wantKube32OrNewerErrs:                    []string{`spec.identityProviders[0].transforms.constants[0].name: Too long: may not be more than 64 bytes`},
-			wantCELErrorsForKube25Through28Inclusive: []string{couldNotRunCELValidationsErrMessage},
-			wantCELErrorsForKube29OrNewer:            []string{couldNotRunCELValidationsErrMessage},
+			wantErrs:                                 []string{`spec.identityProviders[0].transforms.constants[0].name: Too long: may not be more than 64 bytes`},
+			wantCELErrorsForKube25Through28Inclusive: []string{oldCouldNotRunCELValidationsErrMessage},
+			wantCELErrorsForKube29Through33Inclusive: []string{oldCouldNotRunCELValidationsErrMessage},
+			wantCELErrorsForKube34OrNewer:            []string{newCouldNotRunCELValidationsErrMessage},
 		},
 		{
 			name: "IDP transform constant names must be a legal CEL variable name",
@@ -737,8 +746,9 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 					},
 				},
 			},
-			wantErrs:                      []string{`spec.identityProviders[0].transforms.constants[0].type: Unsupported value: "this is invalid": supported values: "string", "stringList"`},
-			wantCELErrorsForKube29OrNewer: []string{couldNotRunCELValidationsErrMessage}, // this should not be checked on kind 1.25, 1.26, 1.27, 1.28
+			wantErrs:                                 []string{`spec.identityProviders[0].transforms.constants[0].type: Unsupported value: "this is invalid": supported values: "string", "stringList"`},
+			wantCELErrorsForKube29Through33Inclusive: []string{oldCouldNotRunCELValidationsErrMessage},
+			wantCELErrorsForKube34OrNewer:            []string{newCouldNotRunCELValidationsErrMessage},
 		},
 		{
 			name: "IDP transform expression types must be one of the allowed enum strings",
@@ -761,8 +771,9 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 					},
 				},
 			},
-			wantErrs:                      []string{`spec.identityProviders[0].transforms.expressions[0].type: Unsupported value: "this is invalid": supported values: "policy/v1", "username/v1", "groups/v1"`},
-			wantCELErrorsForKube29OrNewer: []string{couldNotRunCELValidationsErrMessage}, // this should not be checked on kind 1.25, 1.26, 1.27, 1.28
+			wantErrs:                                 []string{`spec.identityProviders[0].transforms.expressions[0].type: Unsupported value: "this is invalid": supported values: "policy/v1", "username/v1", "groups/v1"`},
+			wantCELErrorsForKube29Through33Inclusive: []string{oldCouldNotRunCELValidationsErrMessage},
+			wantCELErrorsForKube34OrNewer:            []string{newCouldNotRunCELValidationsErrMessage},
 		},
 		{
 			name: "IDP transform expressions cannot be empty",
@@ -872,7 +883,7 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 				}
 			})
 
-			if len(tt.wantErrs) > 0 && len(tt.wantKube23OrOlderErrs) > 0 && len(tt.wantKube24Through31InclusiveErrs) > 0 && len(tt.wantKube32OrNewerErrs) > 0 {
+			if len(tt.wantErrs) > 0 && len(tt.wantKube23OrOlderErrs) > 0 && len(tt.wantKube24Through31InclusiveErrs) > 0 && len(tt.wantKube32Through33InclusiveErrs) > 0 && len(tt.wantKube34OrNewerErrs) > 0 {
 				require.Fail(t, "test setup problem: wanted every possible kind of error, which would cause tt.wantErr to be unused")
 			}
 
@@ -900,15 +911,26 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 				// Also allow overriding with an exact expected error for these Kube versions.
 				wantErr = tt.wantKube24Through31InclusiveErrs
 			}
-			if minor >= 32 && len(tt.wantKube32OrNewerErrs) > 0 {
+			if minor >= 32 && minor <= 33 && len(tt.wantKube32Through33InclusiveErrs) > 0 {
 				// Also allow overriding with an exact expected error for these Kube versions.
-				wantErr = tt.wantKube32OrNewerErrs
+				wantErr = tt.wantKube32Through33InclusiveErrs
+			}
+			if minor >= 34 && len(tt.wantKube34OrNewerErrs) > 0 {
+				// Also allow overriding with an exact expected error for these Kube versions.
+				wantErr = tt.wantKube34OrNewerErrs
 			}
 
 			if minor >= 25 && minor <= 28 && len(tt.wantCELErrorsForKube25Through28Inclusive) > 0 {
 				wantErr = append(wantErr, tt.wantCELErrorsForKube25Through28Inclusive...)
-			} else if minor >= 29 && len(tt.wantCELErrorsForKube29OrNewer) > 0 {
+			}
+			if minor >= 29 && minor <= 33 && len(tt.wantCELErrorsForKube29Through33Inclusive) > 0 {
+				wantErr = append(wantErr, tt.wantCELErrorsForKube29Through33Inclusive...)
+			}
+			if minor >= 29 && len(tt.wantCELErrorsForKube29OrNewer) > 0 {
 				wantErr = append(wantErr, tt.wantCELErrorsForKube29OrNewer...)
+			}
+			if minor >= 34 && len(tt.wantCELErrorsForKube34OrNewer) > 0 {
+				wantErr = append(wantErr, tt.wantCELErrorsForKube34OrNewer...)
 			}
 
 			// Did not want any error.
