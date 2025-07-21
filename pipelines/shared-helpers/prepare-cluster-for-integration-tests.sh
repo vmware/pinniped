@@ -89,7 +89,7 @@ set -euo pipefail
 #      to choose its own IP address, and dynamically register that address as the name
 #      specified in $SUPERVISOR_LOAD_BALANCER_DNS_NAME using the Cloud DNS service.
 #  - $SUPERVISOR_INGRESS, when set to "yes", will deploy the Supervisor with a
-#    NodePort Service defined and create an Ingress connected to that Service.
+#    ClusterIP Service defined and create an internal Ingress connected to that Service.
 #    When set to "yes" the following additional variables are expected:
 #    - $SUPERVISOR_INGRESS_STATIC_IP_NAME: The name of the static IP resource from the
 #      underlying cloud infrastructure platform. Required when $SUPERVISOR_INGRESS is "yes".
@@ -296,7 +296,7 @@ EOF
 # Also annotate the service so that GKE ingress knows to use HTTP2 for the backend connection.
 cat <<EOF >>/tmp/add-annotations-for-gke-ingress-overlay.yaml
 #@ load("@ytt:overlay", "overlay")
-#@overlay/match by=overlay.subset({"kind": "Service", "metadata":{"name":"${supervisor_app_name}-nodeport"}}), expects=1
+#@overlay/match by=overlay.subset({"kind": "Service", "metadata":{"name":"${supervisor_app_name}-clusterip"}}), expects=1
 ---
 metadata:
   annotations:
@@ -841,8 +841,7 @@ if [[ "${USE_LOAD_BALANCERS_FOR_DEX_AND_SUPERVISOR:-no}" != "yes" ]]; then
     fi
   fi
   if [[ "${SUPERVISOR_INGRESS:-no}" == "yes" ]]; then
-    # even when we have functioning ingress, we need a TCP connection to the supervisor https port to test its TLS config
-    supervisor_ytt_service_flags+=("--data-value-yaml=service_https_nodeport_port=443")
+    supervisor_ytt_service_flags+=("--data-value-yaml=service_https_clusterip_port=443")
   fi
   if [[ "${SUPERVISOR_LOAD_BALANCER:-no}" == "no" && "${SUPERVISOR_INGRESS:-no}" == "no" ]]; then
     # When no specific service was requested for the supervisor, we assume we are running on
@@ -1106,10 +1105,6 @@ EOF
   fi
 
   if [[ "$cluster_has_gke_backend_config" == "yes" ]]; then
-    # Get the nodePort port number that was dynamically assigned to the nodeport service.
-    nodeport_service_port=$(kubectl get service -n "${supervisor_namespace}" "${supervisor_app_name}-nodeport" -o jsonpath='{.spec.ports[0].nodePort}')
-    echo "${supervisor_app_name}-nodeport Service was assigned nodePort $nodeport_service_port"
-
     # Create or update a BackendConfig to configure the health checks that will be used by the Ingress for its backend Service.
     # The annotation already added to the Service by an overlay above tells the Service to use this BackendConfig.
     cat <<EOF | kubectl apply --wait -f -
@@ -1126,11 +1121,10 @@ spec:
     checkIntervalSec: 30
     healthyThreshold: 1
     unhealthyThreshold: 10
-    port: ${nodeport_service_port}
 EOF
   fi
 
-  # Create or update an Ingress to sit in front of our supervisor-nodeport service.
+  # Create or update an Ingress to sit in front of our supervisor-clusterip service.
   cat <<EOF | kubectl apply --wait -f -
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -1138,6 +1132,7 @@ metadata:
   name: ${supervisor_app_name}
   namespace: ${supervisor_namespace}
   annotations:
+    cloud.google.com/neg: '{"ingress":true}'
     kubernetes.io/ingress.class: "gce-internal"
     kubernetes.io/ingress.regional-static-ip-name: "${SUPERVISOR_INGRESS_STATIC_IP_NAME}"
     kubernetes.io/ingress.allow-http: "false"
@@ -1150,7 +1145,7 @@ metadata:
 spec:
   defaultBackend:
     service:
-      name: ${supervisor_app_name}-nodeport
+      name: ${supervisor_app_name}-clusterip
       port:
         number: 443
   tls:
