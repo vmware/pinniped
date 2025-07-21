@@ -304,6 +304,8 @@ metadata:
     cloud.google.com/app-protocols: '{"https":"HTTP2"}'
     #@overlay/match missing_ok=True
     cloud.google.com/backend-config: '{"default":"healthcheck-backendconfig"}'
+    #@overlay/match missing_ok=True
+    cloud.google.com/neg: '{"ingress": true}'
 EOF
 
 # Save this file for possible later use. When we want to make a Supervisor load balancer service,
