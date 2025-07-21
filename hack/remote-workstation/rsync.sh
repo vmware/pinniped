@@ -13,27 +13,35 @@ if [[ -z "${PINNIPED_GCP_PROJECT:-}" ]]; then
   exit 1
 fi
 
+if ! gcloud auth print-access-token &>/dev/null; then
+  echo "Please run \`gcloud auth login\` and try again."
+  exit 1
+fi
+
 SRC_DIR=${SRC_DIR:-"$HOME/workspace/pinniped"}
 dest_dir="./workspace"
 instance_name="${REMOTE_INSTANCE_NAME:-${USER}}"
 instance_user="${REMOTE_INSTANCE_USERNAME:-${USER}}"
 project="$PINNIPED_GCP_PROJECT"
 zone="us-west1-a"
-config_file="/tmp/gcp-ssh-config"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ssh_key_file="$HOME/.ssh/gcp-remote-workstation-key"
+
+# Get the IP so we can use regular ssh (not gcloud ssh).
+gcloud_instance_ip=$(gcloud compute instances describe \
+  --zone "$zone" --project "$project" "${instance_name}" \
+  --format='get(networkInterfaces[0].networkIP)')
+
+ssh_dest="${instance_user}@${gcloud_instance_ip}"
 
 if [[ ! -d "$SRC_DIR" ]]; then
   echo "ERROR: $SRC_DIR does not exist"
   exit 1
 fi
 
-# Get the ssh fingerprints of all the GCP VMs.
-gcloud compute config-ssh --ssh-config-file="$config_file" \
-  --project="$project" >/dev/null
-
 cd "$SRC_DIR"
-local_commit=$(git rev-parse --short HEAD)
-remote_commit=$("$here"/ssh.sh "cd $dest_dir/pinniped; git rev-parse --short HEAD" 2>/dev/null | tr -dc '[:print:]')
+local_commit=$(git rev-parse HEAD)
+remote_commit=$("$here"/ssh.sh "cd $dest_dir/pinniped; git rev-parse HEAD" 2>/dev/null | tr -dc '[:print:]')
 
 if [[ -z "$local_commit" || -z "$remote_commit" ]]; then
   echo "ERROR: Could not determine currently checked out git commit sha"
@@ -42,8 +50,8 @@ fi
 
 if [[ "$local_commit" != "$remote_commit" ]]; then
   echo "ERROR: Local and remote repos are not on the same commit. This is usually a mistake."
-  echo "Local was $SRC_DIR at *${local_commit}*"
-  echo "Remote was ${instance_name}:${dest_dir}/pinniped at *${remote_commit}*"
+  echo "Local was $SRC_DIR at ${local_commit}"
+  echo "Remote was ${instance_name}:${dest_dir}/pinniped at ${remote_commit}"
   exit 1
 fi
 
@@ -54,5 +62,5 @@ rsync \
   --progress --delete --archive --compress --human-readable \
   --max-size 200K \
   --exclude .git/ --exclude .idea/ --exclude .DS_Store --exclude '*.test' --exclude '*.out' \
-  --rsh "ssh -F $config_file" \
-  "$SRC_DIR" "${instance_user}@${instance_name}.${zone}.${project}:$dest_dir"
+  --rsh "ssh -i '$ssh_key_file' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+  "$SRC_DIR" "$ssh_dest:$dest_dir"

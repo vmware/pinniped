@@ -19,12 +19,10 @@ brew install gcc
 
 # Install go.
 brew install go
-# On linux go really wants gcc5 to also be installed for some reason.
-brew install gcc@5
 
 # Install and configure zsh and plugins.
 brew install zsh zsh-history-substring-search
-brew install fasd fzf
+brew install fzf
 /home/linuxbrew/.linuxbrew/opt/fzf/install --all --no-bash --no-fish
 # Install https://ohmyz.sh
 export PATH=$PATH:/home/linuxbrew/.linuxbrew/bin
@@ -46,11 +44,11 @@ curl -fsSL https://gist.githubusercontent.com/cfryanr/80ada8af9a78f08b368327401e
 
 # Install other useful packages.
 brew tap homebrew/command-not-found
-brew tap vmware-tanzu/carvel
+brew tap carvel-dev/carvel
 brew install ytt kbld kapp imgpkg kwt vendir
 brew install git git-duet/tap/git-duet pre-commit gh
 brew install k9s kind kubectl kubectx stern
-brew install exa acarl005/homebrew-formulas/ls-go ripgrep procs bat tokei git-delta dust fd httpie chroma
+brew install acarl005/homebrew-formulas/ls-go ripgrep procs bat tokei git-delta dust fd httpie chroma
 brew install watch htop wget
 brew install jesseduffield/lazydocker/lazydocker ctop dive
 brew install jq yq
@@ -81,9 +79,7 @@ sudo systemctl enable containerd.service
 mkdir workspace
 pushd workspace
 ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts
-# This assumes that you used `--ssh-flag=-A` when using `gcloud compute ssh` to log in to the host,
-# which will forward your ssh identities.
-git clone git@github.com:vmware-tanzu/pinniped.git
+git clone https://github.com/vmware/pinniped.git
 pushd pinniped
 pre-commit install
 ./hack/install-linter.sh

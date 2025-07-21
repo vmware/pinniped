@@ -10,6 +10,11 @@ if [[ -z "${PINNIPED_GCP_PROJECT:-}" ]]; then
   exit 1
 fi
 
+if ! gcloud auth print-access-token &>/dev/null; then
+  echo "Please run \`gcloud auth login\` and try again."
+  exit 1
+fi
+
 instance_name="${REMOTE_INSTANCE_NAME:-${USER}}"
 project="$PINNIPED_GCP_PROJECT"
 zone="us-west1-a"
