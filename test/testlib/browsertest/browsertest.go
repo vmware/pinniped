@@ -359,9 +359,9 @@ func LoginToUpstreamOIDC(t *testing.T, b *Browser, upstream testlib.TestOIDCUpst
 			Name:                "Okta",
 			IssuerPattern:       regexp.MustCompile(`\Ahttps://.+\.okta\.com/.+\z`),
 			LoginPagePattern:    regexp.MustCompile(`\Ahttps://.+\.okta\.com/.*\z`),
-			UsernameSelector:    "input#okta-signin-username",
-			PasswordSelector:    "input#okta-signin-password",
-			LoginButtonSelector: "input#okta-signin-submit",
+			UsernameSelector:    "input[type=text]",
+			PasswordSelector:    "input[type=password]",
+			LoginButtonSelector: "input[type=submit]",
 		},
 		{
 			Name:                "Dex",
