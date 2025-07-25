@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -322,6 +322,308 @@ func TestConciergeJWTAuthenticatorStatus_Parallel(t *testing.T) {
 				},
 			),
 		},
+		{
+			name: "claims cannot use both username and usernameExpression",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				Claims: authenticationv1alpha1.JWTTokenClaims{
+					Username:           "foo",
+					UsernameExpression: "bar",
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:    "AuthenticatorValid",
+						Status:  "False",
+						Reason:  "InvalidAuthenticator",
+						Message: `could not initialize jwt authenticator: claims.username: Invalid value: "": claim and expression can't both be set`,
+					},
+				},
+			),
+		},
+		{
+			name: "claims cannot use both groups and groupsExpression",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				Claims: authenticationv1alpha1.JWTTokenClaims{
+					Groups:           "foo",
+					GroupsExpression: "bar",
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:    "AuthenticatorValid",
+						Status:  "False",
+						Reason:  "InvalidAuthenticator",
+						Message: `could not initialize jwt authenticator: claims.groups: Invalid value: "": claim and expression can't both be set`,
+					},
+				},
+			),
+		},
+		{
+			name: "username claim expression cannot use clams.email unless it also uses claims.email_verified elsewhere",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				Claims: authenticationv1alpha1.JWTTokenClaims{
+					UsernameExpression: "claims.email",
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:   "AuthenticatorValid",
+						Status: "False",
+						Reason: "InvalidAuthenticator",
+						Message: `could not initialize jwt authenticator: claims.usernameExpression: Invalid value: "claims.email": ` +
+							`claims.email_verified must be used in claims.usernameExpression or claims.extra[*].valueExpression or ` +
+							`claimValidationRules[*].expression when claims.email is used in claims.usernameExpression`,
+					},
+				},
+			),
+		},
+		{
+			name: "username claim expression cannot use invalid CEL expression",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				Claims: authenticationv1alpha1.JWTTokenClaims{
+					UsernameExpression: "this is not a valid CEL expression",
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:   "AuthenticatorValid",
+						Status: "False",
+						Reason: "InvalidAuthenticator",
+						Message: "could not initialize jwt authenticator: claims.usernameExpression: Invalid value: " +
+							"\"this is not a valid CEL expression\": compilation failed: ERROR: <input>:1:6: Syntax error: mismatched input 'is' expecting <EOF>\n" +
+							" | this is not a valid CEL expression\n" +
+							" | .....^",
+					},
+				},
+			),
+		},
+		{
+			name: "groups claim expression cannot use invalid CEL expression",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				Claims: authenticationv1alpha1.JWTTokenClaims{
+					GroupsExpression: "this is not a valid CEL expression",
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:   "AuthenticatorValid",
+						Status: "False",
+						Reason: "InvalidAuthenticator",
+						Message: "could not initialize jwt authenticator: claims.groupsExpression: Invalid value: " +
+							"\"this is not a valid CEL expression\": compilation failed: ERROR: <input>:1:6: Syntax error: mismatched input 'is' expecting <EOF>\n" +
+							" | this is not a valid CEL expression\n" +
+							" | .....^",
+					},
+				},
+			),
+		},
+		{
+			name: "extra keys cannot have equal sign and must be domain-prefixed path",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				Claims: authenticationv1alpha1.JWTTokenClaims{
+					Extra: []authenticationv1alpha1.ExtraMapping{
+						{
+							Key:             "a=b",
+							ValueExpression: `"value"`,
+						},
+					},
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:   "AuthenticatorValid",
+						Status: "False",
+						Reason: "InvalidAuthenticator",
+						Message: `could not initialize jwt authenticator: [` +
+							`claims.extra[0].key: Invalid value: "a=b": must be a domain-prefixed path (such as "acme.io/foo"), ` +
+							`claims.extra[0].key: Invalid value: "a=b": Pinniped does not allow extra key names to contain equals sign]`,
+					},
+				},
+			),
+		},
+		{
+			name: "claimValidationRules claim and requiredValue are mutually exclusive with expression and message",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				ClaimValidationRules: []authenticationv1alpha1.ClaimValidationRule{
+					{
+						Claim:         "foo",
+						RequiredValue: "bar",
+						Expression:    "baz",
+						Message:       "bat",
+					},
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:    "AuthenticatorValid",
+						Status:  "False",
+						Reason:  "InvalidAuthenticator",
+						Message: `could not initialize jwt authenticator: claimValidationRules[0]: Invalid value: "foo": claim and expression can't both be set`,
+					},
+				},
+			),
+		},
+		{
+			name: "claimValidationRules cannot use invalid CEL expressions",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				ClaimValidationRules: []authenticationv1alpha1.ClaimValidationRule{
+					{
+						Expression: "this is not a valid CEL expression",
+					},
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:   "AuthenticatorValid",
+						Status: "False",
+						Reason: "InvalidAuthenticator",
+						Message: "could not initialize jwt authenticator: claimValidationRules[0].expression: Invalid value: " +
+							"\"this is not a valid CEL expression\": compilation failed: ERROR: <input>:1:6: Syntax error: mismatched input 'is' expecting <EOF>\n" +
+							" | this is not a valid CEL expression\n" +
+							" | .....^",
+					},
+				},
+			),
+		},
+		{
+			name: "userValidationRules must use valid CEL expressions",
+			spec: authenticationv1alpha1.JWTAuthenticatorSpec{
+				Issuer:   env.SupervisorUpstreamOIDC.Issuer,
+				Audience: "some-fake-audience",
+				TLS: &authenticationv1alpha1.TLSSpec{
+					CertificateAuthorityData: base64.StdEncoding.EncodeToString([]byte(env.SupervisorUpstreamOIDC.CABundle)),
+				},
+				UserValidationRules: []authenticationv1alpha1.UserValidationRule{
+					{
+						Expression: "this is not a valid CEL expression",
+					},
+				},
+			},
+			wantPhase: authenticationv1alpha1.JWTAuthenticatorPhaseError,
+			wantConditions: replaceSomeConditions(t,
+				allSuccessfulJWTAuthenticatorConditions(len(env.SupervisorUpstreamOIDC.CABundle) != 0),
+				[]metav1.Condition{
+					{
+						Type:    "Ready",
+						Status:  "False",
+						Reason:  "NotReady",
+						Message: "the JWTAuthenticator is not ready: see other conditions for details",
+					}, {
+						Type:   "AuthenticatorValid",
+						Status: "False",
+						Reason: "InvalidAuthenticator",
+						Message: "could not initialize jwt authenticator: userValidationRules[0].expression: Invalid value: " +
+							"\"this is not a valid CEL expression\": compilation failed: ERROR: <input>:1:6: Syntax error: mismatched input 'is' expecting <EOF>\n" +
+							" | this is not a valid CEL expression\n" +
+							" | .....^",
+					},
+				},
+			),
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -479,40 +781,42 @@ func allSuccessfulJWTAuthenticatorConditions(caBundleExists bool) []metav1.Condi
 	if caBundleExists {
 		tlsConfigValidMsg = "spec.tls is valid: using configured CA bundle"
 	}
-	return []metav1.Condition{{
-		Type:    "AuthenticatorValid",
-		Status:  "True",
-		Reason:  "Success",
-		Message: "authenticator initialized",
-	}, {
-		Type:    "DiscoveryURLValid",
-		Status:  "True",
-		Reason:  "Success",
-		Message: "discovery performed successfully",
-	}, {
-		Type:    "IssuerURLValid",
-		Status:  "True",
-		Reason:  "Success",
-		Message: "issuer is a valid URL",
-	}, {
-		Type:    "JWKSFetchValid",
-		Status:  "True",
-		Reason:  "Success",
-		Message: "successfully fetched jwks",
-	}, {
-		Type:    "JWKSURLValid",
-		Status:  "True",
-		Reason:  "Success",
-		Message: "jwks_uri is a valid URL",
-	}, {
-		Type:    "Ready",
-		Status:  "True",
-		Reason:  "Success",
-		Message: "the JWTAuthenticator is ready",
-	}, {
-		Type:    "TLSConfigurationValid",
-		Status:  "True",
-		Reason:  "Success",
-		Message: tlsConfigValidMsg,
-	}}
+	return []metav1.Condition{
+		{
+			Type:    "AuthenticatorValid",
+			Status:  "True",
+			Reason:  "Success",
+			Message: "authenticator initialized",
+		}, {
+			Type:    "DiscoveryURLValid",
+			Status:  "True",
+			Reason:  "Success",
+			Message: "discovery performed successfully",
+		}, {
+			Type:    "IssuerURLValid",
+			Status:  "True",
+			Reason:  "Success",
+			Message: "issuer is a valid URL",
+		}, {
+			Type:    "JWKSFetchValid",
+			Status:  "True",
+			Reason:  "Success",
+			Message: "successfully fetched jwks",
+		}, {
+			Type:    "JWKSURLValid",
+			Status:  "True",
+			Reason:  "Success",
+			Message: "jwks_uri is a valid URL",
+		}, {
+			Type:    "Ready",
+			Status:  "True",
+			Reason:  "Success",
+			Message: "the JWTAuthenticator is ready",
+		}, {
+			Type:    "TLSConfigurationValid",
+			Status:  "True",
+			Reason:  "Success",
+			Message: tlsConfigValidMsg,
+		},
+	}
 }

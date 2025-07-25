@@ -9,6 +9,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"slices"
+	"sort"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/authentication/user"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
@@ -158,7 +162,12 @@ func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation 
 		return authenticationFailedResponse(), nil
 	}
 
-	pem, err := r.issuer.IssueClientCertPEM(userInfo.GetName(), userInfo.GetGroups(), clientCertificateTTL)
+	pem, err := r.issuer.IssueClientCertPEM(
+		userInfo.GetName(),
+		userInfo.GetGroups(),
+		extrasAsKeyValues(userInfo.GetExtra()),
+		clientCertificateTTL,
+	)
 	if err != nil {
 		r.auditLogger.Audit(auditevent.TokenCredentialRequestUnexpectedError, &plog.AuditParams{
 			ReqCtx: ctx,
@@ -179,6 +188,7 @@ func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation 
 		PIIKeysAndValues: []any{
 			"username", userInfo.GetName(),
 			"groups", userInfo.GetGroups(),
+			"extras", userInfo.GetExtra(),
 		},
 		KeysAndValues: []any{
 			"issuedClientCert", map[string]string{
@@ -198,6 +208,18 @@ func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation 
 			},
 		},
 	}, nil
+}
+
+func extrasAsKeyValues(extras map[string][]string) []string {
+	var kvExtras []string
+	for k, v := range extras {
+		for _, vv := range v {
+			// Note that this will result in a key getting repeated if it has multiple values.
+			kvExtras = append(kvExtras, fmt.Sprintf("%s=%s", k, vv))
+		}
+	}
+	slices.Sort(kvExtras)
+	return kvExtras
 }
 
 func validateRequest(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (*loginapi.TokenCredentialRequest, error) {
@@ -245,21 +267,79 @@ func validateUserInfo(userInfo user.Info) error {
 		return errors.New("UIDs are not supported")
 	}
 
-	// certs cannot assert extras, but starting in K8s 1.32 the authenticator will always provide this information
-	if len(userInfo.GetExtra()) == 0 { // it's ok for this to be empty...
-		return nil
+	allErrs := validateExtraKeys(userInfo.GetExtra())
+	if allErrs != nil {
+		return fmt.Errorf("authenticator returned illegal userInfo extra key(s): %w", allErrs.ToAggregate())
 	}
 
-	// ... but if it's not empty, should have only exactly this one key.
-	if len(userInfo.GetExtra()) > 1 {
-		return errors.New("extra may have only one key 'authentication.kubernetes.io/credential-id'")
-	}
-
-	_, ok := userInfo.GetExtra()["authentication.kubernetes.io/credential-id"]
-	if !ok {
-		return errors.New("extra may have only one key 'authentication.kubernetes.io/credential-id'")
-	}
 	return nil
+}
+
+func validateExtraKeys(extras map[string][]string) field.ErrorList {
+	// Prevent WebhookAuthenticators from returning illegal extras.
+	//
+	// JWTAuthenticators are already effectively prevented from returning illegal extras because we validate
+	// the extra key names that are configured on the JWTAuthenticator CRD, but it shouldn't hurt to check again
+	// here for JWTAuthenticators too.
+	//
+	// These validations are inspired by those done in k8s.io/apiserver@v0.33.2/pkg/apis/apiserver/validation/validation.go.
+	//
+	// Keys must be a domain-prefix path (e.g. example.org/foo).
+	// All characters before the first "/" must be a valid subdomain as defined by RFC 1123.
+	// All characters trailing the first "/" must be valid HTTP Path characters as defined by RFC 3986.
+	// k8s.io, kubernetes.io and their subdomains are reserved for Kubernetes use and cannot be used.
+	// Keys must be lowercase.
+	var allErrs field.ErrorList
+
+	// Sort the keys for stable order of error messages.
+	keys := make([]string, 0, len(extras))
+	for k := range extras {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, extraKey := range keys {
+		path := field.NewPath(fmt.Sprintf("userInfo extra key %q", extraKey))
+
+		// This is a special key that is always added by authenticators starting in K8s 1.32, so always allow it.
+		if extraKey == "authentication.kubernetes.io/credential-id" {
+			continue
+		}
+
+		// Noe that IsDomainPrefixedPath also checks for empty keys.
+		allErrs = append(allErrs, utilvalidation.IsDomainPrefixedPath(path, extraKey)...)
+
+		// Cannot use reserved prefixes.
+		if isKubernetesDomainPrefix(extraKey) {
+			allErrs = append(allErrs, field.Invalid(path, extraKey, "k8s.io, kubernetes.io and their subdomains are reserved for Kubernetes use"))
+		}
+
+		// We can't allow equals signs in the key name, because we need to be able to encode the key names and values
+		// into the client cert as OU "keyName=value".
+		if strings.Contains(extraKey, "=") {
+			allErrs = append(allErrs, field.Invalid(path, extraKey, "Pinniped does not allow extra key names to contain equals sign"))
+		}
+	}
+
+	return allErrs
+}
+
+func isKubernetesDomainPrefix(key string) bool {
+	domainPrefix := getDomainPrefix(key)
+	if domainPrefix == "kubernetes.io" || strings.HasSuffix(domainPrefix, ".kubernetes.io") {
+		return true
+	}
+	if domainPrefix == "k8s.io" || strings.HasSuffix(domainPrefix, ".k8s.io") {
+		return true
+	}
+	return false
+}
+
+func getDomainPrefix(key string) string {
+	if parts := strings.SplitN(key, "/", 2); len(parts) == 2 {
+		return parts[0]
+	}
+	return ""
 }
 
 func authenticationFailedResponse() *loginapi.TokenCredentialRequest {

@@ -92,7 +92,7 @@ func TestCreate(t *testing.T) {
 			ctrl.Finish()
 		})
 
-		it("CreateSucceedsWhenGivenATokenAndTheWebhookAuthenticatesTheToken", func() {
+		it("CreateSucceedsWhenGivenATokenAndTheAuthenticatorAuthenticatesTheToken", func() {
 			req := validCredentialRequest()
 
 			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
@@ -106,6 +106,7 @@ func TestCreate(t *testing.T) {
 			clientCertIssuer.EXPECT().IssueClientCertPEM(
 				"test-user",
 				[]string{"test-group-1", "test-group-2"},
+				nil,
 				5*time.Minute,
 			).Return(&cert.PEM{
 				CertPEM:   []byte("test-cert"),
@@ -150,6 +151,7 @@ func TestCreate(t *testing.T) {
 					"personalInfo": map[string]any{
 						"username": "test-user",
 						"groups":   []any{"test-group-1", "test-group-2"},
+						"extras":   map[string]any{},
 					},
 				}),
 			}
@@ -167,7 +169,7 @@ func TestCreate(t *testing.T) {
 
 			clientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 			clientCertIssuer.EXPECT().
-				IssueClientCertPEM(gomock.Any(), gomock.Any(), gomock.Any()).
+				IssueClientCertPEM(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil, fmt.Errorf("some certificate authority error"))
 
 			storage := NewREST(requestAuthenticator, clientCertIssuer, schema.GroupResource{}, auditLogger)
@@ -193,7 +195,7 @@ func TestCreate(t *testing.T) {
 			}
 		})
 
-		it("CreateSucceedsWithAnUnauthenticatedStatusWhenGivenATokenAndTheWebhookReturnsNilUser", func() {
+		it("CreateSucceedsWithAnUnauthenticatedStatusWhenGivenATokenAndTheAuthenticatorReturnsNilUser", func() {
 			req := validCredentialRequest()
 
 			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
@@ -222,12 +224,12 @@ func TestCreate(t *testing.T) {
 			}
 		})
 
-		it("CreateSucceedsWithAnUnauthenticatedStatusWhenWebhookFails", func() {
+		it("CreateSucceedsWithAnUnauthenticatedStatusWhenAuthenticatorFails", func() {
 			req := validCredentialRequest()
 
 			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
 			requestAuthenticator.EXPECT().AuthenticateTokenCredentialRequest(gomock.Any(), req).
-				Return(nil, errors.New("some webhook error"))
+				Return(nil, errors.New("some authentication error"))
 
 			storage := NewREST(requestAuthenticator, nil, schema.GroupResource{}, auditLogger)
 
@@ -248,12 +250,12 @@ func TestCreate(t *testing.T) {
 						"name":     "fake-authenticator-name",
 					},
 					"reason": "authenticator returned an error",
-					"err":    "some webhook error",
+					"err":    "some authentication error",
 				}),
 			}
 		})
 
-		it("CreateSucceedsWithAnUnauthenticatedStatusWhenWebhookReturnsAnEmptyUsername", func() {
+		it("CreateSucceedsWithAnUnauthenticatedStatusWhenAuthenticatorReturnsAnEmptyUsername", func() {
 			req := validCredentialRequest()
 
 			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
@@ -289,7 +291,7 @@ func TestCreate(t *testing.T) {
 			}
 		})
 
-		it("CreateSucceedsWithAnUnauthenticatedStatusWhenWebhookReturnsAUserWithUID", func() {
+		it("CreateSucceedsWithAnUnauthenticatedStatusWhenAuthenticatorReturnsAUserWithUID", func() {
 			req := validCredentialRequest()
 
 			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
@@ -329,47 +331,7 @@ func TestCreate(t *testing.T) {
 			}
 		})
 
-		it("CreateSucceedsWithAnUnauthenticatedStatusWhenWebhookReturnsAUserWithExtra", func() {
-			req := validCredentialRequest()
-
-			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
-			requestAuthenticator.EXPECT().AuthenticateTokenCredentialRequest(gomock.Any(), req).
-				Return(&user.DefaultInfo{
-					Name:   "test-user",
-					Groups: []string{"test-group-1", "test-group-2"},
-					Extra:  map[string][]string{"test-key": {"test-val-1", "test-val-2"}},
-				}, nil)
-
-			storage := NewREST(requestAuthenticator, nil, schema.GroupResource{}, auditLogger)
-
-			response, err := callCreate(storage, req)
-
-			requireSuccessfulResponseWithAuthenticationFailureMessage(t, err, response)
-
-			wantAuditLog = []testutil.WantedAuditLog{
-				testutil.WantAuditLog("TokenCredentialRequest Token Received", map[string]any{
-					"auditID": "fake-audit-id",
-					"tokenID": tokenToHash(req.Spec.Token),
-				}),
-				testutil.WantAuditLog("TokenCredentialRequest Unsupported UserInfo", map[string]any{
-					"auditID": "fake-audit-id",
-					"authenticator": map[string]any{
-						"apiGroup": "fake-api-group.com",
-						"kind":     "FakeAuthenticatorKind",
-						"name":     "fake-authenticator-name",
-					},
-					"reason":              "unsupported value in userInfo returned by authenticator",
-					"err":                 "extra may have only one key 'authentication.kubernetes.io/credential-id'",
-					"userInfoExtrasCount": float64(1),
-					"personalInfo": map[string]any{
-						"userInfoName": "test-user",
-						"userInfoUID":  "",
-					},
-				}),
-			}
-		})
-
-		it("CreateSucceedsWithAnUnauthenticatedStatusWhenWebhookReturnsAUserWithTooManyExtra", func() {
+		it("CreateSucceedsWhenAuthenticatorReturnsAUserWithExtras", func() {
 			req := validCredentialRequest()
 
 			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
@@ -378,55 +340,22 @@ func TestCreate(t *testing.T) {
 					Name:   "test-user",
 					Groups: []string{"test-group-1", "test-group-2"},
 					Extra: map[string][]string{
-						"test-key": {"test-val-1", "test-val-2"},
-						"authentication.kubernetes.io/credential-id": {"some-value"},
+						"authentication.kubernetes.io/credential-id": {"test-val-1", "test-val-2"},
+						"example.com/extra1":                         {"test-val-a"},
+						"example.com/extra2":                         {"test-val-b"},
 					},
-				}, nil)
-
-			storage := NewREST(requestAuthenticator, nil, schema.GroupResource{}, auditLogger)
-
-			response, err := callCreate(storage, req)
-
-			requireSuccessfulResponseWithAuthenticationFailureMessage(t, err, response)
-
-			wantAuditLog = []testutil.WantedAuditLog{
-				testutil.WantAuditLog("TokenCredentialRequest Token Received", map[string]any{
-					"auditID": "fake-audit-id",
-					"tokenID": tokenToHash(req.Spec.Token),
-				}),
-				testutil.WantAuditLog("TokenCredentialRequest Unsupported UserInfo", map[string]any{
-					"auditID": "fake-audit-id",
-					"authenticator": map[string]any{
-						"apiGroup": "fake-api-group.com",
-						"kind":     "FakeAuthenticatorKind",
-						"name":     "fake-authenticator-name",
-					},
-					"reason":              "unsupported value in userInfo returned by authenticator",
-					"err":                 "extra may have only one key 'authentication.kubernetes.io/credential-id'",
-					"userInfoExtrasCount": float64(2),
-					"personalInfo": map[string]any{
-						"userInfoName": "test-user",
-						"userInfoUID":  "",
-					},
-				}),
-			}
-		})
-
-		it("CreateSucceedsWhenWebhookReturnsAUserWithValidExtra", func() {
-			req := validCredentialRequest()
-
-			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
-			requestAuthenticator.EXPECT().AuthenticateTokenCredentialRequest(gomock.Any(), req).
-				Return(&user.DefaultInfo{
-					Name:   "test-user",
-					Groups: []string{"test-group-1", "test-group-2"},
-					Extra:  map[string][]string{"authentication.kubernetes.io/credential-id": {"test-val-1", "test-val-2"}},
 				}, nil)
 
 			clientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 			clientCertIssuer.EXPECT().IssueClientCertPEM(
 				"test-user",
 				[]string{"test-group-1", "test-group-2"},
+				[]string{
+					"authentication.kubernetes.io/credential-id=test-val-1",
+					"authentication.kubernetes.io/credential-id=test-val-2",
+					"example.com/extra1=test-val-a",
+					"example.com/extra2=test-val-b",
+				},
 				5*time.Minute,
 			).Return(&cert.PEM{
 				CertPEM:   []byte("test-cert"),
@@ -471,6 +400,51 @@ func TestCreate(t *testing.T) {
 					"personalInfo": map[string]any{
 						"username": "test-user",
 						"groups":   []any{"test-group-1", "test-group-2"},
+						"extras": map[string]any{
+							"authentication.kubernetes.io/credential-id": []any{"test-val-1", "test-val-2"},
+							"example.com/extra1":                         []any{"test-val-a"},
+							"example.com/extra2":                         []any{"test-val-b"},
+						},
+					},
+				}),
+			}
+		})
+
+		it("CreateSucceedsWithAnUnauthenticatedStatusWhenWebhookReturnsAUserWithInvalidExtraKey", func() {
+			req := validCredentialRequest()
+
+			requestAuthenticator := mockcredentialrequest.NewMockTokenCredentialRequestAuthenticator(ctrl)
+			requestAuthenticator.EXPECT().AuthenticateTokenCredentialRequest(gomock.Any(), req).
+				Return(&user.DefaultInfo{
+					Name:   "test-user",
+					Groups: []string{"test-group-1", "test-group-2"},
+					Extra:  map[string][]string{"key-name": {"test-val-1", "test-val-2"}},
+				}, nil)
+
+			storage := NewREST(requestAuthenticator, nil, schema.GroupResource{}, auditLogger)
+
+			response, err := callCreate(storage, req)
+
+			requireSuccessfulResponseWithAuthenticationFailureMessage(t, err, response)
+
+			wantAuditLog = []testutil.WantedAuditLog{
+				testutil.WantAuditLog("TokenCredentialRequest Token Received", map[string]any{
+					"auditID": "fake-audit-id",
+					"tokenID": tokenToHash(req.Spec.Token),
+				}),
+				testutil.WantAuditLog("TokenCredentialRequest Unsupported UserInfo", map[string]any{
+					"auditID": "fake-audit-id",
+					"authenticator": map[string]any{
+						"apiGroup": "fake-api-group.com",
+						"kind":     "FakeAuthenticatorKind",
+						"name":     "fake-authenticator-name",
+					},
+					"reason":              "unsupported value in userInfo returned by authenticator",
+					"err":                 `authenticator returned illegal userInfo extra key(s): userInfo extra key "key-name": Invalid value: "key-name": must be a domain-prefixed path (such as "acme.io/foo")`,
+					"userInfoExtrasCount": float64(1),
+					"personalInfo": map[string]any{
+						"userInfoName": "test-user",
+						"userInfoUID":  "",
 					},
 				}),
 			}
@@ -552,6 +526,7 @@ func TestCreate(t *testing.T) {
 					"personalInfo": map[string]any{
 						"username": "test-user",
 						"groups":   []any{},
+						"extras":   map[string]any{},
 					},
 				}),
 			}
@@ -606,6 +581,7 @@ func TestCreate(t *testing.T) {
 					"personalInfo": map[string]any{
 						"username": "test-user",
 						"groups":   []any{},
+						"extras":   map[string]any{},
 					},
 				}),
 			}
@@ -697,7 +673,7 @@ func requireSuccessfulResponseWithAuthenticationFailureMessage(t *testing.T, err
 func successfulIssuer(ctrl *gomock.Controller, fakeNow time.Time) clientcertissuer.ClientCertIssuer {
 	clientCertIssuer := mockissuer.NewMockClientCertIssuer(ctrl)
 	clientCertIssuer.EXPECT().
-		IssueClientCertPEM(gomock.Any(), gomock.Any(), gomock.Any()).
+		IssueClientCertPEM(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(&cert.PEM{
 			CertPEM:   []byte("test-cert"),
 			KeyPEM:    []byte("test-key"),
@@ -705,4 +681,113 @@ func successfulIssuer(ctrl *gomock.Controller, fakeNow time.Time) clientcertissu
 			NotAfter:  fakeNow.Add(5 * time.Minute),
 		}, nil)
 	return clientCertIssuer
+}
+
+func TestValidateExtraKeys(t *testing.T) {
+	tests := []struct {
+		name    string
+		extras  map[string][]string
+		wantErr string
+	}{
+		{
+			name: "allowed extras keys cause no error",
+			extras: map[string][]string{
+				"foo.com/example":                            {"foo"},
+				"x.y.z.foo.io/some-path":                     {"bar"},
+				"authentication.kubernetes.io/credential-id": {"baz"},
+			},
+		},
+		{
+			name: "empty extras keys cause error",
+			extras: map[string][]string{
+				"":                 {"foo"},
+				"foo.io/some-path": {"bar"},
+			},
+			wantErr: `userInfo extra key "": Required value`,
+		},
+		{
+			name: "extras keys not prefixed by domain name cause error",
+			extras: map[string][]string{
+				"foo":              {"foo"},
+				"foo.io/some-path": {"bar"},
+			},
+			wantErr: `userInfo extra key "foo": Invalid value: "foo": must be a domain-prefixed path (such as "acme.io/foo")`,
+		},
+		{
+			name: "extras keys with upper case chars cause error",
+			extras: map[string][]string{
+				"fooBar.com/value": {"foo"},
+				"foo.io/some-path": {"bar"},
+			},
+			wantErr: `userInfo extra key "fooBar.com/value": Invalid value: "fooBar.com": ` +
+				`a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', ` +
+				`and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is ` +
+				`'[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
+		},
+		{
+			name: "extras keys with unexpected chars in domain name cause error",
+			extras: map[string][]string{
+				"foobar🦭.com/path": {"foo"},
+				"foo.io/some-path": {"bar"},
+			},
+			wantErr: `userInfo extra key "foobar🦭.com/path": Invalid value: "foobar🦭.com": ` +
+				`a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', ` +
+				`and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is ` +
+				`'[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
+		},
+		{
+			name: "extras keys with unexpected chars in path cause error",
+			extras: map[string][]string{
+				"foobar.com/🦭":     {"foo"},
+				"foo.io/some-path": {"bar"},
+			},
+			wantErr: `userInfo extra key "foobar.com/🦭": Invalid value: "🦭": ` +
+				`Invalid path (regex used for validation is '[A-Za-z0-9/\-._~%!$&'()*+,;=:]+')`,
+		},
+		{
+			name: "extras keys with k8s.io cause error",
+			extras: map[string][]string{
+				"k8s.io/some-path":     {"foo"},
+				"sub.k8s.io/some-path": {"foo"},
+				"foo.io/some-path":     {"bar"},
+			},
+			wantErr: `[` +
+				`userInfo extra key "k8s.io/some-path": Invalid value: "k8s.io/some-path": k8s.io, kubernetes.io and their subdomains are reserved for Kubernetes use, ` +
+				`userInfo extra key "sub.k8s.io/some-path": Invalid value: "sub.k8s.io/some-path": k8s.io, kubernetes.io and their subdomains are reserved for Kubernetes use` +
+				`]`,
+		},
+		{
+			name: "extras keys with kubernetes.io cause error",
+			extras: map[string][]string{
+				"kubernetes.io/some-path":     {"foo"},
+				"sub.kubernetes.io/some-path": {"foo"},
+				"foo.io/some-path":            {"bar"},
+			},
+			wantErr: `[` +
+				`userInfo extra key "kubernetes.io/some-path": Invalid value: "kubernetes.io/some-path": k8s.io, kubernetes.io and their subdomains are reserved for Kubernetes use, ` +
+				`userInfo extra key "sub.kubernetes.io/some-path": Invalid value: "sub.kubernetes.io/some-path": k8s.io, kubernetes.io and their subdomains are reserved for Kubernetes use` +
+				`]`,
+		},
+		{
+			name: "extras keys with equals sign cause error",
+			extras: map[string][]string{
+				"foobar.com/some=path": {"foo"},
+				"foo.io/some-path":     {"bar"},
+			},
+			wantErr: `userInfo extra key "foobar.com/some=path": Invalid value: "foobar.com/some=path": Pinniped does not allow extra key names to contain equals sign`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := validateExtraKeys(tt.extras)
+
+			if tt.wantErr == "" {
+				require.Nilf(t, err, "wanted no error but got %s", err.ToAggregate())
+			} else {
+				require.EqualError(t, err.ToAggregate(), tt.wantErr)
+			}
+		})
+	}
 }

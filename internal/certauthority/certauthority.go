@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package certauthority implements a simple x509 certificate authority suitable for use in an aggregated API service.
@@ -170,8 +170,8 @@ func (c *CA) Pool() *x509.CertPool {
 
 // IssueClientCert issues a new client certificate with username and groups included in the Kube-style
 // certificate subject for the given identity and duration.
-func (c *CA) IssueClientCert(username string, groups []string, ttl time.Duration) (*tls.Certificate, error) {
-	return c.issueCert(x509.ExtKeyUsageClientAuth, pkix.Name{CommonName: username, Organization: groups}, nil, nil, ttl)
+func (c *CA) IssueClientCert(username string, groups []string, extras []string, ttl time.Duration) (*tls.Certificate, error) {
+	return c.issueCert(x509.ExtKeyUsageClientAuth, pkix.Name{CommonName: username, Organization: groups, OrganizationalUnit: extras}, nil, nil, ttl)
 }
 
 // IssueServerCert issues a new server certificate for the given identity and duration.
@@ -182,8 +182,8 @@ func (c *CA) IssueServerCert(dnsNames []string, ips []net.IP, ttl time.Duration)
 
 // IssueClientCertPEM is similar to IssueClientCert, but returns the new cert as a pair of PEM-formatted byte slices
 // for the certificate and private key, along with the notBefore and notAfter values.
-func (c *CA) IssueClientCertPEM(username string, groups []string, ttl time.Duration) (*cert.PEM, error) {
-	return toPEM(c.IssueClientCert(username, groups, ttl))
+func (c *CA) IssueClientCertPEM(username string, groups []string, extras []string, ttl time.Duration) (*cert.PEM, error) {
+	return toPEM(c.IssueClientCert(username, groups, extras, ttl))
 }
 
 // IssueServerCertPEM is similar to IssueServerCert, but returns the new cert as a pair of PEM-formatted byte slices

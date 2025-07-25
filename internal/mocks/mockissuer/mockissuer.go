@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -46,18 +46,18 @@ func (m *MockClientCertIssuer) EXPECT() *MockClientCertIssuerMockRecorder {
 }
 
 // IssueClientCertPEM mocks base method.
-func (m *MockClientCertIssuer) IssueClientCertPEM(username string, groups []string, ttl time.Duration) (*cert.PEM, error) {
+func (m *MockClientCertIssuer) IssueClientCertPEM(username string, groups, extras []string, ttl time.Duration) (*cert.PEM, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IssueClientCertPEM", username, groups, ttl)
+	ret := m.ctrl.Call(m, "IssueClientCertPEM", username, groups, extras, ttl)
 	ret0, _ := ret[0].(*cert.PEM)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // IssueClientCertPEM indicates an expected call of IssueClientCertPEM.
-func (mr *MockClientCertIssuerMockRecorder) IssueClientCertPEM(username, groups, ttl any) *gomock.Call {
+func (mr *MockClientCertIssuerMockRecorder) IssueClientCertPEM(username, groups, extras, ttl any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueClientCertPEM", reflect.TypeOf((*MockClientCertIssuer)(nil).IssueClientCertPEM), username, groups, ttl)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueClientCertPEM", reflect.TypeOf((*MockClientCertIssuer)(nil).IssueClientCertPEM), username, groups, extras, ttl)
 }
 
 // Name mocks base method.

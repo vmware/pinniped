@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package clientcertissuer
@@ -18,7 +18,7 @@ const defaultCertIssuerErr = constable.Error("failed to issue cert")
 
 type ClientCertIssuer interface {
 	Name() string
-	IssueClientCertPEM(username string, groups []string, ttl time.Duration) (pem *cert.PEM, err error)
+	IssueClientCertPEM(username string, groups []string, extras []string, ttl time.Duration) (pem *cert.PEM, err error)
 }
 
 var _ ClientCertIssuer = ClientCertIssuers{}
@@ -38,11 +38,11 @@ func (c ClientCertIssuers) Name() string {
 	return strings.Join(names, ",")
 }
 
-func (c ClientCertIssuers) IssueClientCertPEM(username string, groups []string, ttl time.Duration) (*cert.PEM, error) {
+func (c ClientCertIssuers) IssueClientCertPEM(username string, groups []string, extras []string, ttl time.Duration) (*cert.PEM, error) {
 	errs := make([]error, 0, len(c))
 
 	for _, issuer := range c {
-		pem, err := issuer.IssueClientCertPEM(username, groups, ttl)
+		pem, err := issuer.IssueClientCertPEM(username, groups, extras, ttl)
 		if err == nil {
 			return pem, nil
 		}

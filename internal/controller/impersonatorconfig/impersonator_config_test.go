@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package impersonatorconfig
@@ -1145,7 +1145,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			mTLSClientCertCAPrivateKeyPEM, err = mTLSClientCertCA.PrivateKeyToPEM()
 			r.NoError(err)
 			mTLSClientCertCASecret = newSigningKeySecret(mTLSClientCertCASecretName, mTLSClientCertCACertPEM, mTLSClientCertCAPrivateKeyPEM)
-			validClientCert, err = mTLSClientCertCA.IssueClientCert("username", nil, time.Hour)
+			validClientCert, err = mTLSClientCertCA.IssueClientCert("username", nil, nil, time.Hour)
 			r.NoError(err)
 
 			externalCA = newCA()

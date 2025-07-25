@@ -2579,7 +2579,7 @@ type clientCert struct {
 
 func newClientCert(t *testing.T, ca *certauthority.CA, username string, groups []string) clientCert {
 	t.Helper()
-	clientCertPEM, err := ca.IssueClientCertPEM(username, groups, time.Hour)
+	clientCertPEM, err := ca.IssueClientCertPEM(username, groups, nil, time.Hour)
 	require.NoError(t, err)
 	return clientCert{
 		certPEM: clientCertPEM.CertPEM,
