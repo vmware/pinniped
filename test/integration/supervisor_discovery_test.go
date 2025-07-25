@@ -952,7 +952,7 @@ func requireIDPsListedByIDPDiscoveryEndpoint(
 		},
 		GroupSearch: idpv1alpha1.LDAPIdentityProviderGroupSearch{
 			Base:   env.SupervisorUpstreamLDAP.GroupSearchBase,
-			Filter: "", // use the default value of "member={}"
+			Filter: env.SupervisorUpstreamLDAP.GroupSearchFilter, // if empty, uses the default value of "member={}"
 			Attributes: idpv1alpha1.LDAPIdentityProviderGroupSearchAttributes{
 				GroupName: "", // use the default value of "dn"
 			},

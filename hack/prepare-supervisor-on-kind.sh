@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 #
@@ -246,6 +246,7 @@ spec:
     secretName: my-ldap-service-account
   groupSearch:
     base: "$PINNIPED_TEST_LDAP_GROUPS_SEARCH_BASE"
+    filter: "$PINNIPED_TEST_LDAP_GROUPS_SEARCH_FILTER"
     attributes:
       groupName: "cn"
   userSearch:

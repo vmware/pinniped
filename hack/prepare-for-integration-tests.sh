@@ -517,6 +517,7 @@ export PINNIPED_TEST_LDAP_BIND_ACCOUNT_USERNAME="cn=admin,dc=pinniped,dc=dev"
 export PINNIPED_TEST_LDAP_BIND_ACCOUNT_PASSWORD=password
 export PINNIPED_TEST_LDAP_USERS_SEARCH_BASE="ou=users,dc=pinniped,dc=dev"
 export PINNIPED_TEST_LDAP_GROUPS_SEARCH_BASE="ou=groups,dc=pinniped,dc=dev"
+export PINNIPED_TEST_LDAP_GROUPS_SEARCH_FILTER=""
 export PINNIPED_TEST_LDAP_USER_DN="cn=pinny,ou=users,dc=pinniped,dc=dev"
 export PINNIPED_TEST_LDAP_USER_CN="pinny"
 export PINNIPED_TEST_LDAP_USER_PASSWORD=${ldap_test_password}
