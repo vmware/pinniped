@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -63,7 +63,7 @@ func TestLDAPIDPPhaseAndConditions_Parallel(t *testing.T) {
 		},
 		GroupSearch: idpv1alpha1.LDAPIdentityProviderGroupSearch{
 			Base:   env.SupervisorUpstreamLDAP.GroupSearchBase,
-			Filter: "", // use the default value of "member={}"
+			Filter: env.SupervisorUpstreamLDAP.GroupSearchFilter, // if empty, uses the default value of "member={}"
 			Attributes: idpv1alpha1.LDAPIdentityProviderGroupSearchAttributes{
 				GroupName: "", // use the default value of "dn"
 			},
