@@ -277,7 +277,7 @@ func TestSupervisorLogin_Browser(t *testing.T) {
 			},
 			GroupSearch: idpv1alpha1.LDAPIdentityProviderGroupSearch{
 				Base:                   env.SupervisorUpstreamLDAP.GroupSearchBase,
-				Filter:                 "",
+				Filter:                 env.SupervisorUpstreamLDAP.GroupSearchFilter, // if empty, uses the default value of "member={}"
 				UserAttributeForFilter: "",
 				Attributes: idpv1alpha1.LDAPIdentityProviderGroupSearchAttributes{
 					GroupName: "dn",
