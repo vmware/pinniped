@@ -175,6 +175,7 @@ pinniped_test_ldap_bind_account_username="cn=admin,dc=pinniped,dc=dev"
 pinniped_test_ldap_bind_account_password=password
 pinniped_test_ldap_users_search_base="ou=users,dc=pinniped,dc=dev"
 pinniped_test_ldap_groups_search_base="ou=groups,dc=pinniped,dc=dev"
+pinniped_test_ldap_groups_search_filter=""
 pinniped_test_ldap_user_dn="cn=pinny,ou=users,dc=pinniped,dc=dev"
 pinniped_test_ldap_user_cn="pinny"
 pinniped_test_ldap_user_password=${ldap_test_password}
@@ -291,6 +292,7 @@ export PINNIPED_TEST_LDAP_BIND_ACCOUNT_USERNAME='${pinniped_test_ldap_bind_accou
 export PINNIPED_TEST_LDAP_BIND_ACCOUNT_PASSWORD='${pinniped_test_ldap_bind_account_password}'
 export PINNIPED_TEST_LDAP_USERS_SEARCH_BASE='${pinniped_test_ldap_users_search_base}'
 export PINNIPED_TEST_LDAP_GROUPS_SEARCH_BASE='${pinniped_test_ldap_groups_search_base}'
+export PINNIPED_TEST_LDAP_GROUPS_SEARCH_FILTER='${pinniped_test_ldap_groups_search_filter}'
 export PINNIPED_TEST_LDAP_USER_DN='${pinniped_test_ldap_user_dn}'
 export PINNIPED_TEST_LDAP_USER_CN='${pinniped_test_ldap_user_cn}'
 export PINNIPED_TEST_LDAP_USER_PASSWORD='${pinniped_test_ldap_user_password}'

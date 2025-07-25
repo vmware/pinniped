@@ -205,6 +205,7 @@ meta:
     JUMPCLOUD_LDAP_BIND_ACCOUNT_PASSWORD: ((jumpcloud-ldap-bind-account-password))
     JUMPCLOUD_LDAP_USERS_SEARCH_BASE: ((jumpcloud-ldap-users-search-base))
     JUMPCLOUD_LDAP_GROUPS_SEARCH_BASE: ((jumpcloud-ldap-groups-search-base))
+    JUMPCLOUD_LDAP_GROUPS_SEARCH_FILTER: ((jumpcloud-ldap-groups-search-filter))
     JUMPCLOUD_LDAP_USER_DN: ((jumpcloud-ldap-user-dn))
     JUMPCLOUD_LDAP_USER_CN: ((jumpcloud-ldap-user-cn))
     JUMPCLOUD_LDAP_USER_PASSWORD: ((jumpcloud-ldap-user-password))
@@ -215,6 +216,25 @@ meta:
     JUMPCLOUD_LDAP_EXPECTED_DIRECT_GROUPS_DN: ((jumpcloud-ldap-expected-direct-groups-dn))
     JUMPCLOUD_LDAP_EXPECTED_DIRECT_GROUPS_CN: ((jumpcloud-ldap-expected-direct-groups-cn))
     JUMPCLOUD_LDAP_EXPECTED_DIRECT_POSIX_GROUPS_CN: ((jumpcloud-ldap-expected-direct-posix-groups-cn))
+
+  okta_ldap_integration_env_vars: &okta_ldap_integration_env_vars
+    OKTA_LDAP_HOST: ((okta-ldap-host))
+    OKTA_LDAP_STARTTLS_ONLY_HOST: ((okta-ldap-start-tls-only-host))
+    OKTA_LDAP_BIND_ACCOUNT_USERNAME: ((okta-ldap-bind-account-username))
+    OKTA_LDAP_BIND_ACCOUNT_PASSWORD: ((okta-ldap-bind-account-password))
+    OKTA_LDAP_USERS_SEARCH_BASE: ((okta-ldap-users-search-base))
+    OKTA_LDAP_GROUPS_SEARCH_BASE: ((okta-ldap-groups-search-base))
+    OKTA_LDAP_GROUPS_SEARCH_FILTER: ((okta-ldap-groups-search-filter))
+    OKTA_LDAP_USER_DN: ((okta-ldap-user-dn))
+    OKTA_LDAP_USER_CN: ((okta-ldap-user-cn))
+    OKTA_LDAP_USER_PASSWORD: ((okta-ldap-user-password))
+    OKTA_LDAP_USER_UNIQUE_ID_ATTRIBUTE_NAME: ((okta-ldap-user-unique-id-attribute-name))
+    OKTA_LDAP_USER_UNIQUE_ID_ATTRIBUTE_VALUE: ((okta-ldap-user-unique-id-attribute-value))
+    OKTA_LDAP_USER_EMAIL_ATTRIBUTE_NAME: ((okta-ldap-user-email-attribute-name))
+    OKTA_LDAP_USER_EMAIL_ATTRIBUTE_VALUE: ((okta-ldap-user-email-attribute-value))
+    OKTA_LDAP_EXPECTED_DIRECT_GROUPS_DN: ((okta-ldap-expected-direct-groups-dn))
+    OKTA_LDAP_EXPECTED_DIRECT_GROUPS_CN: ((okta-ldap-expected-direct-groups-cn))
+    OKTA_LDAP_EXPECTED_DIRECT_POSIX_GROUPS_CN: ((okta-ldap-expected-direct-posix-groups-cn))
 
   active_directory_integration_env_vars: &active_directory_integration_env_vars
     TEST_ACTIVE_DIRECTORY: "yes"
@@ -1824,11 +1844,10 @@ jobs:
           # We don't need to run these on every version of Kubernetes for Kind in this pipeline, so we choose to run
           # them on one version to get some coverage.
           <<: *okta_integration_env_vars
-          # The following Jumpcloud params will cause the integration tests to use Jumpcloud instead of OpenLDAP.
+          # The following Okta LDAP params will cause the integration tests to use Okta LDAP instead of OpenLDAP.
           # We don't need to run these on every version of Kubernetes for Kind in this pipeline, so we choose to run
           # them on one version to get some coverage.
-          # TODO: replace this with some other LDAP and open firewall for outgoing LDAP and LDAPs
-          # <<: *jumpcloud_integration_env_vars
+          <<: *okta_ldap_integration_env_vars
           # The following AD params enable the ActiveDirectory integration tests. We don't need to run these on every
           # version of Kubernetes for Kind in this pipeline, so we choose to run them on one version to get some coverage.
           # TODO: bring this back with a new AD server
@@ -2514,8 +2533,7 @@ jobs:
           INGRESS_DNS_NAME: gke-acceptance-supervisor-ingress.test.pinniped.broadcom.net
           <<: *okta_integration_env_vars
           OKTA_SUPERVISOR_CALLBACK: ((okta-supervisor-callback))
-          # TODO: replace this with some other LDAP and open firewall for outgoing LDAP and LDAPs
-          # <<: *jumpcloud_integration_env_vars
+          <<: *okta_ldap_integration_env_vars
           # TODO: bring this back with a new AD server
           # <<: *active_directory_integration_env_vars
           <<: *github_integration_env_vars

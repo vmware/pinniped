@@ -42,7 +42,7 @@ set -euo pipefail
 #  - $DEPLOY_LOCAL_USER_AUTHENTICATOR, when set to "yes", will deploy and use the
 #    local-user-authenticator instead of using the TMC webhook authenticator.
 #  - $DEPLOY_TEST_TOOLS will deploy the squid proxy, Dex, and OpenLDAP into the cluster.
-#    If the OKTA_* and JUMPCLOUD_* variables are not present, then Dex and OpenLDAP
+#    If the OKTA_* and JUMPCLOUD_*/OKTA_LDAP* variables are not present, then Dex and OpenLDAP
 #    will be configured for the integration tests.
 #  - To use Okta instead of Dex, use the variables $OKTA_ISSUER, $OKTA_CLI_CLIENT_ID,
 #    $OKTA_CLI_CALLBACK, $OKTA_ADDITIONAL_SCOPES, $OKTA_USERNAME_CLAIM, $OKTA_GROUPS_CLAIM,
@@ -51,19 +51,28 @@ set -euo pipefail
 #  - To use Jumpcloud instead of OpenLDAP, use the variables $JUMPCLOUD_LDAP_HOST,
 #    $JUMPCLOUD_LDAP_STARTTLS_ONLY_HOST,
 #    $JUMPCLOUD_LDAP_BIND_ACCOUNT_USERNAME, $JUMPCLOUD_LDAP_BIND_ACCOUNT_PASSWORD,
-#    $JUMPCLOUD_LDAP_USERS_SEARCH_BASE, $JUMPCLOUD_LDAP_GROUPS_SEARCH_BASE,
+#    $JUMPCLOUD_LDAP_USERS_SEARCH_BASE, $JUMPCLOUD_LDAP_GROUPS_SEARCH_BASE, $JUMPCLOUD_LDAP_GROUPS_SEARCH_FILTER,
 #    $JUMPCLOUD_LDAP_USER_DN, $JUMPCLOUD_LDAP_USER_CN, $JUMPCLOUD_LDAP_USER_PASSWORD,
 #    $JUMPCLOUD_LDAP_USER_UNIQUE_ID_ATTRIBUTE_NAME, $JUMPCLOUD_LDAP_USER_UNIQUE_ID_ATTRIBUTE_VALUE,
 #    $JUMPCLOUD_LDAP_USER_EMAIL_ATTRIBUTE_NAME, $JUMPCLOUD_LDAP_USER_EMAIL_ATTRIBUTE_VALUE,
 #    $JUMPCLOUD_LDAP_EXPECTED_DIRECT_GROUPS_DN, $JUMPCLOUD_LDAP_EXPECTED_DIRECT_POSIX_GROUPS_CN,
 #    and $JUMPCLOUD_LDAP_EXPECTED_DIRECT_GROUPS_CN to configure the LDAP tests.
+#  - To use Okta LDAP instead of OpenLDAP, use the variables $OKTA_LDAP_HOST,
+#    $OKTA_LDAP_STARTTLS_ONLY_HOST,
+#    $OKTA_LDAP_BIND_ACCOUNT_USERNAME, $OKTA_LDAP_BIND_ACCOUNT_PASSWORD,
+#    $OKTA_LDAP_USERS_SEARCH_BASE, $OKTA_LDAP_GROUPS_SEARCH_BASE, $OKTA_LDAP_GROUPS_SEARCH_FILTER,
+#    $OKTA_LDAP_USER_DN, $OKTA_LDAP_USER_CN, $OKTA_LDAP_USER_PASSWORD,
+#    $OKTA_LDAP_USER_UNIQUE_ID_ATTRIBUTE_NAME, $OKTA_LDAP_USER_UNIQUE_ID_ATTRIBUTE_VALUE,
+#    $OKTA_LDAP_USER_EMAIL_ATTRIBUTE_NAME, $OKTA_LDAP_USER_EMAIL_ATTRIBUTE_VALUE,
+#    $OKTA_LDAP_EXPECTED_DIRECT_GROUPS_DN, $OKTA_LDAP_EXPECTED_DIRECT_POSIX_GROUPS_CN,
+#    and $OKTA_LDAP_EXPECTED_DIRECT_GROUPS_CN to configure the LDAP tests.
 #  - $FIREWALL_IDPS, when set to "yes" will add NetworkPolicies to effectively firewall the Concierge
 #    and Supervisor pods such that they need to use the Squid proxy server to reach several of the IDPs.
 #    Note that NetworkPolicy is not supported on all flavors of Kube, but can be enabled on GKE by using
 #    `--enable-network-policy` when creating the GKE cluster, abd is supported in recent versions of Kind.
 #  - $TEST_ACTIVE_DIRECTORY determines whether to test against AWS Managed Active
 #    Directory. Note that there's no "local" equivalent-- for OIDC we use Dex's internal
-#    user store or Okta, for LDAP we deploy OpenLDAP or use Jumpcloud,
+#    user store or Okta, for LDAP we deploy OpenLDAP or use Jumpcloud/Okta LDAP,
 #    but for AD there is only the hosted version.
 #    When set, the tests are configured with the variables
 #    $AWS_AD_HOST, $AWS_AD_DOMAIN, $AWS_AD_BIND_ACCOUNT_USERNAME, $AWS_AD_BIND_ACCOUNT_PASSWORD,
@@ -623,6 +632,7 @@ if [[ "${DEPLOY_TEST_TOOLS:-no}" == "yes" ]]; then
   pinniped_test_ldap_bind_account_password=password
   pinniped_test_ldap_users_search_base="ou=users,dc=pinniped,dc=dev"
   pinniped_test_ldap_groups_search_base="ou=groups,dc=pinniped,dc=dev"
+  pinniped_test_ldap_groups_search_filter=""
   pinniped_test_ldap_user_dn="cn=pinny,ou=users,dc=pinniped,dc=dev"
   pinniped_test_ldap_user_cn="pinny"
   pinniped_test_ldap_user_password=${ldap_test_password}
@@ -682,6 +692,7 @@ if [[ "${JUMPCLOUD_LDAP_HOST:-no}" != "no" ]]; then
   pinniped_test_ldap_bind_account_password="$JUMPCLOUD_LDAP_BIND_ACCOUNT_PASSWORD"
   pinniped_test_ldap_users_search_base="$JUMPCLOUD_LDAP_USERS_SEARCH_BASE"
   pinniped_test_ldap_groups_search_base="$JUMPCLOUD_LDAP_GROUPS_SEARCH_BASE"
+  pinniped_test_ldap_groups_search_filter="$JUMPCLOUD_LDAP_GROUPS_SEARCH_FILTER"
   pinniped_test_ldap_user_dn="$JUMPCLOUD_LDAP_USER_DN"
   pinniped_test_ldap_user_cn="$JUMPCLOUD_LDAP_USER_CN"
   pinniped_test_ldap_user_password="$JUMPCLOUD_LDAP_USER_PASSWORD"
@@ -693,6 +704,31 @@ if [[ "${JUMPCLOUD_LDAP_HOST:-no}" != "no" ]]; then
   pinniped_test_ldap_expected_indirect_groups_dn=""
   pinniped_test_ldap_expected_direct_groups_cn="$JUMPCLOUD_LDAP_EXPECTED_DIRECT_GROUPS_CN"
   pinniped_test_ldap_expected_direct_posix_groups_cn="$JUMPCLOUD_LDAP_EXPECTED_DIRECT_POSIX_GROUPS_CN"
+  pinniped_test_ldap_expected_indirect_groups_cn=""
+fi
+
+# Whether or not the tools namespace is deployed, we can configure the integration
+# tests to use Jumpcloud instead of Okta LDAP as the LDAP provider.
+if [[ "${OKTA_LDAP_HOST:-no}" != "no" ]]; then
+  pinniped_test_ldap_host="$OKTA_LDAP_HOST"
+  pinniped_test_ldap_starttls_only_host="$OKTA_LDAP_STARTTLS_ONLY_HOST"
+  pinniped_test_ldap_ldaps_ca_bundle=""
+  pinniped_test_ldap_bind_account_username="$OKTA_LDAP_BIND_ACCOUNT_USERNAME"
+  pinniped_test_ldap_bind_account_password="$OKTA_LDAP_BIND_ACCOUNT_PASSWORD"
+  pinniped_test_ldap_users_search_base="$OKTA_LDAP_USERS_SEARCH_BASE"
+  pinniped_test_ldap_groups_search_base="$OKTA_LDAP_GROUPS_SEARCH_BASE"
+  pinniped_test_ldap_groups_search_filter="$OKTA_LDAP_GROUPS_SEARCH_FILTER"
+  pinniped_test_ldap_user_dn="$OKTA_LDAP_USER_DN"
+  pinniped_test_ldap_user_cn="$OKTA_LDAP_USER_CN"
+  pinniped_test_ldap_user_password="$OKTA_LDAP_USER_PASSWORD"
+  pinniped_test_ldap_user_unique_id_attribute_name="$OKTA_LDAP_USER_UNIQUE_ID_ATTRIBUTE_NAME"
+  pinniped_test_ldap_user_unique_id_attribute_value="$OKTA_LDAP_USER_UNIQUE_ID_ATTRIBUTE_VALUE"
+  pinniped_test_ldap_user_email_attribute_name="$OKTA_LDAP_USER_EMAIL_ATTRIBUTE_NAME"
+  pinniped_test_ldap_user_email_attribute_value="$OKTA_LDAP_USER_EMAIL_ATTRIBUTE_VALUE"
+  pinniped_test_ldap_expected_direct_groups_dn="$OKTA_LDAP_EXPECTED_DIRECT_GROUPS_DN"
+  pinniped_test_ldap_expected_indirect_groups_dn=""
+  pinniped_test_ldap_expected_direct_groups_cn="$OKTA_LDAP_EXPECTED_DIRECT_GROUPS_CN"
+  pinniped_test_ldap_expected_direct_posix_groups_cn="$OKTA_LDAP_EXPECTED_DIRECT_POSIX_GROUPS_CN"
   pinniped_test_ldap_expected_indirect_groups_cn=""
 fi
 
@@ -1203,6 +1239,7 @@ export PINNIPED_TEST_LDAP_BIND_ACCOUNT_USERNAME='${pinniped_test_ldap_bind_accou
 export PINNIPED_TEST_LDAP_BIND_ACCOUNT_PASSWORD='${pinniped_test_ldap_bind_account_password}'
 export PINNIPED_TEST_LDAP_USERS_SEARCH_BASE='${pinniped_test_ldap_users_search_base}'
 export PINNIPED_TEST_LDAP_GROUPS_SEARCH_BASE='${pinniped_test_ldap_groups_search_base}'
+export PINNIPED_TEST_LDAP_GROUPS_SEARCH_FILTER='${pinniped_test_ldap_groups_search_filter}'
 export PINNIPED_TEST_LDAP_USER_DN='${pinniped_test_ldap_user_dn}'
 export PINNIPED_TEST_LDAP_USER_CN='${pinniped_test_ldap_user_cn}'
 export PINNIPED_TEST_LDAP_USER_PASSWORD='${pinniped_test_ldap_user_password}'
