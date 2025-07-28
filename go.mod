@@ -2,6 +2,12 @@ module go.pinniped.dev
 
 go 1.24.4
 
+// This is the version of github.com/google/gnostic-models used in v0.33.3 kubernetes libs.
+// Newer versions of github.com/google/gnostic-models use "go.yaml.in/yaml/v3" instead of "gopkg.in/yaml.v3" which causes a compile error.
+// https://github.com/kubernetes/client-go/blob/v0.33.3/go.mod#L12
+// As an indirect dependency, we have to use a replace statement instead of overrides.conf
+replace github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
+
 require (
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
@@ -157,7 +163,6 @@ require (
 	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	go.yaml.in/yaml/v3 v3.0.3 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
