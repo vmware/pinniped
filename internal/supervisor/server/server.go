@@ -545,7 +545,8 @@ func runSupervisor(ctx context.Context, podInfo *downward.PodInfo, cfg *supervis
 	if e := cfg.Endpoints.HTTP; e.Network != supervisor.NetworkDisabled {
 		finishSetupPerms := maybeSetupUnixPerms(e, supervisorPod)
 
-		httpListener, err := net.Listen(e.Network, e.Address)
+		listenConfig := net.ListenConfig{}
+		httpListener, err := listenConfig.Listen(ctx, e.Network, e.Address)
 		if err != nil {
 			return fmt.Errorf("cannot create http listener with network %q and address %q: %w", e.Network, e.Address, err)
 		}

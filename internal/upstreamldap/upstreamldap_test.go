@@ -2384,7 +2384,8 @@ func TestRealTLSDialing(t *testing.T) {
 	require.NoError(t, err)
 	testServerWithBadCertNameAddr := tlsserver.TLSTestServerWithCert(t, func(w http.ResponseWriter, r *http.Request) {}, cert)
 
-	unusedPortGrabbingListener, err := net.Listen("tcp", "127.0.0.1:0")
+	listenConfig := net.ListenConfig{}
+	unusedPortGrabbingListener, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	recentlyClaimedHostAndPort := unusedPortGrabbingListener.Addr().String()
 	require.NoError(t, unusedPortGrabbingListener.Close())

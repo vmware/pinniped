@@ -670,10 +670,6 @@ func requireJWKSEndpointIsWorking(t *testing.T, supervisorScheme, supervisorAddr
 }
 
 func printServerCert(t *testing.T, address string, dnsOverrides map[string]string) {
-	conf := &tls.Config{
-		InsecureSkipVerify: true, //nolint:gosec // this is for testing purposes
-	}
-
 	addressURL, err := url.Parse(address)
 	require.NoError(t, err)
 
@@ -691,10 +687,16 @@ func printServerCert(t *testing.T, address string, dnsOverrides map[string]strin
 		host = dnsOverrides[host]
 	}
 
-	conn, err := tls.Dial("tcp", host, conf)
+	dialer := tls.Dialer{
+		Config: &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // this is for testing purposes
+		},
+	}
+	netConn, err := dialer.DialContext(t.Context(), "tcp", host)
+	tlsConn := tls.Client(netConn, dialer.Config)
 	require.NoError(t, err)
-	defer func() { _ = conn.Close() }()
-	certs := conn.ConnectionState().PeerCertificates
+	defer func() { _ = netConn.Close() }()
+	certs := tlsConn.ConnectionState().PeerCertificates
 	for i, cert := range certs {
 		t.Logf("found cert %d of %d for host=%q with dns=%+v and ips=%+v",
 			i+1,

@@ -110,13 +110,14 @@ type testingT interface {
 	Errorf(format string, args ...any)
 	FailNow()
 	Logf(format string, args ...any)
+	Context() context.Context
 }
 
 func runPinnipedCLI(t testingT, envVars []string, pinnipedExe string, args ...string) (string, string) {
 	t.Helper()
 	start := time.Now()
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command(pinnipedExe, args...)
+	cmd := exec.CommandContext(t.Context(), pinnipedExe, args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	cmd.Env = envVars

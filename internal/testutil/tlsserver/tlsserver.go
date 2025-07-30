@@ -36,7 +36,8 @@ const (
 func TestServerIPv6(t *testing.T, handler http.Handler, f func(*httptest.Server)) (*httptest.Server, []byte) {
 	t.Helper()
 
-	listener, err := net.Listen("tcp6", "[::1]:0")
+	listenConfig := net.ListenConfig{}
+	listener, err := listenConfig.Listen(t.Context(), "tcp6", "[::1]:0")
 	require.NoError(t, err, "TLSTestIPv6Server: failed to listen on a port")
 
 	server := &httptest.Server{
@@ -81,13 +82,14 @@ func TLSTestServerWithCert(t *testing.T, handler http.HandlerFunc, certificate *
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	listenConfig := net.ListenConfig{}
+	listener, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
 	serverShutdownChan := make(chan error)
 	go func() {
 		// Empty certFile and keyFile will use certs from Server.TLSConfig.
-		serverShutdownChan <- server.ServeTLS(l, "", "")
+		serverShutdownChan <- server.ServeTLS(listener, "", "")
 	}()
 
 	t.Cleanup(func() {
@@ -99,7 +101,7 @@ func TLSTestServerWithCert(t *testing.T, handler http.HandlerFunc, certificate *
 		}
 	})
 
-	return l.Addr().String()
+	return listener.Addr().String()
 }
 
 // RecordTLSHello configures the server to record client TLS negotiation info onto each incoming request,

@@ -357,8 +357,8 @@ func run(ctx context.Context) error {
 	startControllers(ctx, dynamicCertProvider, client.Kubernetes, kubeInformers)
 	plog.Debug("controllers are ready")
 
-	//nolint:gosec // Intentionally binding to all network interfaces.
-	l, err := net.Listen("tcp", ":8443")
+	listenConfig := net.ListenConfig{}
+	l, err := listenConfig.Listen(context.Background(), "tcp", ":8443")
 	if err != nil {
 		return fmt.Errorf("cannot create listener: %w", err)
 	}

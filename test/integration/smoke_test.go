@@ -16,7 +16,7 @@ import (
 // Smoke test to see if the kubeconfig works and the cluster is reachable.
 func TestGetNodes(t *testing.T) {
 	_ = testlib.IntegrationEnv(t)
-	cmd := exec.Command("kubectl", "get", "nodes")
+	cmd := exec.CommandContext(t.Context(), "kubectl", "get", "nodes")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()

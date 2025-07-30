@@ -729,7 +729,7 @@ func requireKubectlExplainShowsDescriptionForResource(t *testing.T, resourceName
 func runKubectlVersion(t *testing.T) {
 	t.Helper()
 	t.Log("Running: kubectl version")
-	out, err := exec.Command("kubectl", "version").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "kubectl", "version").CombinedOutput()
 	require.NoError(t, err)
 	t.Log(string(out))
 }
@@ -737,7 +737,7 @@ func runKubectlVersion(t *testing.T) {
 func runKubectlExplain(t *testing.T, resourceName string, apiVersion string) string {
 	t.Helper()
 	var stdOut, stdErr bytes.Buffer
-	cmd := exec.Command("kubectl", "explain", resourceName, "--api-version", apiVersion, "--output", "plaintext-openapiv2")
+	cmd := exec.CommandContext(t.Context(), "kubectl", "explain", resourceName, "--api-version", apiVersion, "--output", "plaintext-openapiv2")
 	t.Log("Running:", cmd.String())
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr

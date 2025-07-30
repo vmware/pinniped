@@ -701,8 +701,7 @@ func performKubectlApply(t *testing.T, resourceName string, yamlBytes []byte) (s
 
 	t.Cleanup(func() {
 		t.Helper()
-		//nolint:gosec // this is test code.
-		require.NoError(t, exec.Command("kubectl", []string{"delete", "--ignore-not-found", "-f", yamlFilepath}...).Run())
+		require.NoError(t, exec.CommandContext(t.Context(), "kubectl", "delete", "--ignore-not-found", "-f", yamlFilepath).Run())
 	})
 
 	return stdOut.String(), stdErr.String(), err
