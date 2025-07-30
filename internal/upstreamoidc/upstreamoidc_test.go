@@ -187,7 +187,7 @@ func TestProviderConfig(t *testing.T) {
 			{
 				name:        "invalid ID token",
 				returnIDTok: "invalid-jwt",
-				wantErr:     "received invalid ID token: oidc: malformed jwt: oidc: malformed jwt, expected 3 parts got 1",
+				wantErr:     "received invalid ID token: oidc: malformed jwt: go-jose/go-jose: compact JWS format must have three parts",
 			},
 			{
 				name:        "invalid access token hash",
@@ -1009,7 +1009,7 @@ func TestProviderConfig(t *testing.T) {
 				requireIDToken: true,
 				rawClaims:      []byte(`{"userinfo_endpoint": "not-empty"}`),
 				userInfo:       forceUserInfoWithClaims("some-other-subject", `{"name": "Pinny TheSeal", "sub": "some-other-subject"}`),
-				wantErr:        "received invalid ID token: oidc: malformed jwt: oidc: malformed jwt, expected 3 parts got 1",
+				wantErr:        "received invalid ID token: oidc: malformed jwt: go-jose/go-jose: compact JWS format must have three parts",
 			},
 			{
 				name:           "invalid nonce",
@@ -1145,7 +1145,7 @@ func TestProviderConfig(t *testing.T) {
 				name:        "invalid ID token",
 				authCode:    "valid",
 				returnIDTok: "invalid-jwt",
-				wantErr:     "received invalid ID token: oidc: malformed jwt: oidc: malformed jwt, expected 3 parts got 1",
+				wantErr:     "received invalid ID token: oidc: malformed jwt: go-jose/go-jose: compact JWS format must have three parts",
 			},
 			{
 				name:        "invalid access token hash",

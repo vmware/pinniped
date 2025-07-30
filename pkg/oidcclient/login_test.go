@@ -2582,7 +2582,7 @@ func TestLogin(t *testing.T) { //nolint:gocyclo
 				`"level"=4 "msg"="Pinniped: Performing RFC8693 token exchange"  "requestedAudience"="test-audience-produce-invalid-jwt"`,
 				`"level"=4 "msg"="Pinniped: Performing OIDC discovery"  "issuer"="` + successServer.URL + `"`,
 			},
-			wantErr: `failed to exchange token: received invalid JWT: oidc: malformed jwt: oidc: malformed jwt, expected 3 parts got 1`,
+			wantErr: `failed to exchange token: received invalid JWT: oidc: malformed jwt: go-jose/go-jose: compact JWS format must have three parts`,
 		},
 		{
 			name:     "with requested audience, session cache hit with valid access token, ID token has wrong audience, and token exchange request succeeds",
