@@ -358,7 +358,7 @@ func run(ctx context.Context) error {
 	plog.Debug("controllers are ready")
 
 	listenConfig := net.ListenConfig{}
-	l, err := listenConfig.Listen(context.Background(), "tcp", ":8443")
+	l, err := listenConfig.Listen(ctx, "tcp", ":8443")
 	if err != nil {
 		return fmt.Errorf("cannot create listener: %w", err)
 	}

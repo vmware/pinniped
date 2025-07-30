@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 package integration
 
@@ -701,7 +701,9 @@ func performKubectlApply(t *testing.T, resourceName string, yamlBytes []byte) (s
 
 	t.Cleanup(func() {
 		t.Helper()
-		require.NoError(t, exec.CommandContext(t.Context(), "kubectl", "delete", "--ignore-not-found", "-f", yamlFilepath).Run())
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		require.NoError(t, exec.CommandContext(ctx, "kubectl", "delete", "--ignore-not-found", "-f", yamlFilepath).Run())
 	})
 
 	return stdOut.String(), stdErr.String(), err
