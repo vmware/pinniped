@@ -2811,6 +2811,7 @@ jobs:
             ensure:
               task: remove-cluster
               timeout: 10m
+              attempts: 5
               file: pinniped-ci/pipelines/shared-tasks/remove-gke-cluster/task.yml
               image: k8s-app-deployer-image
               input_mapping:
@@ -2882,6 +2883,7 @@ jobs:
             ensure:
               task: remove-cluster
               timeout: 10m
+              attempts: 5
               file: pinniped-ci/pipelines/shared-tasks/remove-gke-cluster/task.yml
               image: k8s-app-deployer-image
               input_mapping:
