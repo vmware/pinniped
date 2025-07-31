@@ -18,6 +18,8 @@ if [[ -z $zone || "$CLUSTER_NAME" != *"-zone-"* ]]; then
   exit 1
 fi
 
+gcloud auth activate-service-account "$GCP_SERVICE_ACCOUNT" --key-file <(echo "$GCP_JSON_KEY") --project "$GCP_PROJECT"
+
 for i in $(seq 1 10); do
   echo "Checking $CLUSTER_NAME for ongoing operations (iteration $i)...."
   running_ops=$(gcloud container operations list --filter="targetLink:$CLUSTER_NAME AND status != done" --project "$GCP_PROJECT" --zone "$zone" --format yaml)
@@ -31,5 +33,4 @@ for i in $(seq 1 10); do
 done
 
 echo "Removing $CLUSTER_NAME..."
-gcloud auth activate-service-account "$GCP_SERVICE_ACCOUNT" --key-file <(echo "$GCP_JSON_KEY") --project "$GCP_PROJECT"
 gcloud container clusters delete "$CLUSTER_NAME" --zone "$zone" --quiet
