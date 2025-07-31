@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -17,6 +17,18 @@ if [[ -z $zone || "$CLUSTER_NAME" != *"-zone-"* ]]; then
   echo "Umm... the cluster name did not contain a zone name."
   exit 1
 fi
+
+for i in $(seq 1 10); do
+  echo "Checking $CLUSTER_NAME for ongoing operations (iteration $i)...."
+  running_ops=$(gcloud container operations list --filter="targetLink:$CLUSTER_NAME AND status != done" --project "$GCP_PROJECT" --zone "$zone" --format yaml)
+  if [[ -z "$running_ops" ]]; then
+    break
+  fi
+  echo "Found a running cluster operation:"
+  echo "$running_ops"
+  # Give some time for the operation to finsh before checking again.
+  sleep 30
+done
 
 echo "Removing $CLUSTER_NAME..."
 gcloud auth activate-service-account "$GCP_SERVICE_ACCOUNT" --key-file <(echo "$GCP_JSON_KEY") --project "$GCP_PROJECT"
