@@ -1239,8 +1239,7 @@ jobs:
           # The following Okta LDAP params will cause the integration tests to use Okta LDAP instead of OpenLDAP.
           # We don't need to run these on every version of Kubernetes for Kind in this pipeline, so we choose to run
           # them on one version to get some coverage.
-          # TODO: put this back once it is working without firewall problems
-          # <<: *okta_ldap_integration_env_vars
+          <<: *okta_ldap_integration_env_vars
           # The following AD params enable the ActiveDirectory integration tests. We don't need to run these on every
           # version of Kubernetes for Kind in this pipeline, so we choose to run them on one version to get some coverage.
           # TODO: bring this back with a new AD server
