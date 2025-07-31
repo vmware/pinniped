@@ -42,7 +42,7 @@ func PinnipedCLIPath(t *testing.T) string {
 
 	t.Log("building pinniped CLI binary")
 	start := time.Now()
-	output, err := exec.Command("go", "build", "-o", path, "go.pinniped.dev/cmd/pinniped").CombinedOutput()
+	output, err := exec.CommandContext(t.Context(), "go", "build", "-o", path, "go.pinniped.dev/cmd/pinniped").CombinedOutput()
 	require.NoError(t, err, string(output))
 	t.Logf("built CLI binary in %s", time.Since(start).Round(time.Millisecond))
 

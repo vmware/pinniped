@@ -154,7 +154,8 @@ func runKubectlGetNamespaces(t *testing.T, kubeConfigYAML string) (string, error
 	f := writeStringToTempFile(t, "pinniped-generated-kubeconfig-*", kubeConfigYAML)
 
 	//nolint:gosec // It's okay that we are passing f.Name() to an exec command here. It was created above.
-	output, err := exec.Command(
+	output, err := exec.CommandContext(
+		t.Context(),
 		"kubectl", "get", "namespace", "--kubeconfig", f.Name(),
 	).CombinedOutput()
 

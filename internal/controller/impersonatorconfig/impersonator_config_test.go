@@ -544,12 +544,13 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			expectedErrorRegex := "dial tcp .*: connect: connection refused"
 			expectedErrorRegexCompiled, err := regexp.Compile(expectedErrorRegex)
 			r.NoError(err)
+
+			dialer := tls.Dialer{}
 			assert.Eventually(t, func() bool {
-				_, err = tls.Dial(
+				_, err = dialer.DialContext(
+					context.Background(),
 					"tcp",
-					testServerAddr(),
-					&tls.Config{InsecureSkipVerify: true}, //nolint:gosec
-				)
+					testServerAddr())
 				return err != nil && expectedErrorRegexCompiled.MatchString(err.Error())
 			}, 20*time.Second, 50*time.Millisecond)
 			r.Error(err)

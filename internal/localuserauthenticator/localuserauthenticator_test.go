@@ -97,7 +97,8 @@ func TestWebhook(t *testing.T) {
 	certProvider, caBundle, serverName := newCertProvider(t)
 	w := newWebhook(certProvider, secretInformer)
 
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	listenConfig := &net.ListenConfig{}
+	l, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer func() { _ = l.Close() }()
 	require.NoError(t, w.start(ctx, l))

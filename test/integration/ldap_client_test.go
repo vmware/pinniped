@@ -856,7 +856,8 @@ func findRecentlyUnusedLocalhostPorts(t *testing.T, howManyPorts int) []string {
 	listeners := make([]net.Listener, howManyPorts)
 	for i := range howManyPorts {
 		var err error
-		listeners[i], err = net.Listen("tcp", "127.0.0.1:0")
+		listenConfig := net.ListenConfig{}
+		listeners[i], err = listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
 		require.NoError(t, err)
 	}
 

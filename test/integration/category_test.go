@@ -23,7 +23,7 @@ func runTestKubectlCommand(t *testing.T, args ...string) (string, string) {
 	testlib.RequireEventually(t, func(requireEventually *require.Assertions) {
 		stdOut.Reset()
 		stdErr.Reset()
-		cmd := exec.Command("kubectl", args...)
+		cmd := exec.CommandContext(t.Context(), "kubectl", args...)
 		cmd.Stdout = &stdOut
 		cmd.Stderr = &stdErr
 		requireEventually.NoError(cmd.Run())
