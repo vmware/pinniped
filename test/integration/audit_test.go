@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -172,7 +173,7 @@ func TestAuditLogsDuringLogin_Disruptive(t *testing.T) {
 			"message": "Session Started",
 			"personalInfo": map[string]any{
 				"username":         "redacted",
-				"groups":           []any{"redacted 2 values"},
+				"groups":           []any{fmt.Sprintf("redacted %d values", len(expectedGroups))},
 				"subject":          "redacted",
 				"additionalClaims": map[string]any{"redacted": "redacted 0 keys"},
 			},
@@ -208,7 +209,7 @@ func TestAuditLogsDuringLogin_Disruptive(t *testing.T) {
 			},
 			"personalInfo": map[string]any{
 				"username": "redacted",
-				"groups":   []any{"redacted 2 values"},
+				"groups":   []any{fmt.Sprintf("redacted %d values", len(expectedGroups))},
 				"extras":   map[string]any{"redacted": "redacted 1 keys"},
 			},
 		},

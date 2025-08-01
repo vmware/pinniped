@@ -112,6 +112,7 @@ type TestLDAPUpstream struct {
 	UserSearchBase                                  string   `json:"userSearchBase"`
 	DefaultNamingContextSearchBase                  string   `json:"defaultNamingContextSearchBase"`
 	GroupSearchBase                                 string   `json:"groupSearchBase"`
+	GroupSearchFilter                               string   `json:"groupSearchFilter"`
 	TestUserDN                                      string   `json:"testUserDN"`
 	TestUserCN                                      string   `json:"testUserCN"`
 	TestUserPassword                                string   `json:"testUserPassword"`
@@ -337,6 +338,7 @@ func loadEnvVars(t *testing.T, result *TestEnv) {
 		BindPassword:                   needEnv(t, "PINNIPED_TEST_LDAP_BIND_ACCOUNT_PASSWORD"),
 		UserSearchBase:                 needEnv(t, "PINNIPED_TEST_LDAP_USERS_SEARCH_BASE"),
 		GroupSearchBase:                needEnv(t, "PINNIPED_TEST_LDAP_GROUPS_SEARCH_BASE"),
+		GroupSearchFilter:              wantEnv("PINNIPED_TEST_LDAP_GROUPS_SEARCH_FILTER", ""),
 		TestUserDN:                     needEnv(t, "PINNIPED_TEST_LDAP_USER_DN"),
 		TestUserCN:                     needEnv(t, "PINNIPED_TEST_LDAP_USER_CN"),
 		TestUserUniqueIDAttributeName:  needEnv(t, "PINNIPED_TEST_LDAP_USER_UNIQUE_ID_ATTRIBUTE_NAME"),
@@ -344,7 +346,7 @@ func loadEnvVars(t *testing.T, result *TestEnv) {
 		TestUserMailAttributeName:      needEnv(t, "PINNIPED_TEST_LDAP_USER_EMAIL_ATTRIBUTE_NAME"),
 		TestUserMailAttributeValue:     needEnv(t, "PINNIPED_TEST_LDAP_USER_EMAIL_ATTRIBUTE_VALUE"),
 		TestUserDirectGroupsCNs:        filterEmpty(strings.Split(needEnv(t, "PINNIPED_TEST_LDAP_EXPECTED_DIRECT_GROUPS_CN"), ";")),
-		TestUserDirectPosixGroupsCNs:   filterEmpty(strings.Split(needEnv(t, "PINNIPED_TEST_LDAP_EXPECTED_DIRECT_POSIX_GROUPS_CN"), ";")),
+		TestUserDirectPosixGroupsCNs:   filterEmpty(strings.Split(wantEnv("PINNIPED_TEST_LDAP_EXPECTED_DIRECT_POSIX_GROUPS_CN", ""), ";")),
 		TestUserDirectGroupsDNs:        filterEmpty(strings.Split(needEnv(t, "PINNIPED_TEST_LDAP_EXPECTED_DIRECT_GROUPS_DN"), ";")),
 		TestUserPassword:               needEnv(t, "PINNIPED_TEST_LDAP_USER_PASSWORD"),
 	}
