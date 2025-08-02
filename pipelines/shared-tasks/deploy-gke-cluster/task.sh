@@ -17,9 +17,13 @@ gcloud auth activate-service-account "$GCP_SERVICE_ACCOUNT" --key-file <(echo "$
 if [[ -n "$CLUSTER_REGION" ]]; then
   region_or_zone_flag="--region=$CLUSTER_REGION"
   region_or_zone_suffix="region-$CLUSTER_REGION"
+  # regional clusters have 3 nodes (one per zone, minimum 3 zones), so use a smaller machine type
+  machine_type="e2-medium"
 else
   region_or_zone_flag="--zone=$CLUSTER_ZONE"
   region_or_zone_suffix="zone-$CLUSTER_ZONE"
+  # zonal clusters have 1 node, so use a bigger machine type
+  machine_type="e2-standard-4"
 fi
 
 if [ -n "$KUBE_VERSION" ]; then
@@ -58,7 +62,7 @@ gcloud container clusters create "$CLUSTER_NAME" \
   "$region_or_zone_flag" \
   "$VERSION_FLAG" \
   --num-nodes 1 \
-  --machine-type e2-standard-4 \
+  --machine-type "$machine_type" \
   --preemptible \
   --issue-client-certificate \
   --no-enable-basic-auth \
