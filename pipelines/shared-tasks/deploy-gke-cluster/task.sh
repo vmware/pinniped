@@ -58,7 +58,7 @@ gcloud container clusters create "$CLUSTER_NAME" \
   "$region_or_zone_flag" \
   "$VERSION_FLAG" \
   --num-nodes 1 \
-  --machine-type e2-standard-8 \
+  --machine-type e2-standard-4 \
   --preemptible \
   --issue-client-certificate \
   --no-enable-basic-auth \
