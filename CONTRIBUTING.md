@@ -20,26 +20,26 @@ The near-term and mid-term roadmap for the work planned for the project [maintai
 ## Discussion
 
 Got a question, comment, or idea? Please don't hesitate to reach out
-via GitHub [Discussions](https://github.com/vmware-tanzu/pinniped/discussions),
-GitHub [Issues](https://github.com/vmware-tanzu/pinniped/issues),
+via GitHub [Discussions](https://github.com/vmware/pinniped/discussions),
+GitHub [Issues](https://github.com/vmware/pinniped/issues),
 or in the Kubernetes Slack Workspace within the [#pinniped channel](https://go.pinniped.dev/community/slack).
 Join our [Google Group](https://go.pinniped.dev/community/group) to receive updates and meeting invitations.
 
 ## Issues
 
 Need an idea for a project to get started contributing? Take a look at the open
-[issues](https://github.com/vmware-tanzu/pinniped/issues).
+[issues](https://github.com/vmware/pinniped/issues).
 Also check to see if any open issues are labeled with
-["good first issue"](https://github.com/vmware-tanzu/pinniped/labels/good%20first%20issue)
-or ["help wanted"](https://github.com/vmware-tanzu/pinniped/labels/help%20wanted).
+["good first issue"](https://github.com/vmware/pinniped/labels/good%20first%20issue)
+or ["help wanted"](https://github.com/vmware/pinniped/labels/help%20wanted).
 
 ### Bugs
 
 To file a bug report, please first open an
-[issue](https://github.com/vmware-tanzu/pinniped/issues/new?template=bug_report.md). The project team
+[issue](https://github.com/vmware/pinniped/issues/new?template=bug_report.md). The project team
 will work with you on your bug report.
 
-Once the bug has been validated, a [pull request](https://github.com/vmware-tanzu/pinniped/compare)
+Once the bug has been validated, a [pull request](https://github.com/vmware/pinniped/compare)
 can be opened to fix the bug.
 
 For specifics on what to include in your bug report, please follow the
@@ -48,11 +48,11 @@ guidelines in the issue and pull request templates.
 ### Features
 
 To suggest a feature, please first open an
-[issue](https://github.com/vmware-tanzu/pinniped/issues/new?template=feature-proposal.md)
-and tag it with `proposal`, or create a new [Discussion](https://github.com/vmware-tanzu/pinniped/discussions).
+[issue](https://github.com/vmware/pinniped/issues/new?template=feature-proposal.md)
+and tag it with `proposal`, or create a new [Discussion](https://github.com/vmware/pinniped/discussions).
 The project [maintainers](MAINTAINERS.md) will work with you on your feature request.
 
-Once the feature request has been validated, a [pull request](https://github.com/vmware-tanzu/pinniped/compare)
+Once the feature request has been validated, a [pull request](https://github.com/vmware/pinniped/compare)
 can be opened to implement the feature.
 
 For specifics on what to include in your feature request, please follow the
@@ -127,7 +127,7 @@ go build -o pinniped ./cmd/pinniped
    On macOS, these tools can be installed with [Homebrew](https://brew.sh/) (assuming you have Chrome installed already):
 
    ```bash
-   brew install kind vmware-tanzu/carvel/ytt vmware-tanzu/carvel/kapp kubectl nmap && brew cask install docker
+   brew install kind carvel-dev/carvel/ytt carvel-dev/carvel/kapp kubectl nmap && brew cask install docker
    ```
 
 1. Create a kind cluster, compile, create container images, and install Pinniped and supporting test dependencies using:
@@ -144,7 +144,7 @@ go build -o pinniped ./cmd/pinniped
 
    To run specific integration tests, add the `-run` flag to the above command to specify a regexp for the test names.
    Use a leading `/` on the regexp because the Pinniped integration tests are automatically nested under several parent tests
-   (see [integration/main_test.go](https://github.com/vmware-tanzu/pinniped/blob/main/test/integration/main_test.go)).
+   (see [integration/main_test.go](https://github.com/vmware/pinniped/blob/main/test/integration/main_test.go)).
    For example, to run an integration test called `TestE2E`, add `-run /TestE2E` to the command shown above.
 
 1. After making production code changes, recompile, redeploy, and run tests again by repeating the same
@@ -180,7 +180,7 @@ Each run of `hack/prepare-for-integration-tests.sh` can result in different valu
 CI will not be triggered on a pull request until the pull request is reviewed and
 approved for CI by a project [maintainer](MAINTAINERS.md). Once CI is triggered,
 the progress and results will appear on the Github page for that
-[pull request](https://github.com/vmware-tanzu/pinniped/pulls) as checks. Links
+[pull request](https://github.com/vmware/pinniped/pulls) as checks. Links
 will appear to view the details of each check.
 
 Starting in mid-2025, Pinniped's CI system is no longer externally visible due to corporate policies.
@@ -189,7 +189,7 @@ They will be happy to share CI logs with you directly for your PR.
 
 ## CI
 
-Pinniped's CI configuration and code is in the [`ci`](https://github.com/vmware-tanzu/pinniped/tree/ci)
+Pinniped's CI configuration and code is in the [`ci`](https://github.com/vmware/pinniped/tree/ci)
 branch of this repo.
 
 ## Documentation

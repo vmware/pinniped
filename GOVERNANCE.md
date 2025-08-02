@@ -11,7 +11,7 @@ all members should work together to achieve this goal.
 # Code of Conduct
 
 The Pinniped community abides by this
-[code of conduct](https://github.com/vmware-tanzu/pinniped/blob/main/CODE_OF_CONDUCT.md).
+[code of conduct](https://github.com/vmware/pinniped/blob/main/CODE_OF_CONDUCT.md).
 
 # Community Roles
 
@@ -29,7 +29,7 @@ notifying one of the maintainers.
 
 **Note:** If a maintainer leaves their employer they are still considered a maintainer of Pinniped, unless they
 voluntarily resign. Employment is not taken into consideration when determining maintainer eligibility unless the
-company itself violates our [Code of Conduct](https://github.com/vmware-tanzu/pinniped/blob/main/CODE_OF_CONDUCT.md).
+company itself violates our [Code of Conduct](https://github.com/vmware/pinniped/blob/main/CODE_OF_CONDUCT.md).
 
 # Decision Making
 

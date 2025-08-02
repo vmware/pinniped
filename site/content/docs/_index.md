@@ -13,8 +13,8 @@ As a Kubernetes cluster administrator or user, you can learn how Pinniped works,
 dive into internals of Pinniped's APIs and architecture.
 
 Have a question, comment, or idea? Please reach out via
-[GitHub Issues](https://github.com/vmware-tanzu/pinniped/issues),
-[GitHub Discussions](https://github.com/vmware-tanzu/pinniped/discussions),
+[GitHub Issues](https://github.com/vmware/pinniped/issues),
+[GitHub Discussions](https://github.com/vmware/pinniped/discussions),
 or [join the Pinniped community]({{< ref "/community" >}}).
 
 ## New to Pinniped?

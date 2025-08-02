@@ -48,7 +48,7 @@ on each cluster.
    and make those kubeconfigs available to CI/CD
    * Be sure to use `pinniped get kubeconfig` with option `--upstream-identity-provider-flow=cli_password` to authenticate non-interactively (without a browser)
    * When using OIDC, the optional CLI-based flow must be enabled by the administrator in the OIDCIdentityProvider configuration before use
-     (see `allowPasswordGrant` in the [API docs](https://github.com/vmware-tanzu/pinniped/blob/main/generated/latest/README.adoc#oidcauthorizationconfig) for more details).
+     (see `allowPasswordGrant` in the [API docs](https://github.com/vmware/pinniped/blob/main/generated/latest/README.adoc#oidcauthorizationconfig) for more details).
 2. A CI/CD admin should make the non-human user account credentials available to CI/CD tasks
 3. Each CI/CD task should set the environment variables `PINNIPED_USERNAME` and `PINNIPED_PASSWORD` for the `kubectl` (or similar)
    process to avoid the interactive username and password prompts. The values should be provided from the non-human user account credentials.
@@ -85,7 +85,7 @@ Both of these examples can be solved by configuring multiple identity providers:
    to use both providers. Create kubeconfigs using the GitHub provider and distribute them to your human users.
    Create kubeconfigs for your CI/CD use cases using the second provider.
 2. For the second example, configure an OIDCIdentityProvider for your human users. Disable non-interactive
-   authentication (see `allowPasswordGrant` in the [API docs](https://github.com/vmware-tanzu/pinniped/blob/main/generated/latest/README.adoc#oidcauthorizationconfig)). Create another OIDCIdentityProvider for your
+   authentication (see `allowPasswordGrant` in the [API docs](https://github.com/vmware/pinniped/blob/main/generated/latest/README.adoc#oidcauthorizationconfig)). Create another OIDCIdentityProvider for your
    non-human users, and enable non-interactive authentication for it. For the second OIDCIdentityProvider, use a
    different client ID and client secret from your OIDC provider. Configure your FederationDomain to use both providers.
    In your OIDC provider's admin UI, configure this second client to allow the Resource Owner Password Credentials Grant

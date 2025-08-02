@@ -69,7 +69,7 @@ Every line in the pod logs contains the following common keys and values, includ
 - `level`, which for an audit event will always have the value `info`
 - `message`, which for audit events is effectively the audit event type, whose
   value will always be one of the messages declared as an enum value in
-  [`audit_event.go`](https://github.com/vmware-tanzu/pinniped/blob/main/internal/auditevent/audit_event.go),
+  [`audit_event.go`](https://github.com/vmware/pinniped/blob/main/internal/auditevent/audit_event.go),
   which is effectively a catalog of all possible audit event types
 - `caller`, which is the line of Go code which caused the log
 - `stacktrace`, which is only included when the global log level is configured to `trace` or `all`,

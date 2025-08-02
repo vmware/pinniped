@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2023 the Pinniped contributors. All Rights Reserved.
+# Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 #
@@ -25,9 +25,9 @@ cd "${hack_lib_path}/../../" || exit 1
 source hack/lib/helpers.sh
 
 # Check for dependencies
-check_dependency kbld "Please install kbld. e.g. 'brew tap vmware-tanzu/carvel && brew install kbld' for MacOS"
-check_dependency imgpkg "Please install imgpkg. e.g. 'brew tap vmware-tanzu/carvel && brew install imgpkg' for MacOS"
-check_dependency vendir "Please install vendir. e.g. 'brew tap vmware-tanzu/carvel && brew install vendir' for MacOS"
+check_dependency kbld "Please install kbld. e.g. 'brew tap carvel-dev/carvel && brew install kbld' for MacOS"
+check_dependency imgpkg "Please install imgpkg. e.g. 'brew tap carvel-dev/carvel && brew install imgpkg' for MacOS"
+check_dependency vendir "Please install vendir. e.g. 'brew tap carvel-dev/carvel && brew install vendir' for MacOS"
 
 # Expected arguments.
 app=${1:-"app-argument-not-provided"}

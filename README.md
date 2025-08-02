@@ -19,8 +19,8 @@ Care to kick the tires? It's easy to [install and try Pinniped](https://pinniped
 ## Discussion
 
 Got a question, comment, or idea? Please don't hesitate to reach out
-via GitHub [Discussions](https://github.com/vmware-tanzu/pinniped/discussions),
-GitHub [Issues](https://github.com/vmware-tanzu/pinniped/issues),
+via GitHub [Discussions](https://github.com/vmware/pinniped/discussions),
+GitHub [Issues](https://github.com/vmware/pinniped/issues),
 or in the Kubernetes Slack Workspace within the [#pinniped channel](https://go.pinniped.dev/community/slack).
 Join our [Google Group](https://go.pinniped.dev/community/group) to receive updates and meeting invitations.
 
@@ -37,7 +37,7 @@ building and testing the code, submitting PRs, and other contributor topics.
 ## Adopters
 
 Some organizations and products using Pinniped are featured in [ADOPTERS.md](ADOPTERS.md).
-Add your own organization or product [here](https://github.com/vmware-tanzu/pinniped/discussions/152).
+Add your own organization or product [here](https://github.com/vmware/pinniped/discussions/152).
 
 ## Reporting security vulnerabilities
 

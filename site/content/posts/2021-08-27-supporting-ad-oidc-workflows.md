@@ -23,7 +23,7 @@ Our initial LDAP implementation released with v.10.0 can be used to work with an
 
 Pinniped Supervisor authenticates your users with the AD provider via the LDAP protocol, and then issues unique, short-lived, per-cluster tokens. Our previous blog post on [LDAP configuration]({{< ref "2021-06-02-first-ldap-release.md">}}), elaborates on the security considerations to support integration at the Pinniped Supervisor level instead of at the Concierge.
 
-To setup the AD configuration, once you have Supervisor configured with ingress [installed the Pinniped Supervisor]({{< ref "docs/howto/install-supervisor.md" >}}) and you have [configured a FederationDomain]({{< ref "docs/howto/supervisor/configure-supervisor" >}}) to issue tokens for your downstream clusters, you can create an [ActiveDirectoryIdentityProvider](https://github.com/vmware-tanzu/pinniped/blob/main/generated/1.20/README.adoc#activedirectoryidentityprovider) in the same namespace as the Supervisor.
+To setup the AD configuration, once you have Supervisor configured with ingress [installed the Pinniped Supervisor]({{< ref "docs/howto/install-supervisor.md" >}}) and you have [configured a FederationDomain]({{< ref "docs/howto/supervisor/configure-supervisor" >}}) to issue tokens for your downstream clusters, you can create an [ActiveDirectoryIdentityProvider](https://github.com/vmware/pinniped/blob/main/generated/1.20/README.adoc#activedirectoryidentityprovider) in the same namespace as the Supervisor.
 Here’s what an example configuration looks like
 
 ```yaml
@@ -95,7 +95,7 @@ With the new functionality, Users initiate  `pinniped get kubeconfig` with a new
 In this release, we are moving our base container images from Debian to Distroless as it not only increases performance by providing much smaller sized images, but enhances security by removing dependencies on system libraries that may have vulnerabilities.
 
 
-Refer to the [release notes for v0.11.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.11.0) for a complete list of fixes and features included in the release.
+Refer to the [release notes for v0.11.0](https://github.com/vmware/pinniped/releases/tag/v0.11.0) for a complete list of fixes and features included in the release.
 
 ## Tell us about your configuration and use cases!
 
@@ -104,12 +104,12 @@ We invite your suggestions and contributions to make Pinniped work for your conf
 The Pinniped community is a vital part of the project's success. This release includes important feedback from community user [Scott Rosenberg](https://github.com/vrabbi) who helped us better understand Active Directory configurations and provided valuable feedback for the OIDC Password Grant feature. Thank you for helping improve Pinniped!
 
 We thrive on community feedback.
-[Are you using Pinniped?](https://github.com/vmware-tanzu/pinniped/discussions/152)  
+[Are you using Pinniped?](https://github.com/vmware/pinniped/discussions/152)  
 Did you try our new LDAP or AD features?
 What other configurations do you need for authenticating users to your Kubernetes clusters?
 
 Find us in [#pinniped](https://go.pinniped.dev/community/slack) on Kubernetes Slack,
-[create an issue](https://github.com/vmware-tanzu/pinniped/issues/new/choose) on our Github repository,
-or start a [Discussion](https://github.com/vmware-tanzu/pinniped/discussions).
+[create an issue](https://github.com/vmware/pinniped/issues/new/choose) on our Github repository,
+or start a [Discussion](https://github.com/vmware/pinniped/discussions).
 
 {{< community >}}

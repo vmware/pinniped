@@ -25,7 +25,7 @@ proposed in this document.
 ### How Pinniped Works Today (as of version v0.15.0)
 
 Each
-[FederationDomain](https://github.com/vmware-tanzu/pinniped/blob/main/generated/1.23/README.adoc#federationdomain)
+[FederationDomain](https://github.com/vmware/pinniped/blob/main/generated/1.23/README.adoc#federationdomain)
 configured in the Pinniped Supervisor is an OIDC Provider issuer which implements
 the [OIDC authorization code flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth).
 
@@ -61,8 +61,8 @@ Goals for this proposal:
 - Support a web UI based LDAP/ActiveDirectory login screen. This is needed to avoid having webapps handle the user's
   password, which must only be seen by the Supervisor and the LDAP server. However, the details of this item have been
   split out to a
-  [separate proposal document](https://github.com/vmware-tanzu/pinniped/tree/main/proposals/1113_ldap-ad-web-ui).
-  The feature was released in [v0.18.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.18.0).
+  [separate proposal document](https://github.com/vmware/pinniped/tree/main/proposals/1113_ldap-ad-web-ui).
+  The feature was released in [v0.18.0](https://github.com/vmware/pinniped/releases/tag/v0.18.0).
 - Client secrets must be stored encrypted or hashed, not in plain text.
 - Creation of client credentials on the operator's behalf - the server must generate any secrets.
 - The operator must be able to initiate manual rotation of client credentials.
@@ -527,6 +527,6 @@ The Pinniped maintainers will implement these features.
 
 ## Implementation PRs
 
-The implementation is in [PR #1181](https://github.com/vmware-tanzu/pinniped/pull/1181). During implementation,
+The implementation is in [PR #1181](https://github.com/vmware/pinniped/pull/1181). During implementation,
 several PRs have been prepared against this PR's branch, and merged into the PR's branch when reviewed and ready.
 When the whole feature is finished, PR #1181 will be merged to `main` and released.

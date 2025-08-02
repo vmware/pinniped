@@ -15,13 +15,13 @@ It must be installed by administrators setting up a Pinniped cluster as well as 
 
 ## Install using Homebrew on macOS or Linux
 
-Use [Homebrew](https://brew.sh/) to install from the Pinniped [tap](https://github.com/vmware-tanzu/homebrew-pinniped):
+Use [Homebrew](https://brew.sh/) to install from the Pinniped [tap](https://github.com/vmware/homebrew-pinniped):
 
-- `brew install vmware-tanzu/pinniped/pinniped-cli`
+- `brew install vmware/pinniped/pinniped-cli`
 
 ## Download binaries
 
-Find the appropriate binary for your platform from the [latest release](https://github.com/vmware-tanzu/pinniped/releases/latest):
+Find the appropriate binary for your platform from the [latest release](https://github.com/vmware/pinniped/releases/latest):
 
 {{< buttonlink filename="pinniped-cli-darwin-amd64" >}}Download {{< latestversion >}} for macOS/amd64{{< buttonicon "download.png" >}}{{< /buttonlink >}}
 {{< buttonlink filename="pinniped-cli-darwin-arm64" >}}Download {{< latestversion >}} for macOS/arm64{{< buttonicon "download.png" >}}{{< /buttonlink >}}
@@ -35,7 +35,7 @@ Find the appropriate binary for your platform from the [latest release](https://
 You should put the command-line tool somewhere on your `$PATH`, such as `/usr/local/bin` on macOS/Linux.
 You'll also need to mark the file as executable, e.g. `chmod +x pinniped` on macOS/Linux.
 
-To find specific versions or view all available platforms and architectures, visit the [releases page](https://github.com/vmware-tanzu/pinniped/releases/).
+To find specific versions or view all available platforms and architectures, visit the [releases page](https://github.com/vmware/pinniped/releases/).
 
 ### Gatekeeper
 
@@ -47,7 +47,7 @@ Click Open to allow the command to proceed.
 
 ## Install a specific version via script
 
-Choose your preferred [release](https://github.com/vmware-tanzu/pinniped/releases) and use it to replace the version number in the URL below.
+Choose your preferred [release](https://github.com/vmware/pinniped/releases) and use it to replace the version number in the URL below.
 
 For example, to install {{< latestversion >}} on Linux/amd64:
 

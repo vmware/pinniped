@@ -13,7 +13,7 @@ This guide shows you how to install the Pinniped Concierge.
 You should have a [supported Kubernetes cluster]({{< ref "../reference/supported-clusters" >}}).
 
 In the examples below, you can replace *{{< latestversion >}}* with your preferred version number.
-You can find a list of Pinniped releases [on GitHub](https://github.com/vmware-tanzu/pinniped/releases).
+You can find a list of Pinniped releases [on GitHub](https://github.com/vmware/pinniped/releases).
 
 ## With default options
 
@@ -46,10 +46,10 @@ Pinniped uses [ytt](https://carvel.dev/ytt/) from [Carvel](https://carvel.dev/) 
 
 1. Clone the Pinniped GitHub repository and visit the `deploy/concierge` directory:
 
-   - `git clone git@github.com:vmware-tanzu/pinniped.git`
+   - `git clone git@github.com:vmware/pinniped.git`
    - `cd pinniped/deploy/concierge`
 
-1. Decide which release version you would like to install. All release versions are [listed on GitHub](https://github.com/vmware-tanzu/pinniped/releases).
+1. Decide which release version you would like to install. All release versions are [listed on GitHub](https://github.com/vmware/pinniped/releases).
 
 1. Checkout your preferred version tag, e.g. `{{< latestversion >}}`.
 
@@ -57,13 +57,13 @@ Pinniped uses [ytt](https://carvel.dev/ytt/) from [Carvel](https://carvel.dev/) 
 
 1. Customize configuration parameters:
 
-    - See the [default values](http://github.com/vmware-tanzu/pinniped/tree/main/deploy/concierge/values.yaml) for documentation about individual configuration parameters.
+    - See the [default values](http://github.com/vmware/pinniped/tree/main/deploy/concierge/values.yaml) for documentation about individual configuration parameters.
       For example, you can change the number of Concierge pods by setting `replicas` or apply custom annotations to the impersonation proxy service using `impersonation_proxy_spec`.
 
     - In a different directory, create a new YAML file to contain your site-specific configuration. For example, you might call this file `site/dev-env.yaml`.
 
       In the file, add the special ytt comment for a values file and the YAML triple-dash which starts a new YAML document.
-      Then add custom overrides for any of the parameters from [`values.yaml`](http://github.com/vmware-tanzu/pinniped/tree/main/deploy/concierge/values.yaml).
+      Then add custom overrides for any of the parameters from [`values.yaml`](http://github.com/vmware/pinniped/tree/main/deploy/concierge/values.yaml).
 
       Override the `image_tag` value to match your preferred version tag, e.g. `{{< latestversion >}}`,
       to ensure that you use the version of the server which matches these templates.

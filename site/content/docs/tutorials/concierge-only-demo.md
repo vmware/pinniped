@@ -45,7 +45,7 @@ that protection, but if not then please carefully consider the security implicat
 
    Don't have an authenticator of a type supported by Pinniped handy? No problem, there is a demo authenticator
    available. Start by installing local-user-authenticator on the same cluster where you would like to try Pinniped
-   by following the directions in [deploy/local-user-authenticator/README.md](https://github.com/vmware-tanzu/pinniped/blob/main/deploy/local-user-authenticator/README.md).
+   by following the directions in [deploy/local-user-authenticator/README.md](https://github.com/vmware/pinniped/blob/main/deploy/local-user-authenticator/README.md).
    See below for an example of deploying this on kind.
 
 1. A kubeconfig where the current context points to the cluster and has administrator-like
@@ -85,7 +85,7 @@ as the authenticator.
 
    The `install-local-user-authenticator.yaml` file includes the default deployment options.
    If you would prefer to customize the available options, please
-   see [deploy/local-user-authenticator/README.md](https://github.com/vmware-tanzu/pinniped/blob/main/deploy/local-user-authenticator/README.md)
+   see [deploy/local-user-authenticator/README.md](https://github.com/vmware/pinniped/blob/main/deploy/local-user-authenticator/README.md)
    for instructions on how to deploy using `ytt`.
 
 1. Create a test user named `pinny-the-seal` in the local-user-authenticator namespace.
@@ -138,7 +138,7 @@ as the authenticator.
    On macOS or Linux, you can do this using Homebrew:
 
    ```sh
-   brew install vmware-tanzu/pinniped/pinniped-cli
+   brew install vmware/pinniped/pinniped-cli
    ```
 
    On other platforms, see the [command-line installation guide]({{< ref "../howto/install-cli" >}}) for more details.

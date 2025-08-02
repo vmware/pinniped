@@ -42,10 +42,10 @@ command-line tools have been installed using the instructions from the [Carvel d
 
 2. Clone the Pinniped GitHub repository and visit the `deploy/supervisor` directory
 
-   - `git clone git@github.com:vmware-tanzu/pinniped.git`
+   - `git clone git@github.com:vmware/pinniped.git`
    - `cd pinniped/deploy/supervisor`
 
-1. Assess which release version is installed on your cluster. All release versions are [listed on GitHub](https://github.com/vmware-tanzu/pinniped/releases).
+1. Assess which release version is installed on your cluster. All release versions are [listed on GitHub](https://github.com/vmware/pinniped/releases).
 
 1. Checkout the version that corresponds to the version tag installed on your cluster, e.g. `{{< latestversion >}}`.
 
@@ -70,10 +70,10 @@ command-line tools have been installed using the instructions from the [Carvel d
 
 2. Clone the Pinniped GitHub repository and visit the `deploy/concierge` directory
 
-   - `git clone git@github.com:vmware-tanzu/pinniped.git`
+   - `git clone git@github.com:vmware/pinniped.git`
    - `cd pinniped/deploy/concierge`
 
-1. Assess which release version is installed on your cluster. All release versions are [listed on GitHub](https://github.com/vmware-tanzu/pinniped/releases).
+1. Assess which release version is installed on your cluster. All release versions are [listed on GitHub](https://github.com/vmware/pinniped/releases).
 
 1. Checkout the version that corresponds to the version tag installed on your cluster, e.g. `{{< latestversion >}}`.
 

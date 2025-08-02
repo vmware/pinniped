@@ -30,5 +30,5 @@ TMC uses Pinniped to provide a uniform authentication experience across all atta
 ## Adding your organization to the list of adopters
 
 If you are using Pinniped and would like to be included in the list of Pinniped Adopters, add an SVG version of your logo that is less than 150 KB to
-the [img directory](https://github.com/vmware-tanzu/pinniped/tree/main/site/themes/pinniped/static/img) in this repo and submit a pull request with your change including 1-2 sentences describing how your organization is using Pinniped. Name the image file something that
+the [img directory](https://github.com/vmware/pinniped/tree/main/site/themes/pinniped/static/img) in this repo and submit a pull request with your change including 1-2 sentences describing how your organization is using Pinniped. Name the image file something that
 reflects your company (e.g., if your company is called Acme, name the image acme.svg). Please feel free to send us a message in [#pinniped](https://kubernetes.slack.com/archives/C01BW364RJA) with any questions you may have.
