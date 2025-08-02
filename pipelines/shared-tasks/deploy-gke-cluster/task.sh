@@ -13,13 +13,21 @@ export USE_GKE_GCLOUD_AUTH_PLUGIN=True
 cd deploy-gke-cluster-output
 gcloud auth activate-service-account "$GCP_SERVICE_ACCOUNT" --key-file <(echo "$GCP_JSON_KEY") --project "$GCP_PROJECT"
 
+# Decide if we want a regional or zonal cluster.
+if [[ -n "$CLUSTER_REGION" ]]; then
+  region_or_zone_flag="--region=$CLUSTER_REGION"
+  region_or_zone_suffix="region-$CLUSTER_REGION"
+else
+  region_or_zone_flag="--zone=$CLUSTER_ZONE"
+  region_or_zone_suffix="zone-$CLUSTER_ZONE"
+fi
 
 if [ -n "$KUBE_VERSION" ]; then
   echo
   echo "Trying to use Kubernetes version $KUBE_VERSION"
 
   # Look up the latest GKE version for KUBE_VERSION.
-  GKE_VERSIONS="$(gcloud container get-server-config --zone "$CLUSTER_ZONE" --format json \
+  GKE_VERSIONS="$(gcloud container get-server-config "$region_or_zone_flag" --format json \
     | jq -r '.validMasterVersions[]')"
   echo
   echo "Found all versions of Kubernetes supported by GKE:"
@@ -36,18 +44,18 @@ else
   export VERSION_FLAG="--release-channel=${GKE_CHANNEL:-"regular"}"
 fi
 
-# Include the zone of the cluster in its name. This will allow us to change our preferred zone for new
-# clusters anytime we want, and the existing clusters can still be deleted because the old zone can
+# Include the region or zone of the cluster in its name. This will allow us to change our preferred region/zone for new
+# clusters anytime we want, and the existing clusters can still be deleted because the old region/zone can
 # be parsed out from the cluster name at deletion time.
-CLUSTER_NAME="gke-$(openssl rand -hex 4)-zone-${CLUSTER_ZONE}"
+CLUSTER_NAME="gke-$(openssl rand -hex 4)-${region_or_zone_suffix}"
 
 # The cluster name becomes the name of the lock in the pool.
-echo "$CLUSTER_NAME" > name
+echo "$CLUSTER_NAME" >name
 
 # Start the cluster
 # Note that --enable-network-policy is required to enable NetworkPolicy resources. Otherwise they are ignored.
 gcloud container clusters create "$CLUSTER_NAME" \
-  --zone "$CLUSTER_ZONE" \
+  "$region_or_zone_flag" \
   "$VERSION_FLAG" \
   --num-nodes 1 \
   --machine-type e2-standard-8 \
@@ -67,7 +75,7 @@ gcloud container clusters create "$CLUSTER_NAME" \
   --services-secondary-range-name "pods"
 
 # Get the cluster details back, including the admin certificate:
-gcloud container clusters describe "$CLUSTER_NAME" --zone "$CLUSTER_ZONE" --format json \
+gcloud container clusters describe "$CLUSTER_NAME" "$region_or_zone_flag" --format json \
   > /tmp/cluster.json
 
 # Make a new kubeconfig user "cluster-admin" using the admin cert.

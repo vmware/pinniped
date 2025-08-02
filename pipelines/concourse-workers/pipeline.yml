@@ -23,6 +23,7 @@ meta:
 
   # GKE account info and which zone the clusters should be created in and deleted from.
   gke_account_params: &gke_account_params
+    CLUSTER_REGION: us-west1
     CLUSTER_ZONE: us-west1-c
     GCP_PROJECT: ((gcp-project-name))
     GCP_SERVICE_ACCOUNT: ((gke-test-pool-manager-username))
