@@ -1,1 +1,1 @@
-Please see https://github.com/vmware-tanzu/pinniped/blob/main/MAINTAINERS.md
+Please see https://github.com/vmware/pinniped/blob/main/MAINTAINERS.md

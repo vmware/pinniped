@@ -561,7 +561,7 @@ resources:
     icon: github
     check_every: 5m
     source:
-      owner: vmware-tanzu
+      owner: vmware
       repository: pinniped
       access_token: ((ci-bot-access-token-with-public-repo-write-permission))
       drafts: true
@@ -571,7 +571,7 @@ resources:
     icon: github
     check_every: 5m
     source:
-      owner: vmware-tanzu
+      owner: vmware
       repository: pinniped
       access_token: ((ci-bot-access-token-with-public-repo-write-permission))
 
@@ -736,9 +736,9 @@ jobs:
             # Also note that the GitHub UI says: "To connect a repository to your container image, the namespace
             # for the repository and container image on GitHub must be the same. For example, they should be owned by
             # the same user or organization." So these would only show in the GitHub UI for a package owned by the
-            # vmware-tanzu org.
+            # vmware org.
             # It is not clear if dockerhub will pay any attention to these labels for its UI. It doesn't seem to.
-            LABEL_org.opencontainers.image.source: "https://github.com/vmware-tanzu/pinniped"
+            LABEL_org.opencontainers.image.source: "https://github.com/vmware/pinniped"
             LABEL_org.opencontainers.image.licenses: "Apache-2.0"
             LABEL_org.opencontainers.image.description: "The official container images of https://pinniped.dev"
       - put: ci-build-image
@@ -2674,7 +2674,7 @@ jobs:
         params:
           SOURCE_REPOSITORY_USERNAME: ((ci-ghcr-puller-username))
           SOURCE_REPOSITORY_PASSWORD: ((ci-ghcr-puller-token))
-          DESTINATION_REPOSITORY: ghcr.io/vmware-tanzu/pinniped/pinniped-server
+          DESTINATION_REPOSITORY: ghcr.io/vmware/pinniped/pinniped-server
           DESTINATION_TAG: latest # note that we will also choose more tags based on the release-info output from the task above
           DESTINATION_REPOSITORY_USERNAME: ((ci-ghcr-pusher-username))
           DESTINATION_REPOSITORY_PASSWORD: ((ci-ghcr-pusher-token))
@@ -2683,7 +2683,7 @@ jobs:
         image: deployment-yaml-formatter-image
         params:
           # Specify the repo to render into the YAML files. The task will ask the registry for the image digest using the release tag.
-          IMAGE_REPO: ghcr.io/vmware-tanzu/pinniped/pinniped-server
+          IMAGE_REPO: ghcr.io/vmware/pinniped/pinniped-server
       - put: github-release
         inputs:
           - release-semver

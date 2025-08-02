@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
 
-repo=vmware-tanzu/pinniped
+repo=vmware/pinniped
 current_branch_name=$(git rev-parse --abbrev-ref HEAD)
 
 if [[ "$current_branch_name" != "ci" ]]; then

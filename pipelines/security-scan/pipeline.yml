@@ -56,7 +56,7 @@ resources:
     type: git
     icon: github
     source:
-      uri: https://github.com/vmware-tanzu/pinniped.git
+      uri: https://github.com/vmware/pinniped.git
       branch: main
 
   - name: pinniped-ci
@@ -72,7 +72,7 @@ resources:
     icon: docker
     check_every: 10m
     source:
-      repository: ghcr.io/vmware-tanzu/pinniped/pinniped-server
+      repository: ghcr.io/vmware/pinniped/pinniped-server
       tag: latest
 
   - name: pinniped-latest-main-image

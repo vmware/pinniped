@@ -1,1 +1,1 @@
-Please see https://github.com/vmware-tanzu/pinniped/blob/main/CONTRIBUTING.md
+Please see https://github.com/vmware/pinniped/blob/main/CONTRIBUTING.md

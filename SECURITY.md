@@ -1,1 +1,1 @@
-Please see https://github.com/vmware-tanzu/pinniped/blob/main/SECURITY.md
+Please see https://github.com/vmware/pinniped/blob/main/SECURITY.md

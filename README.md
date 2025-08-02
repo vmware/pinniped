@@ -1,6 +1,6 @@
 # Pinniped's `ci` branch
 
-This `ci` branch contains the CI/CD tooling for [Pinniped](https://github.com/vmware-tanzu/pinniped).
+This `ci` branch contains the CI/CD tooling for [Pinniped](https://github.com/vmware/pinniped).
 
 The documentation and code in this branch is mainly intended for the maintainers of Pinniped.
 
@@ -13,20 +13,20 @@ for these files was not copied from the private repository at the time of this m
 ## Reporting an issue in this branch
 
 Found a bug or would like to make an enhancement request?
-Please report issues in [this repo](https://github.com/vmware-tanzu/pinniped).
+Please report issues in [this repo](https://github.com/vmware/pinniped).
 
 ## Reporting security vulnerabilities
 
-Please follow the procedure described in [SECURITY.md](https://github.com/vmware-tanzu/pinniped/blob/main/SECURITY.md).
+Please follow the procedure described in [SECURITY.md](https://github.com/vmware/pinniped/blob/main/SECURITY.md).
 
 ## Creating a release
 
 When the team is preparing to ship a release, a maintainer will create a new
-GitHub [Issue](https://github.com/vmware-tanzu/pinniped/issues/new/choose) in this repo to
+GitHub [Issue](https://github.com/vmware/pinniped/issues/new/choose) in this repo to
 collaboratively track progress on the release checklist. As tasks are completed,
 the team will check them off. When all the tasks are completed, the issue is closed.
 
-The release checklist is committed to this repo as an [issue template](https://github.com/vmware-tanzu/pinniped/tree/main/.github/ISSUE_TEMPLATE/release_checklist.md).
+The release checklist is committed to this repo as an [issue template](https://github.com/vmware/pinniped/tree/main/.github/ISSUE_TEMPLATE/release_checklist.md).
 
 ## Pipelines
 
@@ -115,7 +115,7 @@ Some pipelines use github [webhooks to trigger resource checks](https://concours
 rather than the default of polling every minute, to make these pipelines more responsive and use fewer compute resources
 for running checks. Refer to places where `webhook_token` is configured in various `pipeline.yml` files.
 
-To make these webhooks work, they must be defined on the [GitHub repo's settings](https://github.com/vmware-tanzu/pinniped/settings/hooks).
+To make these webhooks work, they must be defined on the [GitHub repo's settings](https://github.com/vmware/pinniped/settings/hooks).
 
 ## Installing and operating Concourse
 

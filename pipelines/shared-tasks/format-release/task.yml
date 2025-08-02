@@ -43,7 +43,7 @@ run:
 
       | Image          | Registry      |
       | -------------- | ------------- |
-      | \`ghcr.io/vmware-tanzu/pinniped/pinniped-server:$THIS_VERSION\`  | GitHub Container Registry |
+      | \`ghcr.io/vmware/pinniped/pinniped-server:$THIS_VERSION\`  | GitHub Container Registry |
       | \`docker.io/getpinniped/pinniped-server:$THIS_VERSION\`          | DockerHub                 |
 
       These images can also be referenced by their digest: \`$(cat ci-build-image/digest)\`.
@@ -67,7 +67,7 @@ run:
       ### Diffs
 
       *TODO*: Make sure the following references the correct version tags. Note that the link will not work until the release is published (made public):<br/>
-      A complete list of changes can be found [here](https://github.com/vmware-tanzu/pinniped/compare/$PREVIOUS_VERSION...$THIS_VERSION).
+      A complete list of changes can be found [here](https://github.com/vmware/pinniped/compare/$PREVIOUS_VERSION...$THIS_VERSION).
 
       ## Acknowledgements
 
