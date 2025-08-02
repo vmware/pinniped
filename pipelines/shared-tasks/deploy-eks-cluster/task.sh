@@ -13,7 +13,7 @@ aws configure set credential_source Environment --profile service-account
 aws configure set role_arn "$AWS_ROLE_ARN" --profile service-account
 
 # Set some variables.
-CLUSTER_NAME="eks-$(python -c 'import os,binascii; print binascii.b2a_hex(os.urandom(8))')"
+CLUSTER_NAME="eks-$(openssl rand -hex 8)"
 ADMIN_USERNAME="$CLUSTER_NAME-admin"
 export CLUSTER_NAME
 export ADMIN_USERNAME
