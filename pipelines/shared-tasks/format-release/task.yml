@@ -1,4 +1,4 @@
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 ---
@@ -6,8 +6,8 @@ platform: linux
 image_resource:
   type: registry-image
   source:
-    repository: debian
-    tag: 10.8-slim
+    repository: golang
+    tag: '1.24.5'
 inputs:
   - name: pinniped
   - name: release-semver
@@ -22,8 +22,6 @@ run:
   args:
     - -xeuc
     - |
-      ( apt update && apt install -y git ) 2>&1 > install.log || cat install.log
-
       THIS_VERSION="v$(cat release-semver/version)"
       PREVIOUS_VERSION="v$(cat previous-release-semver/version)"
 
