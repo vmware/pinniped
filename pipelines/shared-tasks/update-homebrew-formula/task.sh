@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -xeuo pipefail
@@ -27,8 +27,7 @@ if [[ "$current_revision" != "$new_revision" ]]; then
     > homebrew-pinniped-out/pinniped-cli.rb
 
   cd homebrew-pinniped-out
-  apt update >/dev/null
-  apt install git -y >/dev/null
+
   git config user.email "pinniped-ci-bot@users.noreply.github.com"
   git config user.name "Pinny"
   git commit -a -m "pinniped-cli.rb: update to $new_version"
