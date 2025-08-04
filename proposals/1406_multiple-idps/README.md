@@ -36,7 +36,7 @@ Additionally, the server-side code also contains the necessary support to handle
 providers.
 
 We added
-[an artificial limitation](https://github.com/vmware-tanzu/pinniped/blob/60d12d88ac7b32235cc4dd848289adf06ab9c58b/internal/oidc/auth/auth_handler.go#L407-L409)
+[an artificial limitation](https://github.com/vmware/pinniped/blob/60d12d88ac7b32235cc4dd848289adf06ab9c58b/internal/oidc/auth/auth_handler.go#L407-L409)
 in the FederationDomain's authorize endpoint's source code which prevents all logins from proceeding when there are
 multiple OIDCIdentityProviders, LDAPIdentityProviders, and ActiveDirectoryIdentityProviders in use at the same time.
 This was done to defer designing the feature to make it possible to disambiguate usernames and group names from
@@ -161,7 +161,7 @@ The JWKS and OIDC discovery endpoints don't know anything about identity provide
 
 To allow admin users to define their own simple business logic for identity transformations and authentication policies,
 we will embed the Common Expressions Language (CEL) in the Supervisor.
-(See [#694](https://github.com/vmware-tanzu/pinniped/pull/694) for more details about why CEL is a
+(See [#694](https://github.com/vmware/pinniped/pull/694) for more details about why CEL is a
 good fit for this use case.)
 
 The FederationDomain CRD would be further enhanced to allow identity transformation and authentication policy functions
@@ -415,7 +415,7 @@ See "Implementation Plan" section below.
 ### Other Approaches Considered
 
 Rather than using CEL, other embedded languages were also considered.
-See [#694](https://github.com/vmware-tanzu/pinniped/pull/694).
+See [#694](https://github.com/vmware/pinniped/pull/694).
 
 Rather than using any embedded language, Pinniped could implement a library of similar identity transformations and authentication
 policy functions in the Golang source code and allow them to be used by reference on a FederationDomain in a similar
@@ -471,7 +471,7 @@ stories. Each story would include writing all applicable unit and integration te
    to have multiple. Add a validation that FederationDomains are not allowed to have conflicting URL paths. Add tests
    that ensure FederationDomains cannot lookup sessions from other FederationDomains. Improve logging to make debugging
    easier for ingress and TLS certificates problems for FederationDomains
-   (see [#1393](https://github.com/vmware-tanzu/pinniped/issues/1393)).
+   (see [#1393](https://github.com/vmware/pinniped/issues/1393)).
 6. *Docs Story*: Document how to configure FederationDomains, including what is the concept of a
    FederationDomain, why/when to have multiple, how to debug ingress and TLS certificates for multiple FederationDomains,
    and how to decide on issuer URLs for the FederationDomains.

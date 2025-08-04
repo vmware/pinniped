@@ -25,7 +25,7 @@ This how-to guide assumes that you have already [installed the Pinniped Supervis
 ## Summary
 
 When the Pinniped Supervisor is installed using the YAML files which are attached to the
-[GitHub releases](https://github.com/vmware-tanzu/pinniped/releases), then the following additional configuration
+[GitHub releases](https://github.com/vmware/pinniped/releases), then the following additional configuration
 is required before your end users can use the Supervisor:
 
 1. You must create a new Service to expose port 8443 of the Supervisor pods, and you must configure your preferred
@@ -113,7 +113,7 @@ Some common approaches are:
    HTTP port to listen on a Unix domain socket, such as when the service mesh injects a sidecar container that can
    securely access the socket from within the same Pod. Alternatively, the HTTP port can be configured as a TCP listener
    on loopback interfaces to receive traffic from sidecar containers.
-   See the `endpoints` option in [deploy/supervisor/values.yml](https://github.com/vmware-tanzu/pinniped/blob/main/deploy/supervisor/values.yaml)
+   See the `endpoints` option in [deploy/supervisor/values.yml](https://github.com/vmware/pinniped/blob/main/deploy/supervisor/values.yaml)
    for more information.
    Using either a Unix domain socket or a loopback interface listener would prevent any unencrypted traffic from
    accidentally being transmitted from outside the Pod into the Supervisor app's HTTP port.
@@ -140,7 +140,7 @@ use an Ingress then you'll need to create a Service which the Ingress can use as
 create the Service will depend on how you choose to install the Supervisor:
 
 - If you installed using `ytt` then you can use
-the related `service_*` options from [deploy/supervisor/values.yml](https://github.com/vmware-tanzu/pinniped/blob/main/deploy/supervisor/values.yaml)
+the related `service_*` options from [deploy/supervisor/values.yml](https://github.com/vmware/pinniped/blob/main/deploy/supervisor/values.yaml)
 to create a Service. This will expose the appropriate port.
 - If you installed using the pre-rendered manifests attached to the Pinniped GitHub releases, then you can create
 the Service separately after installing the Supervisor app.

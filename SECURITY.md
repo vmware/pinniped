@@ -14,7 +14,7 @@ If you know of a publicly disclosed security vulnerability for Pinniped, please 
 
 **IMPORTANT: Do not file public issues on GitHub for security vulnerabilities**
 
-To report a vulnerability or a security-related issue, please contact the VMware email address with the details of the vulnerability. The email will be fielded by the VMware Security Team and then shared with the Pinniped maintainers who have committer and release permissions. Emails will be addressed within 3 business days, including a detailed plan to investigate the issue and any potential workarounds to perform in the meantime. Do not report non-security-impacting bugs through this channel. Use [GitHub issues](https://github.com/vmware-tanzu/pinniped/issues/new/choose) instead.
+To report a vulnerability or a security-related issue, please contact the VMware email address with the details of the vulnerability. The email will be fielded by the VMware Security Team and then shared with the Pinniped maintainers who have committer and release permissions. Emails will be addressed within 3 business days, including a detailed plan to investigate the issue and any potential workarounds to perform in the meantime. Do not report non-security-impacting bugs through this channel. Use [GitHub issues](https://github.com/vmware/pinniped/issues/new/choose) instead.
 
 ## Proposed Email Content
 
@@ -48,7 +48,7 @@ The VMware Security Team will respond to vulnerability reports as follows:
 
 ## Public Disclosure Process
 
-The Security Team publishes a [public advisory](https://github.com/vmware-tanzu/pinniped/security/advisories) to the Pinniped community via GitHub. In most cases, additional communication via Slack, Twitter, mailing lists, blog and other channels will assist in educating Pinniped users and rolling out the patched release to affected users.
+The Security Team publishes a [public advisory](https://github.com/vmware/pinniped/security/advisories) to the Pinniped community via GitHub. In most cases, additional communication via Slack, Twitter, mailing lists, blog and other channels will assist in educating Pinniped users and rolling out the patched release to affected users.
 
 The Security Team will also publish any mitigating steps users can take until the fix can be applied to their Pinniped instances. Pinniped distributors will handle creating and publishing their own security advisories.
 

@@ -25,7 +25,7 @@ You may have a similar need for several reasons, such as:
 4. **Backwards Compatibility:** you want to deploy two versions of your controller and provide a window of time for consumers to smoothly upgrade to the new version.
 5. **Controller Development:** you want to run, for example, the *stable* and *alpha* versions of your controller on the same cluster. Most cluster users will only rely on the stable version, but some test workloads will use the alpha version.
 
-With [Pinniped v0.5.0](https://github.com/vmware-tanzu/pinniped/releases/v0.5.0), we wanted to be able to bundle an opinionated configuration of Pinniped into our downstream commercial products while also allowing our customers to install their own Pinniped instance and configure it however they like.
+With [Pinniped v0.5.0](https://github.com/vmware/pinniped/releases/v0.5.0), we wanted to be able to bundle an opinionated configuration of Pinniped into our downstream commercial products while also allowing our customers to install their own Pinniped instance and configure it however they like.
 
 This post describes how we approached the need for multiple Pinnipeds in v0.5.0.
    
@@ -119,18 +119,18 @@ As a team, we have no immediate plans for either of these ideas, but if you are 
 [apiserver-pkg]: https://pkg.go.dev/k8s.io/apiserver/pkg/server
 [apiservice]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#apiservice-v1-apiregistration-k8s-io
 [crd]: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
-[custom-scheme]: https://github.com/vmware-tanzu/pinniped/blob/main/internal/concierge/server/server.go#L182
-[discussion]: https://github.com/vmware-tanzu/pinniped/discussions/386
-[groupsuffix]: https://github.com/vmware-tanzu/pinniped/blob/main/internal/groupsuffix/groupsuffix.go
+[custom-scheme]: https://github.com/vmware/pinniped/blob/main/internal/concierge/server/server.go#L182
+[discussion]: https://github.com/vmware/pinniped/discussions/386
+[groupsuffix]: https://github.com/vmware/pinniped/blob/main/internal/groupsuffix/groupsuffix.go
 [ingress-spec]: https://kubernetes.io/docs/reference/kubernetes-api/services-resources/ingress-v1/#IngressSpec
-[kubeclient-client]: https://github.com/vmware-tanzu/pinniped/blob/v0.5.0/internal/kubeclient/kubeclient.go#L22
-[kubeclient-middleware]: https://github.com/vmware-tanzu/pinniped/blob/v0.5.0/internal/kubeclient/middleware.go#L17-L19
+[kubeclient-client]: https://github.com/vmware/pinniped/blob/v0.5.0/internal/kubeclient/kubeclient.go#L22
+[kubeclient-middleware]: https://github.com/vmware/pinniped/blob/v0.5.0/internal/kubeclient/middleware.go#L17-L19
 [ownerreferences]: https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#owners-and-dependents
-[prepare-controllers]: https://github.com/vmware-tanzu/pinniped/blob/v0.5.0/internal/controllermanager/prepare_controllers.go#L116-L120
+[prepare-controllers]: https://github.com/vmware/pinniped/blob/v0.5.0/internal/controllermanager/prepare_controllers.go#L116-L120
 [rest-config-wrap]: https://pkg.go.dev/k8s.io/client-go/rest#Config.Wrap
 [roundtripper]: https://golang.org/pkg/net/http/#RoundTripper
 [runtime-scheme]: https://pkg.go.dev/k8s.io/apimachinery/pkg/runtime#Scheme
 [webhook-conversion]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#webhook-conversion
-[ytt-crd-overlay]: https://github.com/vmware-tanzu/pinniped/blob/v0.5.0/deploy/concierge/z0_crd_overlay.yaml
-[ytt-deployment]: https://github.com/vmware-tanzu/pinniped/blob/v0.5.0/deploy/concierge/deployment.yaml#L195
+[ytt-crd-overlay]: https://github.com/vmware/pinniped/blob/v0.5.0/deploy/concierge/z0_crd_overlay.yaml
+[ytt-deployment]: https://github.com/vmware/pinniped/blob/v0.5.0/deploy/concierge/deployment.yaml#L195
 [ytt]: https://carvel.dev/ytt/

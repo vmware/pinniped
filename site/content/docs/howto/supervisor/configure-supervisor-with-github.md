@@ -32,7 +32,7 @@ The Pinniped Supervisor supports both.
 
 The instructions below reference the steps needed to configure a GitHub App or GitHub OAuth2 App on https://github.com at the time of writing.
 GitHub UI and documentation changes frequently and may not exactly match the steps below.
-Please submit a PR at the [Pinniped repo](https://github.com/vmware-tanzu/pinniped) to resolve any discrepancies.
+Please submit a PR at the [Pinniped repo](https://github.com/vmware/pinniped) to resolve any discrepancies.
 
 ## Alternative 1: Create a GitHub App
 
@@ -169,7 +169,7 @@ When OAuth app restrictions are enabled, then the organization owner must approv
 
 ## Configure the Supervisor
 
-Create a [GitHubIdentityProvider](https://github.com/vmware-tanzu/pinniped/blob/main/generated/{{< latestcodegenversion >}}/README.adoc#githubidentityprovider) in the same namespace as the Supervisor.
+Create a [GitHubIdentityProvider](https://github.com/vmware/pinniped/blob/main/generated/{{< latestcodegenversion >}}/README.adoc#githubidentityprovider) in the same namespace as the Supervisor.
 
 The simplest example uses https://github.com as the source of identity.
 Note that you do not need to explicitly specify a GitHub host since `github.com` is the default.

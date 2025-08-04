@@ -30,7 +30,7 @@ tls:
 
 ## Background: TLS Certificate management tooling in Kubernetes Ecosystem
 
-[Cert-manager](https://cert-manager.io/docs/) and [trust-manager](https://cert-manager.io/docs/trust/trust-manager/) are among popular tools 
+[Cert-manager](https://cert-manager.io/docs/) and [trust-manager](https://cert-manager.io/docs/trust/trust-manager/) are among popular tools
 in the kubernetes ecosystem for certificate management.
 Vault is another tool of choice that allows cluster-operators to sync certificates and certificate authority bundles from sources external to the cluster.
 
@@ -145,7 +145,7 @@ metadata:
 
 ### Vault
 
-Based on the usage reported in [issues/1886](https://github.com/vmware-tanzu/pinniped/issues/1886) the CA trust bundle is externally sourced into the kubernetes cluster as a secret.
+Based on the usage reported in [issues/1886](https://github.com/vmware/pinniped/issues/1886) the CA trust bundle is externally sourced into the kubernetes cluster as a secret.
 
 Vault will source TLS CA bundles from external sources and distibute the trust bundle by creating a secret of type Opaque, according to the docs. See [vault developer docs](https://developer.hashicorp.com/vault/docs/platform/k8s/vso/api-reference#destination).
 
@@ -155,7 +155,7 @@ In conclusion, almost all of the tooling available to handle certificate operati
 
 ## Proposal
 
-Based on the brief survey of the certificate management tooling in the kubernetes ecosystem, having Pinniped custom resources carry reference to 
+Based on the brief survey of the certificate management tooling in the kubernetes ecosystem, having Pinniped custom resources carry reference to
 either kubernetes secrets or configmaps, with a customizable key name to source certificate authority data, will allow cluster-operators to plumb certificate management tooling into Pinniped custom resources.
 
 ### API Changes
@@ -178,41 +178,41 @@ Users can use the new `certificateAuthorityDataSource` field to specify:
 2. Using the `name` subfield, the name of the kubernetes secret or configmap.
    It is expected that this secret or configmap, if supplied, will exist in the same namespace where Pinniped is currently running.
    Pinniped controllers do not seek access to secrets or configmap in a different namespace where sensitive information may be stored.
-3. Using the `key` subfield, the key within the secret or the configmap where the certificate authority data can be located. The value associated 
+3. Using the `key` subfield, the key within the secret or the configmap where the certificate authority data can be located. The value associated
    with this key in the configmap is not expected to be base64 encoded. For secrets, they wil be read using kubernetes client-go which assures that
    the value read from the secret are base64 decoded.
 
 
 Implementing this proposal will result in changes to the following Pinniped CRDs and their respective controllers where the `TLSSpec` field is read.
 #### Supervisor
-For Pinniped Supervisor, the `TLSSpec` is generated using the [apis/supervisor/idp/v1alpha1/types_tls.go.tmpl](https://github.com/vmware-tanzu/pinniped/blob/main/apis/supervisor/idp/v1alpha1/types_tls.go.tmpl). This template will be updated to allow Pinniped Supervisor custom resources to source certificate authority data from kubernetes secrets or configmaps.
+For Pinniped Supervisor, the `TLSSpec` is generated using the [apis/supervisor/idp/v1alpha1/types_tls.go.tmpl](https://github.com/vmware/pinniped/blob/main/apis/supervisor/idp/v1alpha1/types_tls.go.tmpl). This template will be updated to allow Pinniped Supervisor custom resources to source certificate authority data from kubernetes secrets or configmaps.
 
 ##### `ActiveDirectoryIdentityProvider`
-The [`ValidateTLSConfig`](https://github.com/vmware-tanzu/pinniped/blob/main/internal/controller/supervisorconfig/upstreamwatchers/upstream_watchers.go#L138) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
+The [`ValidateTLSConfig`](https://github.com/vmware/pinniped/blob/main/internal/controller/supervisorconfig/upstreamwatchers/upstream_watchers.go#L138) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
 This function will continue to set the `TLSConfigurationValid` condition based on the validity.
 This functionality is shared with the `LDAPIdentityProvider` custom resource.
 
 ##### `LDAPIdentityProvider`
-The [`ValidateTLSConfig`](https://github.com/vmware-tanzu/pinniped/blob/main/internal/controller/supervisorconfig/upstreamwatchers/upstream_watchers.go#L138) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
+The [`ValidateTLSConfig`](https://github.com/vmware/pinniped/blob/main/internal/controller/supervisorconfig/upstreamwatchers/upstream_watchers.go#L138) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
 This function will continue to set the `TLSConfigurationValid` condition based on the validity.
 
 ##### `OIDCIdentityProvider`
-The [`getClient`](https://github.com/vmware-tanzu/pinniped/blob/main/internal/controller/supervisorconfig/oidcupstreamwatcher/oidc_upstream_watcher.go#L434) function will be updated to read and validate the certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
+The [`getClient`](https://github.com/vmware/pinniped/blob/main/internal/controller/supervisorconfig/oidcupstreamwatcher/oidc_upstream_watcher.go#L434) function will be updated to read and validate the certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
 A new condition with name `TLSConfigurationValid` will be added to this custom resource and will be part of the custom resource's status.
 
 ##### `GitHubIdentityProvider`
-The [`validateTLSConfiguration`](https://github.com/vmware-tanzu/pinniped/blob/main/internal/controller/supervisorconfig/githubupstreamwatcher/github_upstream_watcher.go#L362) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
+The [`validateTLSConfiguration`](https://github.com/vmware/pinniped/blob/main/internal/controller/supervisorconfig/githubupstreamwatcher/github_upstream_watcher.go#L362) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
 This function will continue to set the `TLSConfigurationValid` condition based on the validity.
 
 #### Concierge
-For Pinniped Concierge, the `TLSSpec` is generated using the [apis/concierge/authentication/v1alpha1/types_tls.go.tmpl](https://github.com/vmware-tanzu/pinniped/blob/main/apis/concierge/authentication/v1alpha1/types_tls.go.tmpl). This template will be updated to allow Pinniped Supervisor custom resources to source certificate authority data from kubernetes secrets or configmaps.
+For Pinniped Concierge, the `TLSSpec` is generated using the [apis/concierge/authentication/v1alpha1/types_tls.go.tmpl](https://github.com/vmware/pinniped/blob/main/apis/concierge/authentication/v1alpha1/types_tls.go.tmpl). This template will be updated to allow Pinniped Supervisor custom resources to source certificate authority data from kubernetes secrets or configmaps.
 
 ##### `WebhookAuthenticator`
-The [`validateTLSBundle`](https://github.com/vmware-tanzu/pinniped/blob/main/internal/controller/authenticator/webhookcachefiller/webhookcachefiller.go#L266) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
+The [`validateTLSBundle`](https://github.com/vmware/pinniped/blob/main/internal/controller/authenticator/webhookcachefiller/webhookcachefiller.go#L266) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
 This function will continue to set the `TLSConfigurationValid` condition based on the validity.
 
 ##### `JWTAuthenticator`
-The [`validateTLS`](https://github.com/vmware-tanzu/pinniped/blob/main/internal/controller/authenticator/jwtcachefiller/jwtcachefiller.go#L248) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
+The [`validateTLS`](https://github.com/vmware/pinniped/blob/main/internal/controller/authenticator/jwtcachefiller/jwtcachefiller.go#L248) function will be updated to read and validate certificate authority data sourced using the newly added `certificateAuthorityDataSource` field.
 This function will continue to set the `TLSConfigurationValid` condition based on the validity.
 
 
@@ -256,4 +256,3 @@ This could be accomplished by loading a valid but wrong CA bundle into the secre
 `TLSConfigurationValid` status condition indicates a valid TLS configuration, but that other status conditions indicate
 a failure to connect, and then loading the correct CA bundle into the secret or configmap (without changing the parent CR), and
 observing that the parent custom resource's status conditions indicate a successful connection.
-

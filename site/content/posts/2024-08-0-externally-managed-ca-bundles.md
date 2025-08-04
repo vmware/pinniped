@@ -232,6 +232,6 @@ $ kubectl get pods -A --kubeconfig pinniped-kubeconfig.yaml
 
 ## Where to read more
 
-- See the original proposal for this body of work [here](https://github.com/vmware-tanzu/pinniped/tree/main/proposals/1984_ca-bundle-from-secret-ref)
+- See the original proposal for this body of work [here](https://github.com/vmware/pinniped/tree/main/proposals/1984_ca-bundle-from-secret-ref)
 
 {{< community >}}

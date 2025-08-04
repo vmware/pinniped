@@ -23,7 +23,7 @@ Refer to our [FIPS reference documentation]({{< ref "docs/reference/fips.md" >}}
 
 ## Supervisor with default HTTPS listener port
 
-With [v0.13.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.13.0) we had announced that we will disable the use of default HTTP listeners.
+With [v0.13.0](https://github.com/vmware/pinniped/releases/tag/v0.13.0) we had announced that we will disable the use of default HTTP listeners.
 
 **Breaking change in this release: With this release, we disable the Supervisor's HTTP listener by default, and will not allow it to be configured to bind to anything other than loopback interfaces.**
 
@@ -35,7 +35,7 @@ This feature does not change any HTTPS listen port configuration nor does it cha
 2. Configure the HTTP listening port to listen on tcp loopback interfaces (ipv4, ipv6, or both) or on a unix domain socket file for listening for connections from inside the pod, for example connections from a service mesh's sidecar container
 3. Choose the port number for the HTTP listening port
 
-For more information on this feature refer to [#981](https://github.com/vmware-tanzu/pinniped/issues/981).
+For more information on this feature refer to [#981](https://github.com/vmware/pinniped/issues/981).
 
 ## Workspace ONE Identity Provider configuration
 
@@ -45,21 +45,21 @@ Refer to our detailed guide  on [how to configure supervisor with Workspace ONE 
 
 ## What else is in this release?
 
-In addition to the above features, this release also adds custom prefixes to Supervisor authcodes, access tokens, and refresh tokens. The prefixes are intended to make the tokens more identifiable to a user when seen out of context. The prefixes are `pin_ac_` for authcodes, `pin_at_` for access tokens, and `pin_rt_` for refresh tokens. See [#688](https://github.com/vmware-tanzu/pinniped/issues/688) for more on this.
-Refer to the [release notes for v0.16.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.16.0) for a complete list of fixes and features included in the release.
+In addition to the above features, this release also adds custom prefixes to Supervisor authcodes, access tokens, and refresh tokens. The prefixes are intended to make the tokens more identifiable to a user when seen out of context. The prefixes are `pin_ac_` for authcodes, `pin_at_` for access tokens, and `pin_rt_` for refresh tokens. See [#688](https://github.com/vmware/pinniped/issues/688) for more on this.
+Refer to the [release notes for v0.16.0](https://github.com/vmware/pinniped/releases/tag/v0.16.0) for a complete list of fixes and features included in the release.
 
 ## Community contributors
 
 The Pinniped community continues to grow, and is a vital part of the project's success. This release includes contributions from users [@vicmarbev](https://github.com/vicmarbev) and [@hectorj2f](https://github.com/hectorj2f). Thank you for helping improve Pinniped!
 
-[Are you using Pinniped?](https://github.com/vmware-tanzu/pinniped/discussions/152)  
+[Are you using Pinniped?](https://github.com/vmware/pinniped/discussions/152)  
 Did you try our new security hardening features?
 Are there other Identity Providers for which you want to see documentation similar to what we provided for Workspace ONE Access?  
 
 We thrive on community feedback and would like to hear more!  
 
 Reach out to us in [#pinniped](https://go.pinniped.dev/community/slack) on Kubernetes Slack,
-[create an issue](https://github.com/vmware-tanzu/pinniped/issues/new/choose) on our Github repository,
-or start a [discussion](https://github.com/vmware-tanzu/pinniped/discussions).
+[create an issue](https://github.com/vmware/pinniped/issues/new/choose) on our Github repository,
+or start a [discussion](https://github.com/vmware/pinniped/discussions).
 
 {{< community >}}

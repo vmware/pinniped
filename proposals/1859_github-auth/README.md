@@ -399,7 +399,7 @@ This will cause two concerns:
    sessions will increase the number of Secrets.
 2. Each new session will need to make several calls to the GitHub API, impacting the GitHub user's hourly rate limit.
 
-We can mitigate both effects using the techniques outlined in https://github.com/vmware-tanzu/pinniped/pull/1857.
+We can mitigate both effects using the techniques outlined in https://github.com/vmware/pinniped/pull/1857.
 By making the access token lifetime slightly longer, the user will be able to use their clusters for about 10 minutes,
 rather than 5 minutes, reducing the number of new sessions that they need to start per hour.
 By garbage collecting the session storage much faster for these sessions, the number of session storage Secrets
@@ -497,7 +497,7 @@ The implementation of these CLI commands would be as follows:
       the "pinniped login oidc" command to check the expiration date of the cached access token to make sure that
       it has not expired or is about to expire (otherwise, it checks the expiry of the cached ID token). Note that
       this is assuming that the related bug in the Pinniped CLI is fixed as outlined in
-      [this PR](https://github.com/vmware-tanzu/pinniped/pull/1857).
+      [this PR](https://github.com/vmware/pinniped/pull/1857).
     - It should take care to correctly handle unicode characters that might exist in flag values when
       invoking the subcommand, e.g. emojis in the upstream IDP name flag.
       As long as the subcommand is successful, its stdout results can be ignored, because we only care about

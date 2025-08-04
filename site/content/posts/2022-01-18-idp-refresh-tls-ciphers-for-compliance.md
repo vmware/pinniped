@@ -79,7 +79,7 @@ LDAP does not have a concept of sessions or refresh tokens. Hence we run LDAP qu
 
 #### *Update:* LDAP / Active Directory Group Refresh added in v0.15.0
 
-With the release of Pinniped [v0.15.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.15.0) in March 2022, we added support for refreshing LDAP and Active Directory groups. A user's group membership is refreshed as they interact with the supervisor to obtain new credentials. This allows group membership changes to be quickly reflected into Kubernetes clusters.
+With the release of Pinniped [v0.15.0](https://github.com/vmware/pinniped/releases/tag/v0.15.0) in March 2022, we added support for refreshing LDAP and Active Directory groups. A user's group membership is refreshed as they interact with the supervisor to obtain new credentials. This allows group membership changes to be quickly reflected into Kubernetes clusters.
 
 In some environments, frequent group membership queries may result in a significant performance impact on the identity provider and/or the supervisor. The best approach to handle performance impacts is to tweak the group query to be more performant, for example by disabling nested group search or by using a more targeted group search base. If the group search query cannot be made performant, and you are willing to have group memberships remain static for approximately a day, then set **skipGroupRefresh** to true.  Please be aware that this is an insecure configuration as authorization policies that are bound to group membership will not notice if a user has been removed from a particular group until their next login. Also, the skipGroupRefresh flag is an experimental feature that may be removed or significantly altered in the future. Consumers of this configuration should carefully read all release notes before upgrading to ensure that the meaning of this field has not changed. See example below for how to configure this in an ActiveDirectoryIdentityProvider custom resource.
 
@@ -128,19 +128,19 @@ The Concierge listen port now **defaults to port 10250** instead of the previous
 
 ## What else is in this release?
 
-Refer to the [release notes for v0.13.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.13.0) for a complete list of fixes and features included in the release.
+Refer to the [release notes for v0.13.0](https://github.com/vmware/pinniped/releases/tag/v0.13.0) for a complete list of fixes and features included in the release.
 
 ## Community contributors
 
 The Pinniped community continues to grow, and is a vital part of the project's success. This release includes contributions from users [@mayankbh](https://github.com/mayankbh) and [@rajat404](https://github.com/rajat404). Thank you for helping improve Pinniped!
 
 We thrive on community feedback.
-[Are you using Pinniped?](https://github.com/vmware-tanzu/pinniped/discussions/152)  
+[Are you using Pinniped?](https://github.com/vmware/pinniped/discussions/152)  
 Did you try our new security hardening features?
 What other configurations do you need for secure authentication of users to your Kubernetes clusters?
 
 Find us in [#pinniped](https://go.pinniped.dev/community/slack) on Kubernetes Slack,
-[create an issue](https://github.com/vmware-tanzu/pinniped/issues/new/choose) on our Github repository,
-or start a [Discussion](https://github.com/vmware-tanzu/pinniped/discussions).
+[create an issue](https://github.com/vmware/pinniped/issues/new/choose) on our Github repository,
+or start a [Discussion](https://github.com/vmware/pinniped/discussions).
 
 {{< community >}}

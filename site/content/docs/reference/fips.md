@@ -15,14 +15,14 @@ environment with FIPS compliance requirements, you will have to build
 the binaries yourself using the `fips_strict` build tag and Golang's
 `GOEXPERIMENT=boringcrypto` compiler option.
 
-The Pinniped team provides an [example Dockerfile](https://github.com/vmware-tanzu/pinniped/blob/main/hack/Dockerfile_fips)
+The Pinniped team provides an [example Dockerfile](https://github.com/vmware/pinniped/blob/main/hack/Dockerfile_fips)
 demonstrating how you can build Pinniped images in a FIPS compatible way.
 However, we do not provide official support for FIPS configuration.
 We provide this for informational purposes only.
 
 To build Pinniped use our example FIPS Dockerfile, you can run:
 ```bash
-$ git clone git@github.com:vmware-tanzu/pinniped.git
+$ git clone git@github.com:vmware/pinniped.git
 $ cd pinniped
 $ git checkout {{< latestversion >}}
 $ docker build -f hack/Dockerfile_fips .

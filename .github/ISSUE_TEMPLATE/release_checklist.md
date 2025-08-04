@@ -17,7 +17,7 @@ assignees: ''
   - [ ] For go.mod direct dependencies that are v2 or above, such as `github.com/google/go-github/vXX`, check to see if there is a new major version available. Try using `hack/update-go-mod/update-majors.sh`.
   - [ ] Evaluate all `replace` directives in the `go.mod` file. Are those versions up-to-date? Can any `replace` directives be removed?
   - [ ] Evaluate all overrides in the `hack/update-go-mod/overrides.conf` file. Are those versions up-to-date? Can those overrides be removed?
-- [ ] Ensure that Pinniped's codegen is up-to-date with the latest Kubernetes releases by making sure this [file](https://github.com/vmware-tanzu/pinniped/blob/main/hack/lib/kube-versions.txt) is updated compared to the latest releases listed [here for active branches](https://kubernetes.io/releases/) and [here for non-active branches](https://kubernetes.io/releases/patch-releases/#non-active-branch-history)
+- [ ] Ensure that Pinniped's codegen is up-to-date with the latest Kubernetes releases by making sure this [file](https://github.com/vmware/pinniped/blob/main/hack/lib/kube-versions.txt) is updated compared to the latest releases listed [here for active branches](https://kubernetes.io/releases/) and [here for non-active branches](https://kubernetes.io/releases/patch-releases/#non-active-branch-history)
 - [ ] Ensure that the `k8s-code-generator` CI job definitions are up-to-date with the latest Go, K8s, and `controller-gen` versions
 - [ ] All relevant feature and docs PRs are merged
 - [ ] The [main pipeline](https://ci.pinniped.broadcom.net/teams/main/pipelines/main) is green, up to and including the `ready-to-release` job. Check that the expected git commit has passed the `ready-to-release` job.
@@ -25,7 +25,7 @@ assignees: ''
 - [ ] Optional: a blog post for the release is written and submitted as a PR but not merged yet
 - [ ] All merged user stories are accepted (manually tested)
 - [ ] Only after all stories are accepted, manually trigger the `release` job to create a draft GitHub release
-- [ ] Manually edit the draft release notes on the [GitHub release](https://github.com/vmware-tanzu/pinniped/releases) to describe the contents of the release, using the format which was automatically added to the draft release
+- [ ] Manually edit the draft release notes on the [GitHub release](https://github.com/vmware/pinniped/releases) to describe the contents of the release, using the format which was automatically added to the draft release
 - [ ] Publish (i.e. make public) the draft release
 - [ ] After making the release public, the jobs in the [main pipeline](https://ci.pinniped.broadcom.net/teams/main/pipelines/main) beyond the release job should auto-trigger, so check to make sure that they passed
 - [ ] Edit the blog post's date to make it match the actual release date, and merge the blog post PR to make it live on the website

@@ -20,7 +20,7 @@ kubectl apply -f https://get.pinniped.dev/latest/install-local-user-authenticato
 
 ## Installing a Specific Version with Default Options
 
-Choose your preferred [release](https://github.com/vmware-tanzu/pinniped/releases) version number
+Choose your preferred [release](https://github.com/vmware/pinniped/releases) version number
 and use it to replace the version number in the URL below.
 
 ```bash

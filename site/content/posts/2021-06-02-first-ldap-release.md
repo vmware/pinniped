@@ -12,7 +12,7 @@ tags: ['Ryan Richard', 'release']
 *Photo from [matos11 on Pixabay](https://pixabay.com/photos/seal-animal-water-hairy-3585727/)*
 
 Pinniped is a “batteries included” authentication system for Kubernetes clusters.
-With the [release of v0.9.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.9.0), Pinniped now supports using LDAP identities to log in to Kubernetes clusters.
+With the [release of v0.9.0](https://github.com/vmware/pinniped/releases/tag/v0.9.0), Pinniped now supports using LDAP identities to log in to Kubernetes clusters.
 
 This post describes how v0.9.0 fits into Pinniped’s quest to bring a smooth, unified login experience to all Kubernetes clusters.
 
@@ -66,7 +66,7 @@ as an LDAP provider, and to include AD in our automated testing suite. Stay tune
 
 In the meantime, please let us know if you run into any issues or concerns using your LDAP system.
 Feel free to ask questions via [#pinniped](https://go.pinniped.dev/community/slack) on Kubernetes Slack,
-or [create an issue](https://github.com/vmware-tanzu/pinniped/issues/new/choose) on our Github repository.
+or [create an issue](https://github.com/vmware/pinniped/issues/new/choose) on our Github repository.
 
 ### Security Considerations
 
@@ -112,7 +112,7 @@ And it is important that your users are using authentic kubeconfig files handed 
 
 Once you have [installed]({{< ref "docs/howto/install-supervisor.md" >}})
 and [configured]({{< ref "docs/howto/supervisor/configure-supervisor.md" >}}) the Supervisor, adding an LDAP provider is as easy as creating
-an [LDAPIdentityProvider](https://github.com/vmware-tanzu/pinniped/blob/main/generated/1.20/README.adoc#ldapidentityprovider) resource.
+an [LDAPIdentityProvider](https://github.com/vmware/pinniped/blob/main/generated/1.20/README.adoc#ldapidentityprovider) resource.
 
 We've provided examples of using [OpenLDAP]({{< ref "docs/howto/install-supervisor.md" >}})
 and [JumpCloud]({{< ref "docs/howto/install-supervisor.md" >}}) as LDAP providers.
@@ -144,8 +144,8 @@ We thrive on community feedback. Did you try our new LDAP features?
 What else do you need from identity systems for your Kubernetes clusters?
 
 Find us in [#pinniped](https://go.pinniped.dev/community/slack) on Kubernetes Slack,
-[create an issue](https://github.com/vmware-tanzu/pinniped/issues/new/choose) on our Github repository,
-or start a [Discussion](https://github.com/vmware-tanzu/pinniped/discussions).
+[create an issue](https://github.com/vmware/pinniped/issues/new/choose) on our Github repository,
+or start a [Discussion](https://github.com/vmware/pinniped/discussions).
 
 Thanks for reading our announcement!
 

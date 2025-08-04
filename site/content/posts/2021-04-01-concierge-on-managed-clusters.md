@@ -159,5 +159,5 @@ We invite your suggestions and contributions to make Pinniped work across all fl
 [kube-authn]: https://kubernetes.io/docs/reference/access-authn-authz/authentication/
 [kubeadm]: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/
 [nodeselector]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-[tcr]: https://github.com/vmware-tanzu/pinniped/blob/main/generated/1.20/README.adoc#tokencredentialrequest
+[tcr]: https://github.com/vmware/pinniped/blob/main/generated/1.20/README.adoc#tokencredentialrequest
 [tolerations]: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/

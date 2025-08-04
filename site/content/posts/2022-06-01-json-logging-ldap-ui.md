@@ -42,7 +42,7 @@ Tue, 24 May 2022 11:18:50 EDT  cmd/kubeconfig.go:469  discovered WebhookAuthenti
 
 ## LDAP User Interface
 
-With [v0.18.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.18.0) we are also adding support for a User Interface that users can access to input their credentials and login to their LDAP or Active Directory Identity Provider(IDP). This feature is a first step in our effort to provide a UI-driven workflow for our users. We will have more features that support UI workflows coming up in our next release, so stay tuned for that!
+With [v0.18.0](https://github.com/vmware/pinniped/releases/tag/v0.18.0) we are also adding support for a User Interface that users can access to input their credentials and login to their LDAP or Active Directory Identity Provider(IDP). This feature is a first step in our effort to provide a UI-driven workflow for our users. We will have more features that support UI workflows coming up in our next release, so stay tuned for that!
 
 When using the Pinniped CLI, a successful login takes the user to the regular form_post success page, just like the previously supported *browser authcode flow* for an OIDC IDP.
 This feature changes how the `pinniped get kubeconfig` cli deals with ambiguous flows. Previously, if there was more than one flow advertised for an IDP, the cli would require users to use the `--upstream-identity-provider-flow` flag.  Now, it chooses the first flow type in the Supervisor's discovery response by default.
@@ -73,19 +73,19 @@ This can include (but is not limited to) the following features:
 *Note* that Pinniped relies on the user's IDP to address advanced security concerns such as brute force protection, username enumeration, etc.
 
 ## What else is in this release?
-Refer to the [release notes for v0.18.0](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.18.0) for a complete list of fixes and features included in the release.
+Refer to the [release notes for v0.18.0](https://github.com/vmware/pinniped/releases/tag/v0.18.0) for a complete list of fixes and features included in the release.
 
 ## Community contributors
 
 The Pinniped community continues to grow, and is a vital part of the project's success.
 
-[Are you using Pinniped?](https://github.com/vmware-tanzu/pinniped/discussions/152)  
+[Are you using Pinniped?](https://github.com/vmware/pinniped/discussions/152)  
 Have you tried any of our new features? Let us know what you think of our logging and UI features and if you are looking for any of the enhancements mentioned above.   
 
 We thrive on community feedback and would like to hear more!  
 
 Reach out to us in [#pinniped](https://go.pinniped.dev/community/slack) on Kubernetes Slack,
-[create an issue](https://github.com/vmware-tanzu/pinniped/issues/new/choose) on our Github repository,
-or start a [discussion](https://github.com/vmware-tanzu/pinniped/discussions).
+[create an issue](https://github.com/vmware/pinniped/issues/new/choose) on our Github repository,
+or start a [discussion](https://github.com/vmware/pinniped/discussions).
 
 {{< community >}}

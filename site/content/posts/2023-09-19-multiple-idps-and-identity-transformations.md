@@ -22,7 +22,7 @@ identity providers and more. If you want to learn about using multiple different
 providers with a fleet of clusters federated to a single identity broker, read on!
 
 Additionally, the release includes several dependency updates and fixes.
-See the [release notes](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.26.0) for more details.
+See the [release notes](https://github.com/vmware/pinniped/releases/tag/v0.26.0) for more details.
 
 ## Background: Identity provider resources
 
@@ -132,7 +132,7 @@ with these new features, see:
 - The documentation for [creating FederationDomains]({{< ref "docs/howto/supervisor/configure-supervisor.md" >}}).
 - The documentation for [configuring identity providers on FederationDomains]({{< ref "docs/howto/supervisor/configure-supervisor-federationdomain-idps.md" >}}).
 - The API documentation for the `spec.identityProviders` setting on the
-[FederationDomain](https://github.com/vmware-tanzu/pinniped/blob/main/generated/latest/README.adoc#federationdomain)
+[FederationDomain](https://github.com/vmware/pinniped/blob/main/generated/latest/README.adoc#federationdomain)
 resource.
 
 {{< community >}}

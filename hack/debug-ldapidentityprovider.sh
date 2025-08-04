@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2023-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -113,7 +113,7 @@ kubectl get "$resource_type_and_name" \
   --output yaml >"$RESOURCE_FILE"
 
 # See docs for LDAPIdentityProvider.spec for details about these settings.
-# https://github.com/vmware-tanzu/pinniped/blob/main/generated/1.28/README.adoc#k8s-api-go-pinniped-dev-generated-1-28-apis-supervisor-idp-v1alpha1-ldapidentityproviderspec
+# https://github.com/vmware/pinniped/blob/main/generated/1.28/README.adoc#k8s-api-go-pinniped-dev-generated-1-28-apis-supervisor-idp-v1alpha1-ldapidentityproviderspec
 LDAP_HOST=$(yq '.spec.host' "$RESOURCE_FILE")                                                                       # required
 LDAP_CA_BUNDLE=$(yq '.spec.tls.certificateAuthorityData // ""' "$RESOURCE_FILE")                                    # optional
 LDAP_BIND_SECRETNAME=$(yq '.spec.bind.secretName' "$RESOURCE_FILE")                                                 # required

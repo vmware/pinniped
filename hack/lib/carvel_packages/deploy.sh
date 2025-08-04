@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2023 the Pinniped contributors. All Rights Reserved.
+# Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 #
@@ -53,7 +53,7 @@ dest_dir="deploy_carvel_tmp"
 # Deploy kapp-controller onto kind cluster.
 log_note "Installing kapp-controller on cluster..."
 KAPP_CONTROLLER_GLOBAL_NAMESPACE="kapp-controller-packaging-global"
-kapp deploy --app kapp-controller --file "https://github.com/vmware-tanzu/carvel-kapp-controller/releases/latest/download/release.yml" -y
+kapp deploy --app kapp-controller --file "https://github.com/carvel-dev/kapp-controller/releases/latest/download/release.yml" -y
 
 # Ensure this directory exists though this script will run several times.
 mkdir -p "${dest_dir}/install"

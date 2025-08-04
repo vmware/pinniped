@@ -4,7 +4,7 @@ title: "Pinniped"
 theme: "pinniped"
 params:
   twitter_url: "https://twitter.com/projectpinniped"
-  github_url: "https://github.com/vmware-tanzu/pinniped"
+  github_url: "https://github.com/vmware/pinniped"
   slack_url: "https://go.pinniped.dev/community/slack"
   community_url: "https://go.pinniped.dev/community"
   latest_version: v0.39.0

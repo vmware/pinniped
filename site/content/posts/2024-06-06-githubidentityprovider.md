@@ -22,7 +22,7 @@ Now you can easily control their authentication and authorization to your fleets
 using that same GitHub identity, with the same great security and user experience that Pinniped already offers.
 
 Additionally, the release includes several dependency updates and other changes.
-See the [release notes](https://github.com/vmware-tanzu/pinniped/releases/tag/v0.31.0) for more details.
+See the [release notes](https://github.com/vmware/pinniped/releases/tag/v0.31.0) for more details.
 
 ## Configuring GitHub authentication
 
@@ -187,7 +187,7 @@ This blog post is just a quick overview of this new feature. To learn about how 
 with this new feature, see:
 
 - The [GitHub configuration guide]({{< ref "docs/howto/supervisor/configure-supervisor-with-github.md" >}}).
-- The [GitHubIdentityProvider resource](https://github.com/vmware-tanzu/pinniped/blob/main/generated/latest/README.adoc#githubidentityprovider) documentation.
+- The [GitHubIdentityProvider resource](https://github.com/vmware/pinniped/blob/main/generated/latest/README.adoc#githubidentityprovider) documentation.
 - The documentation for [configuring identity providers on FederationDomains]({{< ref "docs/howto/supervisor/configure-supervisor-federationdomain-idps.md" >}}).
 
 {{< community >}}

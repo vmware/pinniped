@@ -160,7 +160,7 @@ Once dynamic clients are implemented:
 #### New Dependencies
 This should be kept to a very simple HTML page with minimal, clean CSS styling.
 Javascript should be avoided.
-The styling should match the [form post html page](https://github.com/vmware-tanzu/pinniped/tree/main/internal/federationdomain/formposthtml)
+The styling should match the [form post html page](https://github.com/vmware/pinniped/tree/main/internal/federationdomain/formposthtml)
 as much as possible, we should reuse some of the existing css and add to it to keep the style consistent.
 
 #### Observability Considerations
@@ -208,4 +208,4 @@ Then once dynamic clients exist, we can add functionality to accept requests
 from those clients as well.
 
 ## Implementation PRs
-- https://github.com/vmware-tanzu/pinniped/pull/1163
+- https://github.com/vmware/pinniped/pull/1163

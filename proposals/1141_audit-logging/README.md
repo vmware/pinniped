@@ -220,7 +220,7 @@ Depending on the event type, an event might include other keys, such as:
 
 The names of many of these keys are purposefully similar to the names of the keys used by Kubernetes audit events to
 make them feel familiar. Also, where it makes sense, the key names should be similar to
-[those used in the Pinniped Pod logs](https://github.com/vmware-tanzu/pinniped/blob/main/internal/plog/zap.go#L104-L120).
+[those used in the Pinniped Pod logs](https://github.com/vmware/pinniped/blob/main/internal/plog/zap.go#L104-L120).
 
 The details of these additional keys will be worked out as the details of the specific events are being worked out,
 during implementation of this proposal.

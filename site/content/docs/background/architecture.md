@@ -52,7 +52,7 @@ Pinniped currently supports the following external identity provider types.
 1. Identities from GitHub or GitHub Enterprise.
 
 The
-[`idp.supervisor.pinniped.dev`](https://github.com/vmware-tanzu/pinniped/blob/main/generated/latest/README.adoc#k8s-api-idp-supervisor-pinniped-dev-v1alpha1)
+[`idp.supervisor.pinniped.dev`](https://github.com/vmware/pinniped/blob/main/generated/latest/README.adoc#k8s-api-idp-supervisor-pinniped-dev-v1alpha1)
 API group contains the Kubernetes custom resources that configure the Pinniped
 Supervisor's external IDPs.
 
@@ -72,7 +72,7 @@ Pinniped supports the following authenticator types.
    serve as an extension point for Pinniped by allowing for integration of arbitrary custom authenticators.
    While a custom implementation may be in any language or framework, this project provides a
    sample implementation in Golang. See the `ServeHTTP` method of
-   [internal/localuserauthenticator/localuserauthenticator.go](https://github.com/vmware-tanzu/pinniped/blob/main/internal/localuserauthenticator/localuserauthenticator.go).
+   [internal/localuserauthenticator/localuserauthenticator.go](https://github.com/vmware/pinniped/blob/main/internal/localuserauthenticator/localuserauthenticator.go).
 
 1. A JSON Web Token (JWT) authenticator, which will validate and parse claims
    from JWTs.  This can be used to validate tokens that are issued by the
@@ -85,7 +85,7 @@ Pinniped supports the following authenticator types.
    set on the `kube-apiserver` process.
 
 The
-[`authentication.concierge.pinniped.dev`](https://github.com/vmware-tanzu/pinniped/blob/main/generated/latest/README.adoc#k8s-api-authentication-concierge-pinniped-dev-v1alpha1)
+[`authentication.concierge.pinniped.dev`](https://github.com/vmware/pinniped/blob/main/generated/latest/README.adoc#k8s-api-authentication-concierge-pinniped-dev-v1alpha1)
 API group contains the Kubernetes custom resources that configure the Pinniped
 Concierge's authenticators.
 
@@ -120,7 +120,7 @@ With any of the above IDPs, authentication methods, and cluster integration stra
 cluster-specific credential via a
 [Kubernetes client-go credential plugin](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins).
 Users may use the Pinniped CLI as the credential plugin, or they may use any proprietary CLI
-built with the [Pinniped Go client library](https://github.com/vmware-tanzu/pinniped/tree/main/generated).
+built with the [Pinniped Go client library](https://github.com/vmware/pinniped/tree/main/generated).
 
 
 ## Pinniped Deployment Strategies
