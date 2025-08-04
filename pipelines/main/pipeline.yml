@@ -331,7 +331,8 @@ resources:
     source:
       uri: https://github.com/vmware/pinniped.git
       branch: main
-      username: ((ci-bot-access-token-with-public-repo-write-permission))
+      username: ((ci-bot-username))
+      password: ((ci-bot-access-token-with-public-repo-write-permission))
 
   - name: pinniped-ci
     type: git
@@ -348,7 +349,8 @@ resources:
     source:
       uri: https://github.com/vmware/homebrew-pinniped.git
       branch: main
-      username: ((ci-bot-access-token-with-public-repo-write-permission))
+      username: ((ci-bot-username))
+      password: ((ci-bot-access-token-with-public-repo-write-permission))
 
   - name: ci-build-image
     type: registry-image
