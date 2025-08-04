@@ -264,6 +264,10 @@ jobs:
         file: pinniped-ci/pipelines/shared-tasks/create-or-update-pr/task.yml
         params:
           GH_TOKEN: ((ci-bot-access-token-with-public-repo-write-permission))
+          BRANCH: "pinny/bump-deps"
+          COMMIT_MESSAGE: "Bump dependencies"
+          PR_TITLE: "Bump dependencies"
+          PR_BODY: "Automatically bumped all go.mod direct dependencies and/or images in dockerfiles."
         input_mapping:
           pinniped: pinniped-out
 

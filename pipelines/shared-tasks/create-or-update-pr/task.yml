@@ -1,4 +1,4 @@
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 ---
@@ -10,5 +10,8 @@ params:
   DEPLOY_KEY:
   GH_TOKEN:
   BRANCH:
+  COMMIT_MESSAGE:
+  PR_TITLE:
+  PR_BODY:
 run:
   path: pinniped-ci/pipelines/shared-tasks/create-or-update-pr/task.sh

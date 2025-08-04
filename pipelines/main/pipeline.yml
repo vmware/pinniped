@@ -324,16 +324,6 @@ resources:
       branch: main
       username: ((ci-bot-access-token-with-read-only-public-repos))
 
-  - name: pinniped-write
-    type: git
-    icon: github
-    check_every: 10m
-    source:
-      uri: https://github.com/vmware/pinniped.git
-      branch: main
-      username: ((ci-bot-username))
-      password: ((ci-bot-access-token-with-public-repo-write-permission))
-
   - name: pinniped-ci
     type: git
     icon: github
@@ -2725,9 +2715,17 @@ jobs:
         timeout: 30m
         file: pinniped-ci/pipelines/shared-tasks/update-version-and-cli-docs/task.yml
         input_mapping: { pinniped-in: pinniped }
-      - put: pinniped-write
+      - task: create-or-update-pr
+        image: gh-cli-image
+        file: pinniped-ci/pipelines/shared-tasks/create-or-update-pr/task.yml
         params:
-          repository: pinniped-out
+          GH_TOKEN: ((ci-bot-access-token-with-public-repo-write-permission))
+          BRANCH: "pinny/update-version-and-cli-docs"
+          COMMIT_MESSAGE: "Update version and CLI docs on website"
+          PR_TITLE: "Update version and CLI docs on website"
+          PR_BODY: "Automatically updated latest version number and CLI docs on website as a result of releasing a new version of Pinniped."
+        input_mapping:
+          pinniped: pinniped-out
 
   - name: update-homebrew-formula
     public: true # all logs are publicly visible
