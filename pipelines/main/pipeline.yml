@@ -342,6 +342,16 @@ resources:
       username: ((ci-bot-username))
       password: ((ci-bot-access-token-with-public-repo-write-permission))
 
+  - name: gh-cli-image
+    type: registry-image
+    icon: docker
+    check_every: 10m
+    source:
+      repository: ((ci-ghcr-registry))/gh-cli
+      username: ((ci-ghcr-puller-username))
+      password: ((ci-ghcr-puller-token))
+      tag: latest
+
   - name: ci-build-image
     type: registry-image
     icon: docker
@@ -2711,6 +2721,7 @@ jobs:
               globs: [ pinniped-cli-linux-amd64 ]
           - get: pinniped-ci
           - get: pinniped
+          - get: gh-cli-image
       - task: update-version-and-cli-docs
         timeout: 30m
         file: pinniped-ci/pipelines/shared-tasks/update-version-and-cli-docs/task.yml

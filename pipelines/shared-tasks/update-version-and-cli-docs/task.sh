@@ -47,6 +47,13 @@ git add "$configdoc"
 # Print the current status to the log.
 git status
 
+# Restore the unstaged changes, if any.
+echo "Restoring any unstaged changes."
+git restore .
+
+# Print the current status to the log.
+git status
+
 # Did we just stage any changes?
 staged=$(git --no-pager diff --staged)
 if [[ "$staged" == "" ]]; then
@@ -57,8 +64,4 @@ else
   echo "Found changes for $clidoc or $configdoc:"
   echo
   echo "$staged"
-  echo
-  # Commit.
-  echo "Committing changes."
-  git commit -m "Updated versions in docs for $pinniped_tag release"
 fi
