@@ -3,7 +3,7 @@
 
 FROM mikefarah/yq:4.47.1 AS yq
 
-FROM debian:12.11-slim
+FROM debian:13.0-slim
 
 # Note: libdigest-sha-perl is to get shasum, which is used when installing Carvel tools below.
 RUN apt-get update && apt-get install -y ca-certificates jq curl libdigest-sha-perl && rm -rf /var/lib/apt/lists/*
