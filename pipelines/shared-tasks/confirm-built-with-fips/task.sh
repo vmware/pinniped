@@ -28,7 +28,7 @@ then
   exit 1
 fi
 # check whether the kube-cert-agent binary has particular symbols that only exist when it's compiled with non-boring crypto
-kube_cert_agent_has_regular_crypto="$(go tool nm './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' | grep sha256 | grep di)"
+kube_cert_agent_has_regular_crypto="$(go tool nm './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' | grep sha256 | grep di | grep -v fips)"
 # if any of these symbols exist, that means it was compiled wrong and it should fail.
 if [ -n "$kube_cert_agent_has_regular_crypto" ]
 then
