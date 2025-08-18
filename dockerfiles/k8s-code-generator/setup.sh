@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -51,7 +51,9 @@ require (
 EOF
 
 # Resolve dependencies and download the modules.
+echo "Running go mod tidy ..."
 go mod tidy
+echo "Running go mod download ..."
 go mod download
 
 # Copy the downloaded source code of k8s.io/code-generator so we can "go install" all its commands.
@@ -64,6 +66,7 @@ cp -pr "$(go env GOMODCACHE)/k8s.io/code-generator@v$K8S_PKG_VERSION" "$(go env 
 # The sed is a dirty hack to avoid having the code-generator shell scripts run go install again.
 # In version 0.23.0 the line inside the shell script that previously said "go install ..." started
 # to instead say "GO111MODULE=on go install ..." so this sed is a little wrong, but still seems to work.
+echo "Running go install for all k8s.io/code-generator commands ..."
 (cd "$(go env GOPATH)/src/k8s.io/code-generator" &&
   go install -v ./cmd/... &&
   sed -i -E -e 's/(go install.*)/# \1/g' ./*.sh)
@@ -74,14 +77,17 @@ if [[ ! -f "$(go env GOPATH)/bin/openapi-gen" ]]; then
   # that is selected as an indirect dependency by the go.mod.
   kube_openapi_version=$(go list -m k8s.io/kube-openapi | cut -f2 -d' ')
   # Install that version of its openapi-gen command.
+  echo "Running go install for openapi-gen $kube_openapi_version ..."
   go install -v "k8s.io/kube-openapi/cmd/openapi-gen@$kube_openapi_version"
 fi
 
+echo "Running go install for controller-gen ..."
 go install -v sigs.k8s.io/controller-tools/cmd/controller-gen@v$CONTROLLER_GEN_VERSION
 
 # We use a commit sha instead of a release semver because this project does not create
 # releases very often. They seem to only release 1-2 times per year, but commit to
 # main more often.
+echo "Running go install for crd-ref-docs ..."
 go install -v github.com/elastic/crd-ref-docs@$CRD_REF_DOCS_COMMIT_SHA
 
 # List all the commands that we just installed.
