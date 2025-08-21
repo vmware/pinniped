@@ -256,6 +256,9 @@ fi
 # and that kubectl is configured to talk to the cluster. They also have the
 # k14s tools available (ytt, kapp, etc) in case they want to do more deploys.
 if [[ "$(id -u)" == "0" ]]; then
+  # Give the testrunner user permission to create the Go cache dirs that we configured at the top of this script.
+  chmod 777 "$PWD/cache"
+
   # Downgrade to a non-root user to run the tests. We don't want them reading the
   # environment of any parent process, e.g. by reading from /proc. This user account
   # was created in the Dockerfile of the container image used to run this script in CI.
