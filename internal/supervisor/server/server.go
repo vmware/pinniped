@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/cache"
+	"k8s.io/apimachinery/pkg/util/sets"
 	apimachineryversion "k8s.io/apimachinery/pkg/version"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
@@ -312,7 +313,9 @@ func prepareControllers(
 				controllerlib.WithInformer,
 				cache.NewExpiring(),
 				oidcupstreamwatcher.GlobalOIDCConfig{
-					IgnoreUserInfoEndpoint: cfg.OIDC.IgnoreUserInfoEndpoint,
+					UserInfoEndpointConfig: &oidcupstreamwatcher.IgnoreUserInfoEndpointForExactIssuerMatches{
+						Issuers: sets.New(cfg.OIDC.IgnoreUserInfoEndpoint.WhenIssuerExactlyMatches...),
+					},
 				},
 			),
 			singletonWorker).

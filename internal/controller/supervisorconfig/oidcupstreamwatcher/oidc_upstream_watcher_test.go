@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	expiringcache "k8s.io/apimachinery/pkg/util/cache"
 	"k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 
@@ -1407,7 +1408,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 		{
 			name: "existing valid upstream with userinfo endpoint in the discovery document, but global OIDC config includes setting to ignore provider's userinfo endpoint",
 			inputGlobalOIDCConfig: &GlobalOIDCConfig{
-				IgnoreUserInfoEndpoint: true,
+				UserInfoEndpointConfig: &IgnoreUserInfoEndpointAlways{},
 			},
 			inputUpstreams: []runtime.Object{&idpv1alpha1.OIDCIdentityProvider{
 				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: testName, Generation: 1234, UID: testUID},
@@ -1778,7 +1779,10 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 				}
 			}
 
-			globalOIDCConfig := &GlobalOIDCConfig{}
+			globalOIDCConfig := &GlobalOIDCConfig{
+				// By default, do not ignore the userinfo endpoint in tests.
+				UserInfoEndpointConfig: &IgnoreUserInfoEndpointNever{},
+			}
 			if tt.inputGlobalOIDCConfig != nil {
 				globalOIDCConfig = tt.inputGlobalOIDCConfig
 			}
@@ -2042,4 +2046,37 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// can be tested using root endpoint
 
 	return server.URL, string(serverCA)
+}
+
+type IgnoreUserInfoEndpointAlways struct{}
+
+func (i *IgnoreUserInfoEndpointAlways) IgnoreUserInfoEndpoint(_issuerURL string) bool {
+	return true
+}
+
+type IgnoreUserInfoEndpointNever struct{}
+
+func (i *IgnoreUserInfoEndpointNever) IgnoreUserInfoEndpoint(_issuerURL string) bool {
+	return false
+}
+
+func TestIgnoreUserInfoEndpointForExactIssuerMatches(t *testing.T) {
+	t.Parallel()
+
+	// With an empty set.
+	s := &IgnoreUserInfoEndpointForExactIssuerMatches{}
+	require.False(t, s.IgnoreUserInfoEndpoint("https://foo.com"))
+
+	// An alternate way to initialize an empty set.
+	var empty []string
+	s = &IgnoreUserInfoEndpointForExactIssuerMatches{Issuers: sets.New(empty...)}
+	require.False(t, s.IgnoreUserInfoEndpoint("https://foo.com"))
+
+	// With a non-empty set.
+	s = &IgnoreUserInfoEndpointForExactIssuerMatches{
+		Issuers: sets.New("https://foo.com", "https://bar.com"),
+	}
+	require.True(t, s.IgnoreUserInfoEndpoint("https://foo.com"))
+	require.True(t, s.IgnoreUserInfoEndpoint("https://bar.com"))
+	require.False(t, s.IgnoreUserInfoEndpoint("https://baz.com"))
 }

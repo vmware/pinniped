@@ -129,8 +129,20 @@ func (c *ttlProviderCache) putProvider(key oidcDiscoveryCacheKey, value *oidcDis
 	c.cache.Set(key, value, oidcValidatorCacheTTL)
 }
 
+type UserInfoEndpointConfigI interface {
+	IgnoreUserInfoEndpoint(issuerURL string) bool
+}
+
+type IgnoreUserInfoEndpointForExactIssuerMatches struct {
+	Issuers sets.Set[string] // a set of issuer URLs
+}
+
+func (i *IgnoreUserInfoEndpointForExactIssuerMatches) IgnoreUserInfoEndpoint(issuerURL string) bool {
+	return i.Issuers.Has(issuerURL)
+}
+
 type GlobalOIDCConfig struct {
-	IgnoreUserInfoEndpoint bool
+	UserInfoEndpointConfig UserInfoEndpointConfigI
 }
 
 type oidcWatcherController struct {
@@ -242,7 +254,7 @@ func (c *oidcWatcherController) validateUpstream(ctx controllerlib.Context, upst
 		AdditionalAuthcodeParams: additionalAuthcodeAuthorizeParameters,
 		AdditionalClaimMappings:  upstream.Spec.Claims.AdditionalClaimMappings,
 		ResourceUID:              upstream.UID,
-		IgnoreUserInfoEndpoint:   c.globalOIDCConfig.IgnoreUserInfoEndpoint,
+		IgnoreUserInfoEndpoint:   c.globalOIDCConfig.UserInfoEndpointConfig.IgnoreUserInfoEndpoint(upstream.Spec.Issuer),
 	}
 
 	conditions := []*metav1.Condition{

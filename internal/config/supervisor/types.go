@@ -41,27 +41,31 @@ type AuditSpec struct {
 	LogUsernamesAndGroups AuditUsernamesAndGroups `json:"logUsernamesAndGroups"`
 }
 
+type IgnoreUserInfoEndpointSpec struct {
+	// WhenIssuerExactlyMatches is a list of exact OIDC issuer URLs for which the userinfo endpoint should be avoided.
+	// This will only take effect for OIDCIdentityProviders who have a spec.issuer which is exactly equal to any one
+	// of these strings (using exact string equality).
+	WhenIssuerExactlyMatches []string `json:"whenIssuerExactlyMatches"`
+}
+
 type OIDCSpec struct {
-	// IgnoreUserInfoEndpoint, when true, will cause all OIDCIdentityProviders to ignore the potential existence
-	// of any userinfo endpoint offered by the external OIDC provider(s) when those OIDC providers return refresh
-	// tokens. Please exercise caution when using this setting.
+	// IgnoreUserInfoEndpoint, when configured, will cause all matching OIDCIdentityProviders to ignore the
+	// potential existence of any userinfo endpoint offered by the external OIDC provider(s) when those OIDC providers
+	// return refresh tokens.
 	//
-	// Note that enabling this setting causes ALL configured OIDCIdentityProviders to skip calling the userinfo
-	// endpoint, which is not the behavior that you want for some providers which return more information from
-	// the userinfo endpoint than they put into the ID token itself. Pinniped will normally merge the claims
-	// from the ID token with the response from the userinfo endpoint, but this setting disables that behavior.
+	// Please exercise caution when using this setting. Some OIDC providers which return more information from the
+	// userinfo endpoint than they put into the ID token itself. Pinniped will normally merge the claims from the
+	// ID token with the response from the userinfo endpoint, but this setting disables that behavior for matching
+	// OIDC providers.
 	//
 	// This was added as a workaround for Microsoft ADFS, which does not correctly implement the userinfo
 	// endpoint as described in the OIDC specification. There are several circumstances where calls to the
 	// ADFS userinfo endpoint will result in "403 Forbidden" responses, which cause Pinniped to reject a user's
 	// login and/or session refresh.
 	//
-	// This setting is only designed to be used in the case where the only OIDCIdentityProvider(s) that are
-	// configured for a Pinniped Supervisor are ADFS servers.
-	//
-	// We do not currently have plans to implement better ADFS support because Microsoft no longer recommends
-	// the use of ADFS.
-	IgnoreUserInfoEndpoint bool `json:"ignoreUserInfoEndpoint"`
+	// We do not currently have plans to implement ADFS support options directly on the OIDCIdentityProvider CRD
+	// because Microsoft no longer recommends the use of ADFS.
+	IgnoreUserInfoEndpoint IgnoreUserInfoEndpointSpec `json:"ignoreUserInfoEndpoint"`
 }
 
 type TLSSpec struct {

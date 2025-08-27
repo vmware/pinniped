@@ -61,7 +61,10 @@ func TestFromPath(t *testing.T) {
 				  logUsernamesAndGroups: enabled
 				  logInternalPaths: enabled
 				oidc:
-				  ignoreUserInfoEndpoint: true
+				  ignoreUserInfoEndpoint:
+				    whenIssuerExactlyMatches:
+				      - https://foo.com
+				      - https://bar.com
 			`),
 			wantConfig: &Config{
 				APIGroupSuffix: ptr.To("some.suffix.com"),
@@ -107,7 +110,12 @@ func TestFromPath(t *testing.T) {
 					LogInternalPaths:      "enabled",
 				},
 				OIDC: OIDCSpec{
-					IgnoreUserInfoEndpoint: true,
+					IgnoreUserInfoEndpoint: IgnoreUserInfoEndpointSpec{
+						WhenIssuerExactlyMatches: []string{
+							"https://foo.com",
+							"https://bar.com",
+						},
+					},
 				},
 			},
 		},
@@ -151,11 +159,9 @@ func TestFromPath(t *testing.T) {
 					LogUsernamesAndGroups: "",
 				},
 				AggregatedAPIServerDisableAdmissionPlugins: nil,
-				TLS: TLSSpec{},
-				Log: plog.LogSpec{},
-				OIDC: OIDCSpec{
-					IgnoreUserInfoEndpoint: false,
-				},
+				TLS:  TLSSpec{},
+				Log:  plog.LogSpec{},
+				OIDC: OIDCSpec{},
 			},
 		},
 		{
@@ -191,13 +197,14 @@ func TestFromPath(t *testing.T) {
 			},
 		},
 		{
-			name: "ignoreUserInfoEndpoint can be disabled explicitly",
+			name: "ignoreUserInfoEndpoint can be explicitly an empty list",
 			yaml: here.Doc(`
 				---
 				names:
 				  defaultTLSCertificateSecret: my-secret-name
 				oidc:
-				  ignoreUserInfoEndpoint: false
+				  ignoreUserInfoEndpoint:
+				    whenIssuerExactlyMatches: []
 			`),
 			wantConfig: &Config{
 				APIGroupSuffix: ptr.To("pinniped.dev"),
@@ -216,7 +223,7 @@ func TestFromPath(t *testing.T) {
 				},
 				AggregatedAPIServerPort: ptr.To[int64](10250),
 				OIDC: OIDCSpec{
-					IgnoreUserInfoEndpoint: false,
+					IgnoreUserInfoEndpoint: IgnoreUserInfoEndpointSpec{WhenIssuerExactlyMatches: []string{}},
 				},
 			},
 		},
@@ -415,9 +422,9 @@ func TestFromPath(t *testing.T) {
 				names:
 				  defaultTLSCertificateSecret: my-secret-name
 				oidc:
-				  ignoreUserInfoEndpoint: "should be a boolean, but is a string"
+				  ignoreUserInfoEndpoint: "should be a struct, but is a string"
 			`),
-			wantError: "decode yaml: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal string into Go struct field OIDCSpec.oidc.ignoreUserInfoEndpoint of type bool",
+			wantError: "decode yaml: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal string into Go struct field OIDCSpec.oidc.ignoreUserInfoEndpoint of type supervisor.IgnoreUserInfoEndpointSpec",
 		},
 	}
 	for _, test := range tests {
