@@ -23,6 +23,7 @@ type Config struct {
 	AggregatedAPIServerDisableAdmissionPlugins []string          `json:"aggregatedAPIServerDisableAdmissionPlugins"`
 	TLS                                        TLSSpec           `json:"tls"`
 	Audit                                      AuditSpec         `json:"audit"`
+	OIDC                                       OIDCSpec          `json:"oidc"`
 }
 
 type AuditInternalPaths string
@@ -38,6 +39,29 @@ func (l AuditUsernamesAndGroups) Enabled() bool {
 type AuditSpec struct {
 	LogInternalPaths      AuditInternalPaths      `json:"logInternalPaths"`
 	LogUsernamesAndGroups AuditUsernamesAndGroups `json:"logUsernamesAndGroups"`
+}
+
+type OIDCSpec struct {
+	// IgnoreUserInfoEndpoint, when true, will cause all OIDCIdentityProviders to ignore the potential existence
+	// of any userinfo endpoint offered by the external OIDC provider(s) when those OIDC providers return refresh
+	// tokens. Please exercise caution when using this setting.
+	//
+	// Note that enabling this setting causes ALL configured OIDCIdentityProviders to skip calling the userinfo
+	// endpoint, which is not the behavior that you want for some providers which return more information from
+	// the userinfo endpoint than they put into the ID token itself. Pinniped will normally merge the claims
+	// from the ID token with the response from the userinfo endpoint, but this setting disables that behavior.
+	//
+	// This was added as a workaround for Microsoft ADFS, which does not correctly implement the userinfo
+	// endpoint as described in the OIDC specification. There are several circumstances where calls to the
+	// ADFS userinfo endpoint will result in "403 Forbidden" responses, which cause Pinniped to reject a user's
+	// login and/or session refresh.
+	//
+	// This setting is only designed to be used in the case where the only OIDCIdentityProvider(s) that are
+	// configured for a Pinniped Supervisor are ADFS servers.
+	//
+	// We do not currently have plans to implement better ADFS support because Microsoft no longer recommends
+	// the use of ADFS.
+	IgnoreUserInfoEndpoint bool `json:"ignoreUserInfoEndpoint"`
 }
 
 type TLSSpec struct {

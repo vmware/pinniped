@@ -311,6 +311,9 @@ func prepareControllers(
 				plog.New(),
 				controllerlib.WithInformer,
 				cache.NewExpiring(),
+				oidcupstreamwatcher.GlobalOIDCConfig{
+					IgnoreUserInfoEndpoint: cfg.OIDC.IgnoreUserInfoEndpoint,
+				},
 			),
 			singletonWorker).
 		WithController(

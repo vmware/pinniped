@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package upstreamoidc implements an abstraction of upstream OIDC provider interactions.
@@ -46,6 +46,7 @@ type ProviderConfig struct {
 	AdditionalAuthcodeParams map[string]string
 	AdditionalClaimMappings  map[string]string
 	RevocationURL            *url.URL // will commonly be nil: many providers do not offer this
+	IgnoreUserInfoEndpoint   bool
 	Provider                 interface {
 		Verifier(*coreosoidc.Config) *coreosoidc.IDTokenVerifier
 		Claims(v any) error
@@ -64,6 +65,12 @@ func (p *ProviderConfig) GetRevocationURL() *url.URL {
 }
 
 func (p *ProviderConfig) HasUserInfoURL() bool {
+	if p.IgnoreUserInfoEndpoint {
+		// When asked via configuration to ignore the userinfo endpoint, then
+		// return false, regardless of the external provider's discovery response.
+		return false
+	}
+
 	providerJSON := &struct {
 		UserInfoURL string `json:"userinfo_endpoint"`
 	}{}
@@ -398,7 +405,9 @@ func (p *ProviderConfig) maybeFetchUserInfoAndMergeClaims(ctx context.Context, t
 }
 
 func (p *ProviderConfig) maybeFetchUserInfo(ctx context.Context, tok *oauth2.Token, requireUserInfo bool) (*coreosoidc.UserInfo, error) {
-	// implementing the user info endpoint is not required by the OIDC spec, but we may require it in certain situations.
+	// Implementing the user info endpoint is not required by the OIDC spec, but we may require it in certain situations.
+	// Even when configuration asks us to skip calling the userinfo endpoint, we should not skip it on those situations
+	// where it is our only source of getting the claims that we need to perform our validations.
 	if !p.HasUserInfoURL() {
 		if requireUserInfo {
 			// TODO should these all be http errors?
