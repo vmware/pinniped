@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package upstreamoidc
@@ -62,6 +62,13 @@ func TestProviderConfig(t *testing.T) {
 		require.False(t, p.AllowsPasswordGrant())
 
 		require.True(t, p.HasUserInfoURL())
+
+		// Even when the underlying provider does have a userinfo endpoint,
+		// this setting should be able to override it.
+		p.IgnoreUserInfoEndpoint = true
+		require.False(t, p.HasUserInfoURL())
+		p.IgnoreUserInfoEndpoint = false
+
 		p.Provider = &mockProvider{
 			rawClaims: []byte(`{"some_other_endpoint": "https://example.com/blah"}`),
 		}
@@ -100,12 +107,13 @@ func TestProviderConfig(t *testing.T) {
 
 	t.Run("PasswordCredentialsGrantAndValidateTokens", func(t *testing.T) {
 		tests := []struct {
-			name                  string
-			disallowPasswordGrant bool
-			returnIDTok           string
-			tokenStatusCode       int
-			wantErr               string
-			wantToken             oidctypes.Token
+			name                   string
+			disallowPasswordGrant  bool
+			ignoreUserInfoEndpoint bool
+			returnIDTok            string
+			tokenStatusCode        int
+			wantErr                string
+			wantToken              oidctypes.Token
 
 			rawClaims          []byte
 			userInfo           *coreosoidc.UserInfo
@@ -169,6 +177,37 @@ func TestProviderConfig(t *testing.T) {
 				// claims is private field so we have to use hacks to set it
 				userInfo:           forceUserInfoWithClaims("test-user", `{"foo":"awesomeness","groups":"fancy-group"}`),
 				wantUserInfoCalled: true,
+			},
+			{
+				name:                   "valid with userinfo when configured to ignore the userinfo endpoint",
+				ignoreUserInfoEndpoint: true,
+				returnIDTok:            validIDToken,
+				wantToken: oidctypes.Token{
+					AccessToken: &oidctypes.AccessToken{
+						Token:  "test-access-token",
+						Expiry: metav1.Time{},
+					},
+					RefreshToken: &oidctypes.RefreshToken{
+						Token: "test-refresh-token",
+					},
+					IDToken: &oidctypes.IDToken{
+						Token:  validIDToken,
+						Expiry: metav1.Time{},
+						Claims: map[string]any{
+							"foo": "bar", // does not overwrite existing claim because userinfo is skipped
+							"bat": "baz",
+							"aud": "test-client-id",
+							"iat": 1.606768593e+09,
+							"jti": "test-jti",
+							"nbf": 1.606768593e+09,
+							"sub": "test-user",
+							// groups claim is not added because userinfo is skipped
+						},
+					},
+				},
+				// claims is private field so we have to use hacks to set it
+				userInfo:           forceUserInfoWithClaims("test-user", `{"foo":"awesomeness","groups":"fancy-group"}`),
+				wantUserInfoCalled: false,
 			},
 			{
 				name:                  "password grant not allowed",
@@ -294,8 +333,9 @@ func TestProviderConfig(t *testing.T) {
 						userInfo:    tt.userInfo,
 						userInfoErr: tt.userInfoErr,
 					},
-					AllowPasswordGrant: !tt.disallowPasswordGrant,
-					Client:             http.DefaultClient,
+					AllowPasswordGrant:     !tt.disallowPasswordGrant,
+					Client:                 http.DefaultClient,
+					IgnoreUserInfoEndpoint: tt.ignoreUserInfoEndpoint,
 				}
 
 				tok, err := p.PasswordCredentialsGrantAndValidateTokens(
@@ -741,16 +781,17 @@ func TestProviderConfig(t *testing.T) {
 		goodIDToken := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzb21lLXN1YmplY3QiLCJub25jZSI6InNvbWUtbm9uY2UiLCJpc3MiOiJzb21lLWlzc3VlciJ9.eGvzOihLUqzn3M4k6fHsToedgy7Fu89_Xu_u4mwMgRlIyRWZqmEMV76RVLnZd9Ihm9j_VpvrpirIkaj4JM9eRNfLX1n328cmBivBwnTKAzHuTm17dUKO5EvdTmQzmwnN0WZ8nWk4GfR7RzcvE1V8G9tIiWD8FkO3Dr-NR_zTun3N37onAazVLCmF0SDtATDfUH1ETqviHEp8xGx5HD5mv5T3HEjOuer5gxTEnfncef0LurBH3po-C0tXHKu74PD8x88CMJ1DLsRdCalnctwa850slKPkBSTP-ssh0JVg7cdMXoosVpwiXtKYaBkrhu8VS018aFP-cBbW0mYwsHmt3g" //nolint:gosec
 
 		tests := []struct {
-			name             string
-			tok              *oauth2.Token
-			nonce            nonce.Nonce
-			requireIDToken   bool
-			requireUserInfo  bool
-			userInfo         *coreosoidc.UserInfo
-			rawClaims        []byte
-			userInfoErr      error
-			wantErr          string
-			wantMergedTokens *oidctypes.Token
+			name                   string
+			tok                    *oauth2.Token
+			nonce                  nonce.Nonce
+			ignoreUserInfoEndpoint bool
+			requireIDToken         bool
+			requireUserInfo        bool
+			userInfo               *coreosoidc.UserInfo
+			rawClaims              []byte
+			userInfoErr            error
+			wantErr                string
+			wantMergedTokens       *oidctypes.Token
 		}{
 			{
 				name:           "token with id, access and refresh tokens, valid nonce, and no userinfo",
@@ -827,6 +868,34 @@ func TestProviderConfig(t *testing.T) {
 							"nonce": "some-nonce",
 							"sub":   "some-subject",
 							"name":  "Pinny TheSeal",
+						},
+					},
+				},
+			},
+			{
+				name:                   "token with id, access and refresh tokens, valid nonce, and userinfo with a value that doesn't exist in the id token, when configured to ignore userinfo",
+				tok:                    testTokenWithoutIDToken.WithExtra(map[string]any{"id_token": goodIDToken}),
+				nonce:                  "some-nonce",
+				requireIDToken:         true,
+				ignoreUserInfoEndpoint: true,
+				rawClaims:              []byte(`{"userinfo_endpoint": "not-empty"}`),
+				userInfo:               forceUserInfoWithClaims("some-subject", `{"name": "Pinny TheSeal", "sub": "some-subject"}`),
+				wantMergedTokens: &oidctypes.Token{
+					AccessToken: &oidctypes.AccessToken{
+						Token:  "test-access-token",
+						Type:   "test-token-type",
+						Expiry: metav1.NewTime(expiryTime),
+					},
+					RefreshToken: &oidctypes.RefreshToken{
+						Token: "test-initial-refresh-token",
+					},
+					IDToken: &oidctypes.IDToken{
+						Token: goodIDToken,
+						Claims: map[string]any{
+							"iss":   "some-issuer",
+							"nonce": "some-nonce",
+							"sub":   "some-subject",
+							// "name" claim returned by userinfo endpoint is not merged, because userinfo was not called due to ignoreUserInfoEndpoint configuration
 						},
 					},
 				},
@@ -1038,6 +1107,15 @@ func TestProviderConfig(t *testing.T) {
 				wantErr:         "could not fetch user info claims: userinfo endpoint not found, but is required",
 			},
 			{
+				name:                   "expected to have userinfo, but doesn't, even when configured to otherwise ignore userinfo",
+				tok:                    testTokenWithoutIDToken,
+				nonce:                  "some-other-nonce",
+				requireUserInfo:        true,
+				ignoreUserInfoEndpoint: true,
+				rawClaims:              []byte(`{}`),
+				wantErr:                "could not fetch user info claims: userinfo endpoint not found, but is required",
+			},
+			{
 				name:            "expected to have id token and userinfo, but doesn't have either",
 				tok:             testTokenWithoutIDToken,
 				nonce:           "some-other-nonce",
@@ -1104,6 +1182,7 @@ func TestProviderConfig(t *testing.T) {
 						userInfo:    tt.userInfo,
 						userInfoErr: tt.userInfoErr,
 					},
+					IgnoreUserInfoEndpoint: tt.ignoreUserInfoEndpoint,
 				}
 				gotTok, err := p.ValidateTokenAndMergeWithUserInfo(context.Background(), tt.tok, tt.nonce, tt.requireIDToken, tt.requireUserInfo)
 				if tt.wantErr != "" {
@@ -1119,12 +1198,13 @@ func TestProviderConfig(t *testing.T) {
 
 	t.Run("ExchangeAuthcodeAndValidateTokens", func(t *testing.T) {
 		tests := []struct {
-			name        string
-			authCode    string
-			expectNonce nonce.Nonce
-			returnIDTok string
-			wantErr     string
-			wantToken   oidctypes.Token
+			name                   string
+			authCode               string
+			ignoreUserInfoEndpoint bool
+			expectNonce            nonce.Nonce
+			returnIDTok            string
+			wantErr                string
+			wantToken              oidctypes.Token
 
 			rawClaims          []byte
 			userInfo           *coreosoidc.UserInfo
@@ -1302,6 +1382,38 @@ func TestProviderConfig(t *testing.T) {
 				wantUserInfoCalled: true,
 			},
 			{
+				name:                   "valid with user info, when configured to ignore userinfo",
+				authCode:               "valid",
+				ignoreUserInfoEndpoint: true,
+				returnIDTok:            validIDToken,
+				wantToken: oidctypes.Token{
+					AccessToken: &oidctypes.AccessToken{
+						Token:  "test-access-token",
+						Expiry: metav1.Time{},
+					},
+					RefreshToken: &oidctypes.RefreshToken{
+						Token: "test-refresh-token",
+					},
+					IDToken: &oidctypes.IDToken{
+						Token:  validIDToken,
+						Expiry: metav1.Time{},
+						Claims: map[string]any{
+							"foo": "bar", // does not overwrite existing claim because userinfo is skipped
+							"bat": "baz",
+							"aud": "test-client-id",
+							"iat": 1.606768593e+09,
+							"jti": "test-jti",
+							"nbf": 1.606768593e+09,
+							"sub": "test-user",
+							// groups claim is not added because userinfo is skipped
+						},
+					},
+				},
+				// claims is private field so we have to use hacks to set it
+				userInfo:           forceUserInfoWithClaims("test-user", `{"foo":"awesomeness","groups":"fancy-group"}`),
+				wantUserInfoCalled: false,
+			},
+			{
 				name:        "invalid sub claim",
 				authCode:    "valid",
 				returnIDTok: invalidSubClaim,
@@ -1383,7 +1495,8 @@ func TestProviderConfig(t *testing.T) {
 						userInfo:    tt.userInfo,
 						userInfoErr: tt.userInfoErr,
 					},
-					Client: http.DefaultClient,
+					Client:                 http.DefaultClient,
+					IgnoreUserInfoEndpoint: tt.ignoreUserInfoEndpoint,
 				}
 
 				tok, err := p.ExchangeAuthcodeAndValidateTokens(

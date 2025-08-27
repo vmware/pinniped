@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidcupstreamwatcher
@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	expiringcache "k8s.io/apimachinery/pkg/util/cache"
 	"k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 
@@ -123,6 +124,7 @@ func TestOIDCUpstreamWatcherControllerFilterSecret(t *testing.T) {
 				logger,
 				withInformer.WithInformer,
 				expiringcache.NewExpiring(),
+				GlobalOIDCConfig{},
 			)
 
 			unrelated := corev1.Secret{}
@@ -182,6 +184,7 @@ func TestOIDCUpstreamWatcherControllerFilterConfigMaps(t *testing.T) {
 				logger,
 				withInformer.WithInformer,
 				expiringcache.NewExpiring(),
+				GlobalOIDCConfig{},
 			)
 
 			unrelated := corev1.ConfigMap{}
@@ -242,6 +245,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 		inputUpstreams         []runtime.Object
 		inputResources         []runtime.Object
 		inputValidatorCache    func(*testing.T) map[oidcDiscoveryCacheKey]*oidcDiscoveryCacheValue
+		inputGlobalOIDCConfig  *GlobalOIDCConfig
 		wantErr                string
 		wantLogs               []string
 		wantResultingCache     []*oidctestutil.TestUpstreamOIDCIdentityProvider
@@ -951,6 +955,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 					ClientID:                 testClientID,
 					AuthorizationURL:         *testIssuerAuthorizeURL,
 					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              true,
 					Scopes:                   append(testExpectedScopes, "xyz"), // includes openid only once
 					UsernameClaim:            testUsernameClaim,
 					GroupsClaim:              testGroupsClaim,
@@ -1014,6 +1019,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 					ClientID:                 testClientID,
 					AuthorizationURL:         *testIssuerAuthorizeURL,
 					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              true,
 					Scopes:                   testDefaultExpectedScopes,
 					UsernameClaim:            testUsernameClaim,
 					GroupsClaim:              testGroupsClaim,
@@ -1106,6 +1112,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 					ClientID:                 testClientID,
 					AuthorizationURL:         *testIssuerAuthorizeURL,
 					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              true,
 					Scopes:                   testDefaultExpectedScopes,
 					UsernameClaim:            testUsernameClaim,
 					GroupsClaim:              testGroupsClaim,
@@ -1174,6 +1181,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 					ClientID:                 testClientID,
 					AuthorizationURL:         *testIssuerAuthorizeURL,
 					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              true,
 					Scopes:                   testDefaultExpectedScopes,
 					UsernameClaim:            testUsernameClaim,
 					GroupsClaim:              testGroupsClaim,
@@ -1240,6 +1248,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 					ClientID:                 testClientID,
 					AuthorizationURL:         *testIssuerAuthorizeURL,
 					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              true,
 					Scopes:                   testDefaultExpectedScopes,
 					UsernameClaim:            testUsernameClaim,
 					GroupsClaim:              testGroupsClaim,
@@ -1304,6 +1313,140 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 					ClientID:                 testClientID,
 					AuthorizationURL:         *testIssuerAuthorizeURL,
 					RevocationURL:            nil, // no revocation URL is set in the cached provider because none was returned by discovery
+					UserInfoURL:              true,
+					Scopes:                   testDefaultExpectedScopes,
+					UsernameClaim:            testUsernameClaim,
+					GroupsClaim:              testGroupsClaim,
+					AllowPasswordGrant:       false,
+					AdditionalAuthcodeParams: map[string]string{},
+					AdditionalClaimMappings:  nil, // Does not default to empty map
+					ResourceUID:              testUID,
+				},
+			},
+			wantResultingUpstreams: []idpv1alpha1.OIDCIdentityProvider{{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: testName, Generation: 1234, UID: testUID},
+				Status: idpv1alpha1.OIDCIdentityProviderStatus{
+					Phase: "Ready",
+					Conditions: []metav1.Condition{
+						{Type: "AdditionalAuthorizeParametersValid", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "additionalAuthorizeParameters parameter names are allowed", ObservedGeneration: 1234},
+						{Type: "ClientCredentialsSecretValid", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "loaded client credentials", ObservedGeneration: 1234},
+						{Type: "OIDCDiscoverySucceeded", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "discovered issuer configuration", ObservedGeneration: 1234},
+						{Type: "TLSConfigurationValid", Status: "True", LastTransitionTime: now, Reason: "Success",
+							Message: "spec.tls is valid: using configured CA bundle", ObservedGeneration: 1234},
+					},
+				},
+			}},
+		},
+		{
+			name: "existing valid upstream with no userinfo endpoint in the discovery document",
+			inputUpstreams: []runtime.Object{&idpv1alpha1.OIDCIdentityProvider{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: testName, Generation: 1234, UID: testUID},
+				Spec: idpv1alpha1.OIDCIdentityProviderSpec{
+					Issuer: testIssuerURL + "/valid-without-userinfo",
+					TLS:    &idpv1alpha1.TLSSpec{CertificateAuthorityData: testIssuerCABase64},
+					Client: idpv1alpha1.OIDCClient{SecretName: testSecretName},
+					Claims: idpv1alpha1.OIDCClaims{Groups: testGroupsClaim, Username: testUsernameClaim},
+				},
+				Status: idpv1alpha1.OIDCIdentityProviderStatus{
+					Phase: "Ready",
+					Conditions: []metav1.Condition{
+						happyAdditionalAuthorizeParametersValidConditionEarlier,
+						{Type: "ClientCredentialsSecretValid", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "loaded client credentials"},
+						{Type: "OIDCDiscoverySucceeded", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "discovered issuer configuration"},
+					},
+				},
+			}},
+			inputResources: []runtime.Object{&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: testSecretName},
+				Type:       "secrets.pinniped.dev/oidc-client",
+				Data:       testValidSecretData,
+			}},
+			wantLogs: []string{
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"oidc-upstream-observer","caller":"conditionsutil/conditions_util.go:<line>$conditionsutil.MergeConditions","message":"updated condition","namespace":"test-namespace","name":"test-name","type":"ClientCredentialsSecretValid","status":"True","reason":"Success","message":"loaded client credentials"}`,
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"oidc-upstream-observer","caller":"conditionsutil/conditions_util.go:<line>$conditionsutil.MergeConditions","message":"updated condition","namespace":"test-namespace","name":"test-name","type":"OIDCDiscoverySucceeded","status":"True","reason":"Success","message":"discovered issuer configuration"}`,
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"oidc-upstream-observer","caller":"conditionsutil/conditions_util.go:<line>$conditionsutil.MergeConditions","message":"updated condition","namespace":"test-namespace","name":"test-name","type":"TLSConfigurationValid","status":"True","reason":"Success","message":"spec.tls is valid: using configured CA bundle"}`,
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"oidc-upstream-observer","caller":"conditionsutil/conditions_util.go:<line>$conditionsutil.MergeConditions","message":"updated condition","namespace":"test-namespace","name":"test-name","type":"AdditionalAuthorizeParametersValid","status":"True","reason":"Success","message":"additionalAuthorizeParameters parameter names are allowed"}`,
+			},
+			wantResultingCache: []*oidctestutil.TestUpstreamOIDCIdentityProvider{
+				{
+					Name:                     testName,
+					ClientID:                 testClientID,
+					AuthorizationURL:         *testIssuerAuthorizeURL,
+					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              false,
+					Scopes:                   testDefaultExpectedScopes,
+					UsernameClaim:            testUsernameClaim,
+					GroupsClaim:              testGroupsClaim,
+					AllowPasswordGrant:       false,
+					AdditionalAuthcodeParams: map[string]string{},
+					AdditionalClaimMappings:  nil, // Does not default to empty map
+					ResourceUID:              testUID,
+				},
+			},
+			wantResultingUpstreams: []idpv1alpha1.OIDCIdentityProvider{{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: testName, Generation: 1234, UID: testUID},
+				Status: idpv1alpha1.OIDCIdentityProviderStatus{
+					Phase: "Ready",
+					Conditions: []metav1.Condition{
+						{Type: "AdditionalAuthorizeParametersValid", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "additionalAuthorizeParameters parameter names are allowed", ObservedGeneration: 1234},
+						{Type: "ClientCredentialsSecretValid", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "loaded client credentials", ObservedGeneration: 1234},
+						{Type: "OIDCDiscoverySucceeded", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "discovered issuer configuration", ObservedGeneration: 1234},
+						{Type: "TLSConfigurationValid", Status: "True", LastTransitionTime: now, Reason: "Success",
+							Message: "spec.tls is valid: using configured CA bundle", ObservedGeneration: 1234},
+					},
+				},
+			}},
+		},
+		{
+			name: "existing valid upstream with userinfo endpoint in the discovery document, but global OIDC config includes setting to ignore provider's userinfo endpoint",
+			inputGlobalOIDCConfig: &GlobalOIDCConfig{
+				UserInfoEndpointConfig: &IgnoreUserInfoEndpointAlways{},
+			},
+			inputUpstreams: []runtime.Object{&idpv1alpha1.OIDCIdentityProvider{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: testName, Generation: 1234, UID: testUID},
+				Spec: idpv1alpha1.OIDCIdentityProviderSpec{
+					Issuer: testIssuerURL,
+					TLS:    &idpv1alpha1.TLSSpec{CertificateAuthorityData: testIssuerCABase64},
+					Client: idpv1alpha1.OIDCClient{SecretName: testSecretName},
+					Claims: idpv1alpha1.OIDCClaims{Groups: testGroupsClaim, Username: testUsernameClaim},
+				},
+				Status: idpv1alpha1.OIDCIdentityProviderStatus{
+					Phase: "Ready",
+					Conditions: []metav1.Condition{
+						happyAdditionalAuthorizeParametersValidConditionEarlier,
+						{Type: "ClientCredentialsSecretValid", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "loaded client credentials"},
+						{Type: "OIDCDiscoverySucceeded", Status: "True", LastTransitionTime: earlier, Reason: "Success",
+							Message: "discovered issuer configuration"},
+					},
+				},
+			}},
+			inputResources: []runtime.Object{&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: testSecretName},
+				Type:       "secrets.pinniped.dev/oidc-client",
+				Data:       testValidSecretData,
+			}},
+			wantLogs: []string{
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"oidc-upstream-observer","caller":"conditionsutil/conditions_util.go:<line>$conditionsutil.MergeConditions","message":"updated condition","namespace":"test-namespace","name":"test-name","type":"ClientCredentialsSecretValid","status":"True","reason":"Success","message":"loaded client credentials"}`,
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"oidc-upstream-observer","caller":"conditionsutil/conditions_util.go:<line>$conditionsutil.MergeConditions","message":"updated condition","namespace":"test-namespace","name":"test-name","type":"OIDCDiscoverySucceeded","status":"True","reason":"Success","message":"discovered issuer configuration"}`,
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"oidc-upstream-observer","caller":"conditionsutil/conditions_util.go:<line>$conditionsutil.MergeConditions","message":"updated condition","namespace":"test-namespace","name":"test-name","type":"TLSConfigurationValid","status":"True","reason":"Success","message":"spec.tls is valid: using configured CA bundle"}`,
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"oidc-upstream-observer","caller":"conditionsutil/conditions_util.go:<line>$conditionsutil.MergeConditions","message":"updated condition","namespace":"test-namespace","name":"test-name","type":"AdditionalAuthorizeParametersValid","status":"True","reason":"Success","message":"additionalAuthorizeParameters parameter names are allowed"}`,
+			},
+			wantResultingCache: []*oidctestutil.TestUpstreamOIDCIdentityProvider{
+				{
+					Name:                     testName,
+					ClientID:                 testClientID,
+					AuthorizationURL:         *testIssuerAuthorizeURL,
+					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              false, // expecting false due to global OIDC configuration override (this provider actually has a userinfo endpoint)
 					Scopes:                   testDefaultExpectedScopes,
 					UsernameClaim:            testUsernameClaim,
 					GroupsClaim:              testGroupsClaim,
@@ -1371,6 +1514,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 					ClientID:                 testClientID,
 					AuthorizationURL:         *testIssuerAuthorizeURL,
 					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              true,
 					Scopes:                   testExpectedScopes,
 					UsernameClaim:            testUsernameClaim,
 					GroupsClaim:              testGroupsClaim,
@@ -1446,6 +1590,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 					ClientID:                 testClientID,
 					AuthorizationURL:         *testIssuerAuthorizeURL,
 					RevocationURL:            testIssuerRevocationURL,
+					UserInfoURL:              true,
 					Scopes:                   testExpectedScopes, // does not include the default scopes
 					UsernameClaim:            testUsernameClaim,
 					GroupsClaim:              testGroupsClaim,
@@ -1634,6 +1779,14 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 				}
 			}
 
+			globalOIDCConfig := &GlobalOIDCConfig{
+				// By default, do not ignore the userinfo endpoint in tests.
+				UserInfoEndpointConfig: &IgnoreUserInfoEndpointNever{},
+			}
+			if tt.inputGlobalOIDCConfig != nil {
+				globalOIDCConfig = tt.inputGlobalOIDCConfig
+			}
+
 			controller := New(
 				cache,
 				fakePinnipedClient,
@@ -1643,6 +1796,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 				logger,
 				controllerlib.WithInformer,
 				validatorCache,
+				*globalOIDCConfig,
 			)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1677,6 +1831,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 				require.Equal(t, tt.wantResultingCache[i].GetAdditionalClaimMappings(), actualIDP.GetAdditionalClaimMappings())
 				require.Equal(t, tt.wantResultingCache[i].GetResourceUID(), actualIDP.GetResourceUID())
 				require.Equal(t, tt.wantResultingCache[i].GetRevocationURL(), actualIDP.GetRevocationURL())
+				require.Equal(t, tt.wantResultingCache[i].HasUserInfoURL(), actualIDP.HasUserInfoURL())
 				require.ElementsMatch(t, tt.wantResultingCache[i].GetScopes(), actualIDP.GetScopes())
 
 				// We always want to use the proxy from env on these clients, so although the following assertions
@@ -1754,6 +1909,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 		TokenURL      string `json:"token_endpoint"`
 		RevocationURL string `json:"revocation_endpoint,omitempty"`
 		JWKSURL       string `json:"jwks_uri"`
+		UserInfoURL   string `json:"userinfo_endpoint"`
 	}
 
 	// At the root of the server, serve an issuer with a valid discovery response.
@@ -1764,6 +1920,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 			AuthURL:       "https://example.com/authorize",
 			RevocationURL: "https://example.com/revoke",
 			TokenURL:      "https://example.com/token",
+			UserInfoURL:   "https://example.com/userinfo",
 		})
 	})
 
@@ -1775,6 +1932,19 @@ func newTestIssuer(t *testing.T) (string, string) {
 			AuthURL:       "https://example.com/authorize",
 			RevocationURL: "", // none
 			TokenURL:      "https://example.com/token",
+			UserInfoURL:   "https://example.com/userinfo",
+		})
+	})
+
+	// At "/valid-without-userinfo", serve an issuer with a valid discovery response which does not have a userinfo endpoint.
+	mux.HandleFunc("/valid-without-userinfo/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		_ = json.NewEncoder(w).Encode(&providerJSON{
+			Issuer:        server.URL + "/valid-without-userinfo",
+			AuthURL:       "https://example.com/authorize",
+			RevocationURL: "https://example.com/revoke",
+			TokenURL:      "https://example.com/token",
+			UserInfoURL:   "", // none
 		})
 	})
 
@@ -1865,6 +2035,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 			AuthURL:       "https://example.com/authorize",
 			RevocationURL: "https://example.com/revoke",
 			TokenURL:      "https://example.com/token",
+			UserInfoURL:   "https://example.com/userinfo",
 		})
 	})
 
@@ -1875,4 +2046,37 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// can be tested using root endpoint
 
 	return server.URL, string(serverCA)
+}
+
+type IgnoreUserInfoEndpointAlways struct{}
+
+func (i *IgnoreUserInfoEndpointAlways) IgnoreUserInfoEndpoint(_issuerURL string) bool {
+	return true
+}
+
+type IgnoreUserInfoEndpointNever struct{}
+
+func (i *IgnoreUserInfoEndpointNever) IgnoreUserInfoEndpoint(_issuerURL string) bool {
+	return false
+}
+
+func TestIgnoreUserInfoEndpointForExactIssuerMatches(t *testing.T) {
+	t.Parallel()
+
+	// With an empty set.
+	s := &IgnoreUserInfoEndpointForExactIssuerMatches{}
+	require.False(t, s.IgnoreUserInfoEndpoint("https://foo.com"))
+
+	// An alternate way to initialize an empty set.
+	var empty []string
+	s = &IgnoreUserInfoEndpointForExactIssuerMatches{Issuers: sets.New(empty...)}
+	require.False(t, s.IgnoreUserInfoEndpoint("https://foo.com"))
+
+	// With a non-empty set.
+	s = &IgnoreUserInfoEndpointForExactIssuerMatches{
+		Issuers: sets.New("https://foo.com", "https://bar.com"),
+	}
+	require.True(t, s.IgnoreUserInfoEndpoint("https://foo.com"))
+	require.True(t, s.IgnoreUserInfoEndpoint("https://bar.com"))
+	require.False(t, s.IgnoreUserInfoEndpoint("https://baz.com"))
 }

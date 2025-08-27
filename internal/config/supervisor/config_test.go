@@ -60,6 +60,11 @@ func TestFromPath(t *testing.T) {
 				audit:
 				  logUsernamesAndGroups: enabled
 				  logInternalPaths: enabled
+				oidc:
+				  ignoreUserInfoEndpoint:
+				    whenIssuerExactlyMatches:
+				      - https://foo.com
+				      - https://bar.com
 			`),
 			wantConfig: &Config{
 				APIGroupSuffix: ptr.To("some.suffix.com"),
@@ -104,6 +109,14 @@ func TestFromPath(t *testing.T) {
 					LogUsernamesAndGroups: "enabled",
 					LogInternalPaths:      "enabled",
 				},
+				OIDC: OIDCSpec{
+					IgnoreUserInfoEndpoint: IgnoreUserInfoEndpointSpec{
+						WhenIssuerExactlyMatches: []string{
+							"https://foo.com",
+							"https://bar.com",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -146,8 +159,9 @@ func TestFromPath(t *testing.T) {
 					LogUsernamesAndGroups: "",
 				},
 				AggregatedAPIServerDisableAdmissionPlugins: nil,
-				TLS: TLSSpec{},
-				Log: plog.LogSpec{},
+				TLS:  TLSSpec{},
+				Log:  plog.LogSpec{},
+				OIDC: OIDCSpec{},
 			},
 		},
 		{
@@ -179,6 +193,37 @@ func TestFromPath(t *testing.T) {
 				Audit: AuditSpec{
 					LogInternalPaths:      "disabled",
 					LogUsernamesAndGroups: "disabled",
+				},
+			},
+		},
+		{
+			name: "ignoreUserInfoEndpoint can be explicitly an empty list",
+			yaml: here.Doc(`
+				---
+				names:
+				  defaultTLSCertificateSecret: my-secret-name
+				oidc:
+				  ignoreUserInfoEndpoint:
+				    whenIssuerExactlyMatches: []
+			`),
+			wantConfig: &Config{
+				APIGroupSuffix: ptr.To("pinniped.dev"),
+				Labels:         map[string]string{},
+				NamesConfig: NamesConfigSpec{
+					DefaultTLSCertificateSecret: "my-secret-name",
+				},
+				Endpoints: &Endpoints{
+					HTTPS: &Endpoint{
+						Network: "tcp",
+						Address: ":8443",
+					},
+					HTTP: &Endpoint{
+						Network: "disabled",
+					},
+				},
+				AggregatedAPIServerPort: ptr.To[int64](10250),
+				OIDC: OIDCSpec{
+					IgnoreUserInfoEndpoint: IgnoreUserInfoEndpointSpec{WhenIssuerExactlyMatches: []string{}},
 				},
 			},
 		},
@@ -369,6 +414,17 @@ func TestFromPath(t *testing.T) {
 				aggregatedAPIServerDisableAdmissionPlugins: [foobar, ValidatingAdmissionWebhook, foobaz]
 			`),
 			wantError: "validate aggregatedAPIServerDisableAdmissionPlugins: admission plugin names not recognized: [foobar foobaz] (each must be one of [NamespaceLifecycle MutatingAdmissionPolicy MutatingAdmissionWebhook ValidatingAdmissionPolicy ValidatingAdmissionWebhook])",
+		},
+		{
+			name: "invalid ignoreUserInfoEndpoint",
+			yaml: here.Doc(`
+				---
+				names:
+				  defaultTLSCertificateSecret: my-secret-name
+				oidc:
+				  ignoreUserInfoEndpoint: "should be a struct, but is a string"
+			`),
+			wantError: "decode yaml: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal string into Go struct field OIDCSpec.oidc.ignoreUserInfoEndpoint of type supervisor.IgnoreUserInfoEndpointSpec",
 		},
 	}
 	for _, test := range tests {

@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package oidcupstreamwatcher implements a controller which watches OIDCIdentityProviders.
@@ -129,6 +129,22 @@ func (c *ttlProviderCache) putProvider(key oidcDiscoveryCacheKey, value *oidcDis
 	c.cache.Set(key, value, oidcValidatorCacheTTL)
 }
 
+type UserInfoEndpointConfigI interface {
+	IgnoreUserInfoEndpoint(issuerURL string) bool
+}
+
+type IgnoreUserInfoEndpointForExactIssuerMatches struct {
+	Issuers sets.Set[string] // a set of issuer URLs
+}
+
+func (i *IgnoreUserInfoEndpointForExactIssuerMatches) IgnoreUserInfoEndpoint(issuerURL string) bool {
+	return i.Issuers.Has(issuerURL)
+}
+
+type GlobalOIDCConfig struct {
+	UserInfoEndpointConfig UserInfoEndpointConfigI
+}
+
 type oidcWatcherController struct {
 	cache                        UpstreamOIDCIdentityProviderICache
 	log                          plog.Logger
@@ -137,6 +153,7 @@ type oidcWatcherController struct {
 	secretInformer               corev1informers.SecretInformer
 	configMapInformer            corev1informers.ConfigMapInformer
 	validatorCache               oidcDiscoveryCache
+	globalOIDCConfig             GlobalOIDCConfig
 }
 
 // New instantiates a new controllerlib.Controller which will populate the provided UpstreamOIDCIdentityProviderICache.
@@ -149,6 +166,7 @@ func New(
 	log plog.Logger,
 	withInformer pinnipedcontroller.WithInformerOptionFunc,
 	validatorCache *cache.Expiring,
+	globalOIDCConfig GlobalOIDCConfig,
 ) controllerlib.Controller {
 	c := oidcWatcherController{
 		cache:                        idpCache,
@@ -158,6 +176,7 @@ func New(
 		secretInformer:               secretInformer,
 		configMapInformer:            configMapInformer,
 		validatorCache:               &ttlProviderCache{cache: validatorCache},
+		globalOIDCConfig:             globalOIDCConfig,
 	}
 	return controllerlib.New(
 		controllerlib.Config{Name: oidcControllerName, Syncer: &c},
@@ -235,6 +254,7 @@ func (c *oidcWatcherController) validateUpstream(ctx controllerlib.Context, upst
 		AdditionalAuthcodeParams: additionalAuthcodeAuthorizeParameters,
 		AdditionalClaimMappings:  upstream.Spec.Claims.AdditionalClaimMappings,
 		ResourceUID:              upstream.UID,
+		IgnoreUserInfoEndpoint:   c.globalOIDCConfig.UserInfoEndpointConfig.IgnoreUserInfoEndpoint(upstream.Spec.Issuer),
 	}
 
 	conditions := []*metav1.Condition{
