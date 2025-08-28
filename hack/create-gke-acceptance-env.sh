@@ -35,6 +35,7 @@ SUBNET_REGION="us-west1"
 # Pro tip: The GCP Console UI can help you build this command.
 # The following fields were customized, and all of the others are left as the GCP Console's defaults:
 #  - Cluster name
+#  - Machine type - starting in Aug 2025, the google pods request more than 1 CPU, making them not fit on a single e2-medium node
 #  - Cluster version - newest at the time
 #  - Num nodes - sized smaller to be cheaper
 #  - Maintenance window start and recurrence - to avoid downtime during business hours
@@ -46,7 +47,7 @@ gcloud container --project "$PINNIPED_GCP_PROJECT" clusters create "gke-acceptan
   --no-enable-basic-auth \
   --cluster-version "1.32.4-gke.1415000" \
   --release-channel "regular" \
-  --machine-type "e2-medium" \
+  --machine-type "e2-standard-2" \
   --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "100" --metadata disable-legacy-endpoints=true \
   --num-nodes "1" \
   --logging=SYSTEM,WORKLOAD --monitoring=SYSTEM,STORAGE,POD,DEPLOYMENT,STATEFULSET,DAEMONSET,HPA,CADVISOR,KUBELET \
