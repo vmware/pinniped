@@ -17,10 +17,10 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequest":       schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequest(ref),
-		"go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestList":   schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequestList(ref),
-		"go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestSpec":   schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequestSpec(ref),
-		"go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestStatus": schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequestStatus(ref),
+		"go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequest":       schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequest(ref),
+		"go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestList":   schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequestList(ref),
+		"go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestSpec":   schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequestSpec(ref),
+		"go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestStatus": schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequestStatus(ref),
 		"k8s.io/api/core/v1.AWSElasticBlockStoreVolumeSource":                                                schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
 		"k8s.io/api/core/v1.Affinity":                                    schema_k8sio_api_core_v1_Affinity(ref),
 		"k8s.io/api/core/v1.AppArmorProfile":                             schema_k8sio_api_core_v1_AppArmorProfile(ref),
@@ -343,13 +343,13 @@ func schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequest(ref co
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestSpec"),
+							Ref:     ref("go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestStatus"),
+							Ref:     ref("go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestStatus"),
 						},
 					},
 				},
@@ -357,7 +357,7 @@ func schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequest(ref co
 			},
 		},
 		Dependencies: []string{
-			"go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestSpec", "go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestSpec", "go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequestStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -396,7 +396,7 @@ func schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequestList(re
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequest"),
+										Ref:     ref("go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequest"),
 									},
 								},
 							},
@@ -407,7 +407,7 @@ func schema_apis_supervisor_clientsecret_v1alpha1_OIDCClientSecretRequestList(re
 			},
 		},
 		Dependencies: []string{
-			"go.pinniped.dev/generated/latest/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequest", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"go.pinniped.dev/generated/1.34/apis/supervisor/clientsecret/v1alpha1.OIDCClientSecretRequest", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
 	}
 }
 
