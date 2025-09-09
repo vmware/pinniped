@@ -68,7 +68,7 @@ cp -pr "$(go env GOMODCACHE)/k8s.io/code-generator@v$K8S_PKG_VERSION" "$(go env 
 # to instead say "GO111MODULE=on go install ..." so this sed is a little wrong, but still seems to work.
 echo "Running go install for all k8s.io/code-generator commands ..."
 # Using sed to edit the go.mod file (and then running go mod tidy) is a dirty hack to work around
-# an issue introduced starting in Go 1.25.0. See https://github.com/golang/go/issues/74462.
+# an issue introduced in Go v1.25. See https://github.com/golang/go/issues/74462.
 # The version of code-generator used by Kube 1.30 depends on x/tools v0.18.0.
 # The version of code-generator used by Kube 1.31 depends on x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d.
 # Other versions of Kube use code-generator versions which do not have this problem.
@@ -87,7 +87,7 @@ if [[ ! -f "$(go env GOPATH)/bin/openapi-gen" ]]; then
   # Install that version of its openapi-gen command.
   echo "Running go install for openapi-gen $kube_openapi_version ..."
   # Using sed to edit the go.mod file (and then running go mod tidy) is a dirty hack to work around
-  # an issue introduced starting in Go 1.25.0. See https://github.com/golang/go/issues/74462.
+  # an issue introduced in Go v1.25. See https://github.com/golang/go/issues/74462.
   # If this were not needed, then we could just use "go install" directly without
   # copying the source code or editing the go.mod file (which is what this script used to do),
   # like this: go install -v "k8s.io/kube-openapi/cmd/openapi-gen@$kube_openapi_version"
