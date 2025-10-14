@@ -173,6 +173,9 @@ jobs:
               tag: alpine
           inputs:
             - name: pinniped-modules
+          params:
+            SONATYPE_API_KEY: ((sonatype-api-key))
+            SONATYPE_USERNAME: ((sonatype-username))
           run:
             path: 'sh'
             args:
@@ -195,7 +198,10 @@ jobs:
                 CVE-2020-8561
                 EOF
 
-                nancy sleuth --exclude-vulnerability-file=exclusions.txt < pinniped-modules/modules.json
+                cat pinniped-modules/modules.json | nancy sleuth \
+                  --exclude-vulnerability-file=exclusions.txt \
+                  --token ${SONATYPE_API_KEY} \
+                  --username ${SONATYPE_USERNAME}
 
   - name: trivy-release
     public: true # all logs are publicly visible
