@@ -104,6 +104,12 @@ type AgentConfig struct {
 
 	// PriorityClassName optionally sets the PriorityClassName for the agent's pod.
 	PriorityClassName string
+
+	// RunAsUser is the UID to run the entrypoint of the container process
+	RunAsUser *int64
+
+	// RunAsGroup is the GID to run the entrypoint of the container process
+	RunAsGroup *int64
 }
 
 // Only select using the unique label which will not match the pods of any other Deployment.
@@ -585,6 +591,29 @@ func (c *agentController) newestRunningPodOnSchedulableNode(ctx context.Context,
 	return pods[0], nil
 }
 
+func (c *agentController) getPodSecurityContext() *corev1.PodSecurityContext {
+	root := int64(0)
+
+	podSecurityContext := &corev1.PodSecurityContext{
+		RunAsUser:  &root,
+		RunAsGroup: &root,
+	}
+
+	if c.cfg.RunAsUser != nil {
+		podSecurityContext.RunAsUser = c.cfg.RunAsUser
+	}
+
+	if *podSecurityContext.RunAsUser != root {
+		podSecurityContext.RunAsNonRoot = ptr.To(true)
+	}
+
+	if c.cfg.RunAsGroup != nil {
+		podSecurityContext.RunAsGroup = c.cfg.RunAsGroup
+	}
+
+	return podSecurityContext
+}
+
 func (c *agentController) newAgentDeployment(controllerManagerPod *corev1.Pod) *appsv1.Deployment {
 	var volumeMounts []corev1.VolumeMount
 	if len(controllerManagerPod.Spec.Containers) > 0 {
@@ -662,10 +691,7 @@ func (c *agentController) newAgentDeployment(controllerManagerPod *corev1.Pod) *
 					Tolerations:                  controllerManagerPod.Spec.Tolerations,
 					// We need to run the agent pod as root since the file permissions
 					// on the cluster keypair usually restricts access to only root.
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsUser:  ptr.To[int64](0),
-						RunAsGroup: ptr.To[int64](0),
-					},
+					SecurityContext:   c.getPodSecurityContext(),
 					HostNetwork:       controllerManagerPod.Spec.HostNetwork,
 					PriorityClassName: c.cfg.PriorityClassName,
 				},

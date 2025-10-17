@@ -141,6 +141,8 @@ func PrepareControllers(c *Config) (controllerinit.RunnerBuilder, error) { //nol
 		CredentialIssuerName:      c.NamesConfig.CredentialIssuer,
 		DiscoveryURLOverride:      c.DiscoveryURLOverride,
 		PriorityClassName:         c.KubeCertAgentConfig.PriorityClassName,
+		RunAsUser:                 c.KubeCertAgentConfig.RunAsUser,
+		RunAsGroup:                c.KubeCertAgentConfig.RunAsGroup,
 	}
 
 	// Create controller manager.
