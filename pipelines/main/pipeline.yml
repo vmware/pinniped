@@ -89,8 +89,8 @@ meta:
     # CLUSTER_ZONE: us-west1-c
     CLUSTER_REGION: us-west1
     GCP_PROJECT: ((gcp-project-name))
-    GCP_SERVICE_ACCOUNT: ((gke-test-pool-manager-username))
-    GCP_JSON_KEY: ((gke-test-pool-manager-json-key))
+    GCP_SERVICE_ACCOUNT: ((gcp-instance-admin-username))
+    GCP_JSON_KEY: ((gcp-instance-admin-json-key))
 
   # GCP account info and which zone the kind workers should be created in and deleted from.
   gcp_account_params: &gcp_account_params
@@ -122,8 +122,8 @@ meta:
     params:
       GCS_BUCKET: pinniped-ci-logs
       GCP_PROJECT: ((gcp-project-name))
-      GCP_USERNAME: ((gcp-cluster-diagnostic-uploader-username))
-      GCP_JSON_KEY: ((gcp-cluster-diagnostic-uploaded-json-key))
+      GCP_USERNAME: ((gcp-instance-admin-username))
+      GCP_JSON_KEY: ((gcp-instance-admin-json-key))
 
   notify_on_failure: &notify_on_failure
     on_failure:
@@ -558,7 +558,7 @@ resources:
       driver: gcs
       bucket: pinniped-ci-version-state
       key: semver/0.0.x-version.txt
-      json_key: ((gcr-image-pusher-json-key))
+      json_key: ((gcp-instance-admin-json-key))
       initial_version: 0.0.0
 
   - name: github-release
@@ -2561,8 +2561,8 @@ jobs:
         timeout: 45m
         params:
           PINNIPED_GCP_PROJECT: ((gcp-project-name))
-          GKE_USERNAME: ((gke-cluster-developer-username))
-          GKE_JSON_KEY: ((gke-cluster-developer-json-key))
+          GKE_USERNAME: ((gcp-instance-admin-username))
+          GKE_JSON_KEY: ((gcp-instance-admin-json-key))
           CI_BUILD_IMAGE_NAME: ((ci-ghcr-registry))/ci-build
           CI_BUILD_IMAGE_SERVER: https://ghcr.io
           CI_BUILD_IMAGE_USERNAME: ((ci-ghcr-puller-username))

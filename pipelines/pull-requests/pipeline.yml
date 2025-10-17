@@ -76,8 +76,8 @@ meta:
     # CLUSTER_ZONE: us-west1-c
     CLUSTER_REGION: us-west1
     GCP_PROJECT: ((gcp-project-name))
-    GCP_SERVICE_ACCOUNT: ((gke-test-pool-manager-username))
-    GCP_JSON_KEY: ((gke-test-pool-manager-json-key))
+    GCP_SERVICE_ACCOUNT: ((gcp-instance-admin-username))
+    GCP_JSON_KEY: ((gcp-instance-admin-json-key))
 
   # GCP account info and which zone the workers should be created in and deleted from.
   gcp_account_params: &gcp_account_params
@@ -94,8 +94,8 @@ meta:
     params:
       GCS_BUCKET: pinniped-ci-logs
       GCP_PROJECT: ((gcp-project-name))
-      GCP_USERNAME: ((gcp-cluster-diagnostic-uploader-username))
-      GCP_JSON_KEY: ((gcp-cluster-diagnostic-uploaded-json-key))
+      GCP_USERNAME: ((gcp-instance-admin-username))
+      GCP_JSON_KEY: ((gcp-instance-admin-json-key))
 
   # Decides which specific patch versions of k8s we would like to deploy when creating kind cluster workers.
   # It should be safe to update the patch version numbers here whenever new versions come out.
