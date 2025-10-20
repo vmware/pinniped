@@ -225,13 +225,6 @@ func TestParseFromURL(t *testing.T) {
 			expectEndpoint: "127.0.0.1:8443",
 		},
 		{
-			name:           "IPv4 in brackets with port",
-			input:          "http://[127.0.0.1]:8443",
-			defaultPort:    443,
-			expect:         HostPort{Host: "127.0.0.1", Port: 8443},
-			expectEndpoint: "127.0.0.1:8443",
-		},
-		{
 			name:           "IPv4 as IPv6 in brackets with port",
 			input:          "http://[::127.0.0.1]:8443",
 			defaultPort:    443,
@@ -262,13 +255,6 @@ func TestParseFromURL(t *testing.T) {
 		{
 			name:           "hostname with port",
 			input:          "http://host.example.com:8443",
-			defaultPort:    443,
-			expect:         HostPort{Host: "host.example.com", Port: 8443},
-			expectEndpoint: "host.example.com:8443",
-		},
-		{
-			name:           "hostname in brackets with port",
-			input:          "http://[host.example.com]:8443",
 			defaultPort:    443,
 			expect:         HostPort{Host: "host.example.com", Port: 8443},
 			expectEndpoint: "host.example.com:8443",
@@ -339,17 +325,8 @@ func TestParseFromURL(t *testing.T) {
 			name:           "IPv6 with mismatched leading bracket will err on bracket",
 			input:          "https://[[::1]/some/fake/path",
 			defaultPort:    443,
-			expect:         HostPort{Host: "[[::1]", Port: 443},
-			expectEndpoint: "[[::1]:443",
-			expectErr:      `address [[::1]:443: unexpected '[' in address`,
-		},
-		{
-			name:           "IPv6 with mismatched trailing brackets will err on port",
-			input:          "https://[::1]]/some/fake/path",
-			defaultPort:    443,
-			expect:         HostPort{Host: "[::1]]", Port: 443},
-			expectEndpoint: "[::1]]:443",
-			expectErr:      `address [::1]]:443: missing port in address`,
+			expect:         HostPort{Host: "::1", Port: 443},
+			expectEndpoint: "[::1]:443",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

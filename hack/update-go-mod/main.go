@@ -88,6 +88,18 @@ func parseOverrides(overridesText string) (map[string]string, error) {
 			)
 		}
 
+		if splitLine[0] == "" || splitLine[1] == "" {
+			panic(fmt.Sprintf("unable to parse overrides for line %q", line))
+		}
+
+		if splitLine[1] != "NEVER_UPGRADE_DIRECTLY" {
+			override := strings.Split(splitLine[1], "@")
+
+			if len(override) != 2 || override[0] == "" || override[1] == "" {
+				panic(fmt.Sprintf("unable to parse overrides for line %q ", line))
+			}
+		}
+
 		overridesMap[splitLine[0]] = splitLine[1]
 	}
 

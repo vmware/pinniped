@@ -697,7 +697,7 @@ func mergeLabelsAndAnnotations(existing metav1.ObjectMeta, desired metav1.Object
 func getContainerArgByName(pod *corev1.Pod, argsNames []string, fallbackValue string) string {
 	for _, container := range pod.Spec.Containers {
 		flagset := pflag.NewFlagSet("", pflag.ContinueOnError)
-		flagset.ParseErrorsWhitelist = pflag.ParseErrorsWhitelist{UnknownFlags: true}
+		flagset.ParseErrorsAllowlist = pflag.ParseErrorsAllowlist{UnknownFlags: true}
 		parseResults := make([]string, len(argsNames))
 		for i, argName := range argsNames {
 			flagset.StringVar(&parseResults[i], argName, "", "")

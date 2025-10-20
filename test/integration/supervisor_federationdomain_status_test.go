@@ -586,8 +586,9 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 		// These errors are appended to any other wanted errors when k8sAPIServerSupportsCEL is true
 		wantCELErrorsForKube25Through28Inclusive []string
 		wantCELErrorsForKube29Through33Inclusive []string
-		wantCELErrorsForKube29OrNewer            []string
+		wantCELErrorsForKube29Through34Inclusive []string
 		wantCELErrorsForKube34OrNewer            []string
+		wantCELErrorsForKube35OrNewer            []string
 	}{
 		{
 			name: "issuer cannot be empty",
@@ -596,7 +597,8 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 			},
 			wantErrs:                                 []string{`spec.issuer: Invalid value: "": spec.issuer in body should be at least 1 chars long`},
 			wantCELErrorsForKube25Through28Inclusive: []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
-			wantCELErrorsForKube29OrNewer:            []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
+			wantCELErrorsForKube29Through34Inclusive: []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
+			wantCELErrorsForKube35OrNewer:            []string{`spec.issuer: Invalid value: "": issuer must be an HTTPS URL`},
 		},
 		{
 			name: "issuer must be a URL",
@@ -604,7 +606,8 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 				Issuer: "foo",
 			},
 			wantCELErrorsForKube25Through28Inclusive: []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
-			wantCELErrorsForKube29OrNewer:            []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
+			wantCELErrorsForKube29Through34Inclusive: []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
+			wantCELErrorsForKube35OrNewer:            []string{`spec.issuer: Invalid value: "foo": issuer must be an HTTPS URL`},
 		},
 		{
 			name: "issuer URL scheme must be 'https'",
@@ -612,7 +615,8 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 				Issuer: "http://example.com",
 			},
 			wantCELErrorsForKube25Through28Inclusive: []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
-			wantCELErrorsForKube29OrNewer:            []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
+			wantCELErrorsForKube29Through34Inclusive: []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
+			wantCELErrorsForKube35OrNewer:            []string{`spec.issuer: Invalid value: "http://example.com": issuer must be an HTTPS URL`},
 		},
 		{
 			name: "IDP display names cannot be empty",
@@ -926,11 +930,14 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 			if minor >= 29 && minor <= 33 && len(tt.wantCELErrorsForKube29Through33Inclusive) > 0 {
 				wantErr = append(wantErr, tt.wantCELErrorsForKube29Through33Inclusive...)
 			}
-			if minor >= 29 && len(tt.wantCELErrorsForKube29OrNewer) > 0 {
-				wantErr = append(wantErr, tt.wantCELErrorsForKube29OrNewer...)
+			if minor >= 29 && minor <= 34 && len(tt.wantCELErrorsForKube29Through34Inclusive) > 0 {
+				wantErr = append(wantErr, tt.wantCELErrorsForKube29Through34Inclusive...)
 			}
 			if minor >= 34 && len(tt.wantCELErrorsForKube34OrNewer) > 0 {
 				wantErr = append(wantErr, tt.wantCELErrorsForKube34OrNewer...)
+			}
+			if minor >= 35 && len(tt.wantCELErrorsForKube35OrNewer) > 0 {
+				wantErr = append(wantErr, tt.wantCELErrorsForKube35OrNewer...)
 			}
 
 			// Did not want any error.
