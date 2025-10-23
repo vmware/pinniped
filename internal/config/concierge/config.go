@@ -192,6 +192,14 @@ func validateNames(names *NamesConfigSpec) error {
 }
 
 func validateKubeCertAgent(agentConfig *KubeCertAgentSpec) error {
+	if agentConfig.RunAsUser != nil && *agentConfig.RunAsUser < 0 {
+		return constable.Error(fmt.Sprintf("runAsUser must be 0 or greater (instead of %d)", *agentConfig.RunAsUser))
+	}
+
+	if agentConfig.RunAsGroup != nil && *agentConfig.RunAsGroup < 0 {
+		return constable.Error(fmt.Sprintf("runAsGroup must be 0 or greater (instead of %d)", *agentConfig.RunAsGroup))
+	}
+
 	if len(agentConfig.PriorityClassName) == 0 {
 		// Optional, so empty is valid.
 		return nil

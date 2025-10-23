@@ -69,6 +69,8 @@ func TestFromPath(t *testing.T) {
 				  image: kube-cert-agent-image
 				  imagePullSecrets: [kube-cert-agent-image-pull-secret]
 				  priorityClassName: %s
+				  runAsUser: 1
+				  runAsGroup: 2
 				log:
 				  level: debug
 				tls:
@@ -121,6 +123,8 @@ func TestFromPath(t *testing.T) {
 					Image:             ptr.To("kube-cert-agent-image"),
 					ImagePullSecrets:  []string{"kube-cert-agent-image-pull-secret"},
 					PriorityClassName: stringOfLength253,
+					RunAsUser:         ptr.To(int64(1)),
+					RunAsGroup:        ptr.To(int64(2)),
 				},
 				Log: plog.LogSpec{
 					Level: plog.LevelDebug,
@@ -754,6 +758,48 @@ func TestFromPath(t *testing.T) {
 				  priorityClassName: thisIsNotAValidPriorityClassName
 			`),
 			wantError: `validate kubeCertAgent: invalid priorityClassName: a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
+		},
+		{
+			name: "negative runAsUser",
+			yaml: here.Doc(`
+				---
+				names:
+				  servingCertificateSecret: pinniped-concierge-api-tls-serving-certificate
+				  credentialIssuer: pinniped-config
+				  apiService: pinniped-api
+				  impersonationLoadBalancerService: impersonationLoadBalancerService-value
+				  impersonationClusterIPService: impersonationClusterIPService-value
+				  impersonationTLSCertificateSecret: impersonationTLSCertificateSecret-value
+				  impersonationCACertificateSecret: impersonationCACertificateSecret-value
+				  impersonationSignerSecret: impersonationSignerSecret-value
+				  agentServiceAccount: agentServiceAccount-value
+				  impersonationProxyServiceAccount: impersonationProxyServiceAccount-value
+				  impersonationProxyLegacySecret: impersonationProxyLegacySecret-value
+				kubeCertAgent:
+				  runAsUser: -1
+			`),
+			wantError: `validate kubeCertAgent: runAsUser must be 0 or greater (instead of -1)`,
+		},
+		{
+			name: "negative runAsGroup",
+			yaml: here.Doc(`
+				---
+				names:
+				  servingCertificateSecret: pinniped-concierge-api-tls-serving-certificate
+				  credentialIssuer: pinniped-config
+				  apiService: pinniped-api
+				  impersonationLoadBalancerService: impersonationLoadBalancerService-value
+				  impersonationClusterIPService: impersonationClusterIPService-value
+				  impersonationTLSCertificateSecret: impersonationTLSCertificateSecret-value
+				  impersonationCACertificateSecret: impersonationCACertificateSecret-value
+				  impersonationSignerSecret: impersonationSignerSecret-value
+				  agentServiceAccount: agentServiceAccount-value
+				  impersonationProxyServiceAccount: impersonationProxyServiceAccount-value
+				  impersonationProxyLegacySecret: impersonationProxyLegacySecret-value
+				kubeCertAgent:
+				  runAsGroup: -1
+			`),
+			wantError: `validate kubeCertAgent: runAsGroup must be 0 or greater (instead of -1)`,
 		},
 	}
 	for _, test := range tests {

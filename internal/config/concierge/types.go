@@ -111,4 +111,13 @@ type KubeCertAgentSpec struct {
 
 	// PriorityClassName optionally sets the PriorityClassName for the agent's pod.
 	PriorityClassName string `json:"priorityClassName"`
+
+	// The UID to run the entrypoint of the kube-cert-agent container.
+	// Defaults to 0 (root). No validation is performed on this value.
+	// If set to any value other than 0, RunAsNonRoot will be set to true.
+	RunAsUser *int64 `json:"runAsUser"`
+
+	// The GID to run the entrypoint of the kube-cert-agent container.
+	// Defaults to 0 (root). No validation is performed on this value.
+	RunAsGroup *int64 `json:"runAsGroup"`
 }

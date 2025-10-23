@@ -230,6 +230,8 @@ func TestAgentController(t *testing.T) {
 		name                             string
 		discoveryURLOverride             *string
 		agentPriorityClassName           string
+		runAsUser                        *int64
+		runAsGroup                       *int64
 		pinnipedObjects                  []runtime.Object
 		kubeObjects                      []runtime.Object
 		addKubeReactions                 func(*kubefake.Clientset)
@@ -440,6 +442,64 @@ func TestAgentController(t *testing.T) {
 			},
 			wantAgentDeployment: modifiedHealthyHealthyAgentDeployment(func(deployment *appsv1.Deployment) {
 				deployment.Spec.Template.Spec.PriorityClassName = "some-custom-priority-class-name-for-agent"
+			}),
+			wantDeploymentActionVerbs: []string{"list", "watch", "create"},
+			wantStrategy: &conciergeconfigv1alpha1.CredentialIssuerStrategy{
+				Type:           conciergeconfigv1alpha1.KubeClusterSigningCertificateStrategyType,
+				Status:         conciergeconfigv1alpha1.ErrorStrategyStatus,
+				Reason:         conciergeconfigv1alpha1.CouldNotFetchKeyStrategyReason,
+				Message:        "could not find a healthy agent pod (1 candidate)",
+				LastUpdateTime: metav1.NewTime(now),
+			},
+		},
+		{
+			name:       "created new deployment with overridden runAs, no agent pods running yet",
+			runAsUser:  ptr.To[int64](1),
+			runAsGroup: ptr.To[int64](2),
+			pinnipedObjects: []runtime.Object{
+				initialCredentialIssuer,
+			},
+			kubeObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         "kube-system",
+						Name:              "kube-controller-manager-3",
+						Labels:            map[string]string{"component": "kube-controller-manager"},
+						CreationTimestamp: metav1.NewTime(now.Add(-1 * time.Hour)),
+					},
+					Spec:   corev1.PodSpec{NodeName: schedulableControllerManagerNode.Name},
+					Status: corev1.PodStatus{Phase: corev1.PodRunning},
+				},
+				healthyKubeControllerManagerPod,
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         "kube-system",
+						Name:              "kube-controller-manager-2",
+						Labels:            map[string]string{"component": "kube-controller-manager"},
+						CreationTimestamp: metav1.NewTime(now.Add(-2 * time.Hour)),
+					},
+					Spec:   corev1.PodSpec{NodeName: schedulableControllerManagerNode.Name},
+					Status: corev1.PodStatus{Phase: corev1.PodRunning},
+				},
+				pendingAgentPod,
+				schedulableControllerManagerNode,
+			},
+			wantDistinctErrors: []string{
+				"could not find a healthy agent pod (1 candidate)",
+			},
+			alsoAllowUndesiredDistinctErrors: []string{
+				// due to the high amount of nondeterminism in this test, this error will sometimes also happen, but is not required to happen
+				`could not ensure agent deployment: deployments.apps "pinniped-concierge-kube-cert-agent" already exists`,
+			},
+			wantDistinctLogs: []string{
+				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"kube-cert-agent-controller","caller":"kubecertagent/kubecertagent.go:<line>$kubecertagent.(*agentController).createOrUpdateDeployment","message":"creating new deployment","deployment":{"name":"pinniped-concierge-kube-cert-agent","namespace":"concierge"},"templatePod":{"name":"kube-controller-manager-1","namespace":"kube-system"}}`,
+			},
+			wantAgentDeployment: modifiedHealthyHealthyAgentDeployment(func(deployment *appsv1.Deployment) {
+				deployment.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+					RunAsUser:    ptr.To[int64](1),
+					RunAsGroup:   ptr.To[int64](2),
+					RunAsNonRoot: ptr.To(true),
+				}
 			}),
 			wantDeploymentActionVerbs: []string{"list", "watch", "create"},
 			wantStrategy: &conciergeconfigv1alpha1.CredentialIssuerStrategy{
@@ -1623,6 +1683,8 @@ func TestAgentController(t *testing.T) {
 					},
 					DiscoveryURLOverride: tt.discoveryURLOverride,
 					PriorityClassName:    tt.agentPriorityClassName,
+					RunAsUser:            tt.runAsUser,
+					RunAsGroup:           tt.runAsGroup,
 				},
 				&kubeclient.Client{Kubernetes: kubeClientset, PinnipedConcierge: conciergeClientset},
 				kubeInformers.Core().V1().Pods(),
@@ -1747,6 +1809,87 @@ func TestMergeLabelsAndAnnotations(t *testing.T) {
 			require.Equal(t, tt.expected, got)
 			require.Equal(t, existingCopy, tt.existing.DeepCopy(), "input was modified!")
 			require.Equal(t, desiredCopy, tt.desired.DeepCopy(), "input was modified!")
+		})
+	}
+}
+
+func TestGetPodSecurityContext(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                   string
+		configRunAsUser        *int64
+		configRunAsGroup       *int64
+		wantPodSecurityContext *corev1.PodSecurityContext
+	}{
+		{
+			name:             "when the user provides no configuration, run as root",
+			configRunAsUser:  nil,
+			configRunAsGroup: nil,
+			wantPodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:    ptr.To[int64](0),
+				RunAsGroup:   ptr.To[int64](0),
+				RunAsNonRoot: nil,
+			},
+		},
+		{
+			name:             "when the user provides values, use them",
+			configRunAsUser:  ptr.To[int64](-9223372036854775808),
+			configRunAsGroup: ptr.To[int64](9223372036854775807),
+			wantPodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:    ptr.To[int64](-9223372036854775808),
+				RunAsGroup:   ptr.To[int64](9223372036854775807),
+				RunAsNonRoot: ptr.To(true),
+			},
+		},
+		{
+			name:             "when the user provides root values, use them",
+			configRunAsUser:  ptr.To[int64](0),
+			configRunAsGroup: ptr.To[int64](0),
+			wantPodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:    ptr.To[int64](0),
+				RunAsGroup:   ptr.To[int64](0),
+				RunAsNonRoot: nil,
+			},
+		},
+		{
+			name:             "when the user provides root UID with non-root GID, use them",
+			configRunAsUser:  ptr.To[int64](0),
+			configRunAsGroup: ptr.To[int64](1),
+			wantPodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:    ptr.To[int64](0),
+				RunAsGroup:   ptr.To[int64](1),
+				RunAsNonRoot: nil,
+			},
+		},
+		{
+			name:             "when the user provides non-root UID with root GID, use them",
+			configRunAsUser:  ptr.To[int64](1),
+			configRunAsGroup: ptr.To[int64](0),
+			wantPodSecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:    ptr.To[int64](1),
+				RunAsGroup:   ptr.To[int64](0),
+				RunAsNonRoot: ptr.To(true),
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			controller := &agentController{
+				cfg: AgentConfig{
+					RunAsUser:  test.configRunAsUser,
+					RunAsGroup: test.configRunAsGroup,
+				},
+			}
+
+			podSecurityContext := controller.getPodSecurityContext()
+			require.NotNil(t, podSecurityContext)
+			require.NotNil(t, podSecurityContext.RunAsUser)
+			require.NotNil(t, podSecurityContext.RunAsGroup)
+			require.Equal(t, test.wantPodSecurityContext, podSecurityContext)
 		})
 	}
 }
