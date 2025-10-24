@@ -143,6 +143,7 @@ func PrepareControllers(c *Config) (controllerinit.RunnerBuilder, error) { //nol
 		PriorityClassName:         c.KubeCertAgentConfig.PriorityClassName,
 		RunAsUser:                 c.KubeCertAgentConfig.RunAsUser,
 		RunAsGroup:                c.KubeCertAgentConfig.RunAsGroup,
+		DeploymentStrategyType:    c.KubeCertAgentConfig.DeploymentStrategyType,
 	}
 
 	// Create controller manager.

@@ -105,11 +105,16 @@ type AgentConfig struct {
 	// PriorityClassName optionally sets the PriorityClassName for the agent's pod.
 	PriorityClassName string
 
-	// RunAsUser is the UID to run the entrypoint of the container process
+	// RunAsUser is the UID to run the entrypoint of the container process.
 	RunAsUser *int64
 
-	// RunAsGroup is the GID to run the entrypoint of the container process
+	// RunAsGroup is the GID to run the entrypoint of the container process.
 	RunAsGroup *int64
+
+	// DeploymentStrategyType will be set as the agent Deployment's deployment strategy type.
+	// When nil, the Deployment will not specify any deployment strategy type, and will therefore have its
+	// deployment strategy type set by Kubernetes default behavior (currently RollingUpdate).
+	DeploymentStrategyType *appsv1.DeploymentStrategyType
 }
 
 // Only select using the unique label which will not match the pods of any other Deployment.
@@ -440,12 +445,14 @@ func (c *agentController) createOrUpdateDeployment(ctx context.Context, newestCo
 	desireTemplateLabelsUpdate := !apiequality.Semantic.DeepEqual(updatedDeployment.Spec.Template.Labels, existingDeployment.Spec.Template.Labels)
 	// The user might want to set PriorityClassName back to the default value of empty string. DeepDerivative() won't detect this case below.
 	desirePriorityClassNameUpdate := updatedDeployment.Spec.Template.Spec.PriorityClassName != existingDeployment.Spec.Template.Spec.PriorityClassName
+	// The user might want to set deploymentStrategyType back to the default value. DeepDerivative() won't detect this case below.
+	desireDeploymentStrategyTypeUpdate := updatedDeployment.Spec.Strategy.Type != existingDeployment.Spec.Strategy.Type
 
 	// If the existing Deployment already matches our desired spec, we're done.
 	if apiequality.Semantic.DeepDerivative(updatedDeployment, existingDeployment) {
 		// DeepDerivative allows the map fields of updatedDeployment to be a subset of existingDeployment,
 		// but we want to check that certain of those map fields are exactly equal before deciding to skip the update.
-		if !desireSelectorUpdate && !desireTemplateLabelsUpdate && !desirePriorityClassNameUpdate {
+		if !desireSelectorUpdate && !desireTemplateLabelsUpdate && !desirePriorityClassNameUpdate && !desireDeploymentStrategyTypeUpdate {
 			return nil // already equal enough, so skip update
 		}
 	}
@@ -614,6 +621,14 @@ func (c *agentController) getPodSecurityContext() *corev1.PodSecurityContext {
 	return podSecurityContext
 }
 
+func (c *agentController) getDeploymentStrategy() appsv1.DeploymentStrategy {
+	s := appsv1.DeploymentStrategy{}
+	if c.cfg.DeploymentStrategyType != nil {
+		s.Type = *c.cfg.DeploymentStrategyType
+	}
+	return s
+}
+
 func (c *agentController) newAgentDeployment(controllerManagerPod *corev1.Pod) *appsv1.Deployment {
 	var volumeMounts []corev1.VolumeMount
 	if len(controllerManagerPod.Spec.Containers) > 0 {
@@ -699,6 +714,9 @@ func (c *agentController) newAgentDeployment(controllerManagerPod *corev1.Pod) *
 
 			// Setting MinReadySeconds prevents the agent pods from being churned too quickly by the deployments controller.
 			MinReadySeconds: 10,
+
+			// Allow the user to optionally configure the deployment strategy type.
+			Strategy: c.getDeploymentStrategy(),
 		},
 	}
 }
