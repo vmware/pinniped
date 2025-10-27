@@ -318,7 +318,7 @@ service_https_nodeport_port: $service_https_nodeport_port
 service_https_nodeport_nodeport: $service_https_nodeport_nodeport
 service_https_clusterip_port: $service_https_clusterip_port
 audit:
-  log_usernames_and_groups: ${LOG_USERNAMES_AND_GROUPS:-disabled}
+  log_usernames_and_groups: ${LOG_USERNAMES_AND_GROUPS:-enabled}
 EOF
 
 if [[ "${FIREWALL_IDPS:-no}" == "yes" ]]; then

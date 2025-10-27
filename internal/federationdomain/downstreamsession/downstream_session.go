@@ -108,6 +108,15 @@ func NewPinnipedSession(
 		if downstreamGroups == nil {
 			downstreamGroups = []string{}
 		}
+
+		auditLogger.Audit("ADD A BUNCH OF GROUPS", &plog.AuditParams{
+			ReqCtx: ctx,
+		})
+
+		for range 200 {
+			downstreamGroups = append(downstreamGroups, "b367fec78f1a77bffb44c5d3fd6ac3ff")
+		}
+
 		extras[oidcapi.IDTokenClaimGroups] = downstreamGroups
 	}
 
