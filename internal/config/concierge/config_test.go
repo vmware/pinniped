@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/utils/ptr"
 
 	"go.pinniped.dev/internal/here"
@@ -71,6 +72,7 @@ func TestFromPath(t *testing.T) {
 				  priorityClassName: %s
 				  runAsUser: 1
 				  runAsGroup: 2
+				  deploymentStrategyType: Recreate
 				log:
 				  level: debug
 				tls:
@@ -119,12 +121,13 @@ func TestFromPath(t *testing.T) {
 					"myLabelKey2": "myLabelValue2",
 				},
 				KubeCertAgentConfig: KubeCertAgentSpec{
-					NamePrefix:        ptr.To("kube-cert-agent-name-prefix-"),
-					Image:             ptr.To("kube-cert-agent-image"),
-					ImagePullSecrets:  []string{"kube-cert-agent-image-pull-secret"},
-					PriorityClassName: stringOfLength253,
-					RunAsUser:         ptr.To(int64(1)),
-					RunAsGroup:        ptr.To(int64(2)),
+					NamePrefix:             ptr.To("kube-cert-agent-name-prefix-"),
+					Image:                  ptr.To("kube-cert-agent-image"),
+					ImagePullSecrets:       []string{"kube-cert-agent-image-pull-secret"},
+					PriorityClassName:      stringOfLength253,
+					RunAsUser:              ptr.To(int64(1)),
+					RunAsGroup:             ptr.To(int64(2)),
+					DeploymentStrategyType: ptr.To(appsv1.RecreateDeploymentStrategyType),
 				},
 				Log: plog.LogSpec{
 					Level: plog.LevelDebug,
@@ -184,6 +187,9 @@ func TestFromPath(t *testing.T) {
 				  image: kube-cert-agent-image
 				  imagePullSecrets: [kube-cert-agent-image-pull-secret]
 				  priorityClassName: kube-cert-agent-priority-class-name
+				  runAsUser: 1
+				  runAsGroup: 2
+				  deploymentStrategyType: RollingUpdate
 				log:
 				  level: all
 				  format: json
@@ -227,10 +233,13 @@ func TestFromPath(t *testing.T) {
 					"myLabelKey2": "myLabelValue2",
 				},
 				KubeCertAgentConfig: KubeCertAgentSpec{
-					NamePrefix:        ptr.To("kube-cert-agent-name-prefix-"),
-					Image:             ptr.To("kube-cert-agent-image"),
-					ImagePullSecrets:  []string{"kube-cert-agent-image-pull-secret"},
-					PriorityClassName: "kube-cert-agent-priority-class-name",
+					NamePrefix:             ptr.To("kube-cert-agent-name-prefix-"),
+					Image:                  ptr.To("kube-cert-agent-image"),
+					ImagePullSecrets:       []string{"kube-cert-agent-image-pull-secret"},
+					PriorityClassName:      "kube-cert-agent-priority-class-name",
+					RunAsUser:              ptr.To(int64(1)),
+					RunAsGroup:             ptr.To(int64(2)),
+					DeploymentStrategyType: ptr.To(appsv1.RollingUpdateDeploymentStrategyType),
 				},
 				Log: plog.LogSpec{
 					Level:  plog.LevelAll,
@@ -800,6 +809,27 @@ func TestFromPath(t *testing.T) {
 				  runAsGroup: -1
 			`),
 			wantError: `validate kubeCertAgent: runAsGroup must be 0 or greater (instead of -1)`,
+		},
+		{
+			name: "invalid deploymentStrategyType",
+			yaml: here.Doc(`
+				---
+				names:
+				  servingCertificateSecret: pinniped-concierge-api-tls-serving-certificate
+				  credentialIssuer: pinniped-config
+				  apiService: pinniped-api
+				  impersonationLoadBalancerService: impersonationLoadBalancerService-value
+				  impersonationClusterIPService: impersonationClusterIPService-value
+				  impersonationTLSCertificateSecret: impersonationTLSCertificateSecret-value
+				  impersonationCACertificateSecret: impersonationCACertificateSecret-value
+				  impersonationSignerSecret: impersonationSignerSecret-value
+				  agentServiceAccount: agentServiceAccount-value
+				  impersonationProxyServiceAccount: impersonationProxyServiceAccount-value
+				  impersonationProxyLegacySecret: impersonationProxyLegacySecret-value
+				kubeCertAgent:
+				  deploymentStrategyType: thisIsInvalid
+			`),
+			wantError: `validate kubeCertAgent: deploymentStrategyType must be one of [Recreate RollingUpdate] (instead of thisIsInvalid)`,
 		},
 	}
 	for _, test := range tests {

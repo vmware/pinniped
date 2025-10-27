@@ -3,7 +3,11 @@
 
 package concierge
 
-import "go.pinniped.dev/internal/plog"
+import (
+	appsv1 "k8s.io/api/apps/v1"
+
+	"go.pinniped.dev/internal/plog"
+)
 
 const (
 	Enabled  = "enabled"
@@ -120,4 +124,9 @@ type KubeCertAgentSpec struct {
 	// The GID to run the entrypoint of the kube-cert-agent container.
 	// Defaults to 0 (root). No validation is performed on this value.
 	RunAsGroup *int64 `json:"runAsGroup"`
+
+	// DeploymentStrategyType will be set as the agent Deployment's deployment strategy type.
+	// When nil, the Deployment will not specify any deployment strategy type, and will therefore have its
+	// deployment strategy type set by Kubernetes default behavior (currently RollingUpdate).
+	DeploymentStrategyType *appsv1.DeploymentStrategyType `json:"deploymentStrategyType"`
 }

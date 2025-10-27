@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
@@ -198,6 +200,12 @@ func validateKubeCertAgent(agentConfig *KubeCertAgentSpec) error {
 
 	if agentConfig.RunAsGroup != nil && *agentConfig.RunAsGroup < 0 {
 		return constable.Error(fmt.Sprintf("runAsGroup must be 0 or greater (instead of %d)", *agentConfig.RunAsGroup))
+	}
+
+	allowedStrategyTypes := sets.New(appsv1.RecreateDeploymentStrategyType, appsv1.RollingUpdateDeploymentStrategyType)
+	if agentConfig.DeploymentStrategyType != nil && !allowedStrategyTypes.Has(*agentConfig.DeploymentStrategyType) {
+		return constable.Error(fmt.Sprintf("deploymentStrategyType must be one of %s (instead of %s)",
+			sets.List(allowedStrategyTypes), *agentConfig.DeploymentStrategyType))
 	}
 
 	if len(agentConfig.PriorityClassName) == 0 {
