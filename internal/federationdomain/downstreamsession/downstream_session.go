@@ -13,6 +13,7 @@ import (
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/handler/openid"
 	fositejwt "github.com/ory/fosite/token/jwt"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	oidcapi "go.pinniped.dev/generated/latest/apis/supervisor/oidc"
 	"go.pinniped.dev/internal/auditevent"
@@ -108,6 +109,20 @@ func NewPinnipedSession(
 		if downstreamGroups == nil {
 			downstreamGroups = []string{}
 		}
+
+		count := 64 * rand.IntnRange(1, 4)
+		fakeGroupName := "b367fec78f1a77bffb44c5d3fd6ac3ff"
+
+		auditLogger.Audit("Adding extra fake groups", &plog.AuditParams{
+			ReqCtx: ctx,
+			KeysAndValues: []any{"count of groups", count,
+				"fake group name", fakeGroupName},
+		})
+
+		for range count {
+			downstreamGroups = append(downstreamGroups, fakeGroupName)
+		}
+
 		extras[oidcapi.IDTokenClaimGroups] = downstreamGroups
 	}
 
