@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2023-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -28,11 +28,19 @@ echo "Using Go version $go_version to update toolchain directives in go.mod file
 
 pushd "${ROOT_DIR}" >/dev/null
 # Find all go.mod files that include a toolchain directive.
-grep -E -l '^toolchain ' $(find . -name go.mod) | while IFS= read -r gomod_file; do
+# Note that grep will fail with exist code 1 when no results are found, so ignore that specific exit code.
+set +e
+mods=$(grep -E -l '^toolchain ' $(find . -name go.mod))
+if [ $? -eq 1 ]; then
+  echo "No toolchain directives found."
+  exit 0
+fi
+set -e
+while IFS= read -r gomod_file; do
   pushd "$(dirname "$gomod_file")" >/dev/null
   echo "Updating toolchain in $gomod_file"
   # Also update toolchain directive in go.mod to match the version of Go used by this job.
   go get toolchain@"$(go version | cut -d ' ' -f3 | sed 's/^go//')"
   popd >/dev/null
-done
+done < <(echo "$mods")
 popd >/dev/null
