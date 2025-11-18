@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 FROM gcr.io/go-containerregistry/crane as crane
-FROM mikefarah/yq:4.48.1 AS yq
+FROM mikefarah/yq:4.48.2 AS yq
 
 FROM golang:1.25.4
 COPY --from=yq /usr/bin/yq /usr/local/bin
