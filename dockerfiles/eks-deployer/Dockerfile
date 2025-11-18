@@ -4,7 +4,7 @@
 # For deploying an EKS cluster and setting it up to run our tests.
 
 FROM weaveworks/eksctl:v0.217.0 AS eksctl
-FROM mikefarah/yq:4.48.1 AS yq
+FROM mikefarah/yq:4.48.2 AS yq
 FROM amazon/aws-cli:2.31.36
 RUN yum update -y && yum install -y jq perl-Digest-SHA openssl && yum clean all
 COPY --from=eksctl eksctl /usr/local/bin/eksctl
