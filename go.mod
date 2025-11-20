@@ -40,7 +40,7 @@ require (
 	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/joshlf/go-acl v0.0.0-20200411065538-eae00ae38531
-	github.com/migueleliasweb/go-github-mock v1.4.0
+	github.com/migueleliasweb/go-github-mock v1.5.0
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/ory/fosite v0.49.1-0.20250703093431-a5f0b09bf31c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -49,15 +49,15 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	github.com/tdewolff/minify/v2 v2.24.5
+	github.com/tdewolff/minify/v2 v2.24.7
 	go.uber.org/mock v0.6.0
-	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.43.0
-	golang.org/x/net v0.46.0
-	golang.org/x/oauth2 v0.32.0
-	golang.org/x/sync v0.17.0
-	golang.org/x/term v0.36.0
-	golang.org/x/text v0.30.0
+	go.uber.org/zap v1.27.1
+	golang.org/x/crypto v0.45.0
+	golang.org/x/net v0.47.0
+	golang.org/x/oauth2 v0.33.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/term v0.37.0
+	golang.org/x/text v0.31.0
 	k8s.io/api v0.33.5
 	k8s.io/apiextensions-apiserver v0.33.5
 	k8s.io/apimachinery v0.33.5
@@ -90,7 +90,7 @@ require (
 	github.com/dgraph-io/ristretto v1.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
-	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-json-experiment/json v0.0.0-20250725192818-e39067aee2d2 // indirect
@@ -147,7 +147,7 @@ require (
 	github.com/spf13/viper v1.16.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	github.com/tdewolff/parse/v2 v2.8.5-0.20251020133559-0efcf90bef1a // indirect
+	github.com/tdewolff/parse/v2 v2.8.5 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.21 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.21 // indirect
@@ -172,10 +172,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/mod v0.28.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	golang.org/x/tools v0.37.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/grpc v1.68.1 // indirect
