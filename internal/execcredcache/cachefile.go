@@ -28,8 +28,6 @@ const (
 	// apiKind is the Kubernetes-style Kind of the credential cache file object.
 	apiKind = "CredentialCache"
 
-	// maxCacheDuration is how long a credential can remain in the cache even if it's still otherwise valid.
-	maxCacheDuration = 1 * time.Hour
 )
 
 type (
@@ -92,7 +90,7 @@ func (c *credCache) writeTo(path string) error {
 }
 
 // normalized returns a copy of the credCache with stale entries removed and entries sorted in a canonical order.
-func (c *credCache) normalized() *credCache {
+func (c *credCache) normalized(maxCacheDuration time.Duration) *credCache {
 	result := emptyCache()
 
 	// Clean up expired/invalid tokens.

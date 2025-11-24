@@ -29,16 +29,18 @@ const (
 )
 
 type Cache struct {
-	path        string
-	errReporter func(error)
-	trylockFunc func() error
-	unlockFunc  func() error
+	path             string
+	errReporter      func(error)
+	trylockFunc      func() error
+	unlockFunc       func() error
+	maxCacheDuration time.Duration
 }
 
-func New(path string) *Cache {
+func New(path string, opts ...Option) *Cache {
 	lock := flock.New(path + ".lock")
-	return &Cache{
-		path: path,
+	c := &Cache{
+		path:             path,
+		maxCacheDuration: 1 * time.Hour, // default value
 		trylockFunc: func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), defaultFileLockTimeout)
 			defer cancel()
@@ -47,6 +49,20 @@ func New(path string) *Cache {
 		},
 		unlockFunc:  lock.Unlock,
 		errReporter: func(_ error) {},
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+// Option is a function that configures a Cache.
+type Option func(*Cache)
+
+// WithMaxCacheDuration sets the maximum duration that a credential can remain in the cache.
+func WithMaxCacheDuration(duration time.Duration) Option {
+	return func(c *Cache) {
+		c.maxCacheDuration = duration
 	}
 }
 
@@ -144,13 +160,13 @@ func (c *Cache) withCache(transact func(*credCache)) {
 	}
 
 	// Normalize the cache before modifying it, to remove any entries that have already expired.
-	cache = cache.normalized()
+	cache = cache.normalized(c.maxCacheDuration)
 
 	// Process/mutate the cache using the provided function.
 	transact(cache)
 
 	// Normalize again to put everything into a known order.
-	cache = cache.normalized()
+	cache = cache.normalized(c.maxCacheDuration)
 
 	// Marshal the cache back to YAML and save it to the file.
 	if err := cache.writeTo(c.path); err != nil {

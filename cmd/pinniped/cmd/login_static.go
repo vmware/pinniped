@@ -22,6 +22,12 @@ import (
 	"go.pinniped.dev/pkg/oidcclient/oidctypes"
 )
 
+const (
+	// cacheExpirationEnvVarName is the environment variable name for setting the cache expiration duration.
+	// The value should be a valid duration string (e.g., "1h", "30m", "2h30m").
+	cacheExpirationEnvVarName = "PINNIPED_CACHE_EXPIRATION"
+)
+
 //nolint:gochecknoinits
 func init() {
 	loginCmd.AddCommand(staticLoginCommand(staticLoginRealDeps()))
@@ -51,6 +57,7 @@ type staticLoginParams struct {
 	conciergeCABundle          string
 	conciergeAPIGroupSuffix    string
 	credentialCachePath        string
+	cacheExpiration            time.Duration
 }
 
 func staticLoginCommand(deps staticLoginDeps) *cobra.Command {
@@ -85,6 +92,7 @@ func staticLoginCommand(deps staticLoginDeps) *cobra.Command {
 	cmd.Flags().StringVar(&flags.conciergeCABundle, "concierge-ca-bundle-data", "", "CA bundle to use when connecting to the Concierge")
 	cmd.Flags().StringVar(&flags.conciergeAPIGroupSuffix, "concierge-api-group-suffix", groupsuffix.PinnipedDefaultSuffix, "Concierge API group suffix")
 	cmd.Flags().StringVar(&flags.credentialCachePath, "credential-cache", filepath.Join(mustGetConfigDir(), "credentials.yaml"), "Path to cluster-specific credentials cache (\"\" disables the cache)")
+	cmd.Flags().DurationVar(&flags.cacheExpiration, "cache-expiration", 1*time.Hour, "Maximum duration that a credential can remain in the cache")
 
 	cmd.RunE = func(cmd *cobra.Command, _args []string) error { return runStaticLogin(cmd, deps, flags) }
 
@@ -103,6 +111,16 @@ func runStaticLogin(cmd *cobra.Command, deps staticLoginDeps, flags staticLoginP
 
 	if flags.staticToken == "" && flags.staticTokenEnvName == "" {
 		return fmt.Errorf("one of --token or --token-env must be set")
+	}
+
+	// Check for cache expiration from environment variable, which takes precedence over CLI flag.
+	cacheExpiration := flags.cacheExpiration
+	if envValue, ok := deps.lookupEnv(cacheExpirationEnvVarName); ok && envValue != "" {
+		parsedDuration, err := time.ParseDuration(envValue)
+		if err != nil {
+			return fmt.Errorf("invalid %s value %q: %w (expected a valid duration string like \"1h\", \"30m\", etc.)", cacheExpirationEnvVarName, envValue, err)
+		}
+		cacheExpiration = parsedDuration
 	}
 
 	var concierge *conciergeclient.Client
@@ -148,7 +166,7 @@ func runStaticLogin(cmd *cobra.Command, deps staticLoginDeps, flags staticLoginP
 	}
 	var credCache *execcredcache.Cache
 	if flags.credentialCachePath != "" {
-		credCache = execcredcache.New(flags.credentialCachePath)
+		credCache = execcredcache.New(flags.credentialCachePath, execcredcache.WithMaxCacheDuration(cacheExpiration))
 		if cred := credCache.Get(cacheKey); cred != nil {
 			pLogger.Debug("using cached cluster credential.")
 			return json.NewEncoder(out).Encode(cred)

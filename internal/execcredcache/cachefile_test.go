@@ -114,7 +114,7 @@ func TestNormalized(t *testing.T) {
 
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
-		require.Equal(t, emptyCache(), emptyCache().normalized())
+		require.Equal(t, emptyCache(), emptyCache().normalized(1*time.Hour))
 	})
 
 	t.Run("nonempty", func(t *testing.T) {
@@ -199,6 +199,6 @@ func TestNormalized(t *testing.T) {
 					},
 				},
 			},
-		}, input.normalized())
+		}, input.normalized(1*time.Hour))
 	})
 }
