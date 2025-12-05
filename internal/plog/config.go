@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package plog
@@ -57,7 +57,7 @@ func ValidateAndSetLogLevelAndFormatGlobally(ctx context.Context, spec LogSpec) 
 	if _, err := logs.GlogSetter(strconv.Itoa(int(klogLevel))); err != nil {
 		panic(err) // programmer error
 	}
-	//nolint:gosec // the range for klogLevel is [0,108]
+	// the range for klogLevel is [0,108]
 	globalLevel.SetLevel(zapcore.Level(-klogLevel)) // klog levels are inverted when zap handles them
 
 	var encoding string

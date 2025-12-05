@@ -1246,7 +1246,7 @@ func TestGetKubeconfig(t *testing.T) {
 			wantError: true,
 			wantStderr: func(issuerCABundle string, issuerURL string) testutil.RequireErrorStringFunc {
 				return testutil.WantSprintfErrorString(
-					"Error: while fetching OIDC discovery data from issuer: oidc: issuer did not match the issuer returned by provider, expected \"%s\" got \"https://wrong-issuer.com\"\n",
+					"Error: while fetching OIDC discovery data from issuer: oidc: issuer URL provided to client (\"%s\") did not match the issuer URL returned by provider (\"https://wrong-issuer.com\")\n",
 					issuerURL)
 			},
 		},

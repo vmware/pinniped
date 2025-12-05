@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package plog
@@ -44,8 +44,7 @@ const (
 func Enabled(level LogLevel) bool {
 	l := klogLevelForPlogLevel(level)
 	// check that both our global level and the klog global level agree that the plog level is enabled
-	// klog levels are inverted when zap handles them
-	//nolint:gosec // the range for klogLevel is [0,108]
+	// klog levels are inverted when zap handles them. The range for klogLevel is [0,108].
 	return globalLevel.Enabled(zapcore.Level(-l)) && klog.V(l).Enabled()
 }
 
