@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -76,8 +76,8 @@ func TestSecureTLSPinnipedCLIToSupervisor_Parallel(t *testing.T) {
 	)
 
 	require.Equal(t, `Error: could not complete Pinniped login: could not perform OIDC discovery for "`+
-		server.URL+`": oidc: issuer did not match the issuer returned by provider, expected "`+
-		server.URL+`" got "https://not-a-good-issuer"
+		server.URL+`": oidc: issuer URL provided to client ("`+
+		server.URL+`") did not match the issuer URL returned by provider ("https://not-a-good-issuer")
 `, stderr)
 	require.Empty(t, stdout)
 }

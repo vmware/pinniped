@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -77,7 +77,7 @@ Get "https://127.0.0.1:444444/invalid-url-that-is-really-really-long-nananananan
 				Status: metav1.ConditionFalse,
 				Reason: "Unreachable",
 				Message: `failed to perform OIDC discovery against "` + env.SupervisorUpstreamOIDC.Issuer + `/":
-oidc: issuer did not match the issuer returned by provider, expected "` + env.SupervisorUpstreamOIDC.Issuer + `/" got "` + env.SupervisorUpstreamOIDC.Issuer + `"`,
+oidc: issuer URL provided to client ("` + env.SupervisorUpstreamOIDC.Issuer + `/") did not match the issuer URL returned by provider ("` + env.SupervisorUpstreamOIDC.Issuer + `")`,
 			},
 			{
 				Type:    "AdditionalAuthorizeParametersValid",
