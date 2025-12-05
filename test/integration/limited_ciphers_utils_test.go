@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -115,7 +115,7 @@ func expectTLSConfigForServicePort(
 ) {
 	portAsInt, err := strconv.Atoi(localPortAsStr)
 	require.NoError(t, err)
-	portAsUint := uint16(portAsInt) //nolint:gosec // okay to cast because it will only be legal port numbers
+	portAsUint := uint16(portAsInt) // okay to cast because it will only be legal port numbers
 
 	startKubectlPortForward(ctx, t, localPortAsStr, "443", serviceName, serviceNamespace)
 
