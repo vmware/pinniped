@@ -7,7 +7,7 @@ image_resource:
   type: registry-image
   source:
     repository: golang
-    tag: '1.25.3'
+    tag: '1.25.5'
 inputs:
   - name: pinniped
   - name: pinniped-ci
