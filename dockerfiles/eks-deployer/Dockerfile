@@ -5,7 +5,7 @@
 
 FROM weaveworks/eksctl:v0.219.0 AS eksctl
 FROM mikefarah/yq:4.49.1 AS yq
-FROM amazon/aws-cli:2.32.6
+FROM amazon/aws-cli:2.32.12
 RUN yum update -y && yum install -y jq perl-Digest-SHA openssl && yum clean all
 COPY --from=eksctl eksctl /usr/local/bin/eksctl
 COPY --from=yq /usr/bin/yq /usr/local/bin/yq
