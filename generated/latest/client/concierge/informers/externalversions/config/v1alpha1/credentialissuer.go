@@ -43,7 +43,7 @@ func NewCredentialIssuerInformer(client versioned.Interface, resyncPeriod time.D
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredCredentialIssuerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -68,7 +68,7 @@ func NewFilteredCredentialIssuerInformer(client versioned.Interface, resyncPerio
 				}
 				return client.ConfigV1alpha1().CredentialIssuers().Watch(ctx, options)
 			},
-		},
+		}, client),
 		&conciergeconfigv1alpha1.CredentialIssuer{},
 		resyncPeriod,
 		indexers,

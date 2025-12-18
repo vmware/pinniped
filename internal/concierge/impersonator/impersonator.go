@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -463,6 +462,11 @@ type contextKey int
 
 const tokenKey contextKey = iota
 
+type auditEventUserInfo struct {
+	User             authenticationv1.UserInfo
+	ImpersonatedUser *authenticationv1.UserInfo
+}
+
 func newImpersonationReverseProxyFunc(restConfig *rest.Config) (func(*genericapiserver.Config) http.Handler, error) {
 	serverURL, err := url.Parse(restConfig.Host)
 	if err != nil {
@@ -518,14 +522,18 @@ func newImpersonationReverseProxyFunc(restConfig *rest.Config) (func(*genericapi
 				return
 			}
 
-			ae := audit.AuditEventFrom(r.Context())
-			if ae == nil || reflect.DeepEqual(*ae, auditinternal.Event{}) {
-				plog.Warning("aggregated API server logic did not set audit event but it is always supposed to do so",
+			ac := audit.AuditContextFrom(r.Context())
+			if ac == nil {
+				plog.Warning("aggregated API server logic did not set audit context but it is always supposed to do so",
 					"url", r.URL.String(),
 					"method", r.Method,
 				)
-				newInternalErrResponse(w, r, c.Serializer, "invalid audit event")
+				newInternalErrResponse(w, r, c.Serializer, "invalid audit context")
 				return
+			}
+			ae := &auditEventUserInfo{
+				User:             ac.GetEventUser(),
+				ImpersonatedUser: ac.GetEventImpersonatedUser(),
 			}
 
 			// grab the request's bearer token if present.  this is optional and does not fail the request if missing.
@@ -640,7 +648,7 @@ func ensureNoImpersonationHeaders(r *http.Request) error {
 	return nil
 }
 
-func getTransportForUser(ctx context.Context, userInfo user.Info, delegate, delegateAnonymous http.RoundTripper, ae *auditinternal.Event, token string, authenticator authenticator.Request) (http.RoundTripper, error) {
+func getTransportForUser(ctx context.Context, userInfo user.Info, delegate, delegateAnonymous http.RoundTripper, ae *auditEventUserInfo, token string, authenticator authenticator.Request) (http.RoundTripper, error) {
 	if canImpersonateFully(userInfo) {
 		return standardImpersonationRoundTripper(userInfo, ae, delegate)
 	}
@@ -658,7 +666,7 @@ func canImpersonateFully(userInfo user.Info) bool {
 	return false
 }
 
-func standardImpersonationRoundTripper(userInfo user.Info, ae *auditinternal.Event, delegate http.RoundTripper) (http.RoundTripper, error) {
+func standardImpersonationRoundTripper(userInfo user.Info, ae *auditEventUserInfo, delegate http.RoundTripper) (http.RoundTripper, error) {
 	extra, err := buildExtra(userInfo.GetExtra(), ae)
 	if err != nil {
 		return nil, err
@@ -674,7 +682,7 @@ func standardImpersonationRoundTripper(userInfo user.Info, ae *auditinternal.Eve
 	return transport.NewImpersonatingRoundTripper(impersonateConfig, delegate), nil
 }
 
-func tokenPassthroughRoundTripper(ctx context.Context, delegateAnonymous http.RoundTripper, ae *auditinternal.Event, token string, authenticator authenticator.Request) (http.RoundTripper, error) {
+func tokenPassthroughRoundTripper(ctx context.Context, delegateAnonymous http.RoundTripper, ae *auditEventUserInfo, token string, authenticator authenticator.Request) (http.RoundTripper, error) {
 	// all code below assumes KAS does not support UID impersonation because that case is handled in the standard path
 
 	// it also assumes that the TCR API does not issue tokens - if this assumption changes, we will need
@@ -752,7 +760,7 @@ func tokenReview(ctx context.Context, token string, authenticator authenticator.
 	return tokenUser, nil
 }
 
-func buildExtra(extra map[string][]string, ae *auditinternal.Event) (map[string][]string, error) {
+func buildExtra(extra map[string][]string, ae *auditEventUserInfo) (map[string][]string, error) {
 	const reservedImpersonationProxySuffix = ".impersonation-proxy.concierge.pinniped.dev"
 
 	// always validate that the extra is something we support irregardless of nested impersonation

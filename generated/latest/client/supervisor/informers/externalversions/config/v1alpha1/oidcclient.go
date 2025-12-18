@@ -44,7 +44,7 @@ func NewOIDCClientInformer(client versioned.Interface, namespace string, resyncP
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredOIDCClientInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -69,7 +69,7 @@ func NewFilteredOIDCClientInformer(client versioned.Interface, namespace string,
 				}
 				return client.ConfigV1alpha1().OIDCClients(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&supervisorconfigv1alpha1.OIDCClient{},
 		resyncPeriod,
 		indexers,
