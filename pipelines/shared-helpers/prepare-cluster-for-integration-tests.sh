@@ -854,7 +854,7 @@ echo
 set -x
 kapp deploy --yes --app "$concierge_app_name" --diff-changes --file "$manifest"
 
-if ! { (($(kubectl version --output json | jq -r .serverVersion.major) == 1)) && (($(kubectl version --output json | jq -r .serverVersion.minor) < 19)); }; then
+if ! { (($(kubectl version --output json | jq -r .serverVersion.major) == 1)) && (($(kubectl version --output json | jq -r .serverVersion.minor) < 27)); }; then
   # Also perform a dry-run create with kubectl just to see if there are any validation errors.
   # Skip this on very old clusters, since we use some API fields (like seccompProfile) which did not exist back then.
   # Use can still install on these clusters by using kapp or by using kubectl --validate=false.
@@ -939,7 +939,7 @@ echo
 set -x
 kapp deploy --yes --app "$supervisor_app_name" --diff-changes --file "$manifest"
 
-if ! { (($(kubectl version --output json | jq -r .serverVersion.major) == 1)) && (($(kubectl version --output json | jq -r .serverVersion.minor) < 23)); }; then
+if ! { (($(kubectl version --output json | jq -r .serverVersion.major) == 1)) && (($(kubectl version --output json | jq -r .serverVersion.minor) < 27)); }; then
   # Also perform a dry-run create with kubectl just to see if there are any validation errors.
   # Skip this on very old clusters, since we use some API fields (like seccompProfile) which did not exist back then.
   # In the Supervisor CRDs we began to use CEL validations which were introduced in Kubernetes 1.23.
