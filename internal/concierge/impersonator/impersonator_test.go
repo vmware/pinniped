@@ -769,23 +769,23 @@ func TestImpersonator(t *testing.T) {
 			},
 		},
 		{
-			name:       "header canonicalization future UID header", // no longer future as it exists in Kube v1.22
+			name:       "header canonicalization of UID header, starting in Kube v1.22",
 			clientCert: newClientCert(t, ca, "test-username", []string{"test-group1", "test-group2"}),
 			clientMutateHeaders: func(header http.Header) {
 				header["imPerSonaTE-uid"] = []string{"007"}
 			},
-			wantError: `an error on the server ("Internal Server Error: \"/api/v1/namespaces\": requested [{UID  007  authentication.k8s.io/v1  }] without impersonating a user") has prevented the request from succeeding (get namespaces)`,
+			wantError: `requested [{UID  007  authentication.k8s.io/v1  }] without impersonating a user`,
 			wantAuthorizerAttributes: func(_credentialID string) []authorizer.AttributesRecord {
 				return []authorizer.AttributesRecord{}
 			},
 		},
 		{
-			name:       "UID header starting in Kube v1.22",
+			name:       "UID header, starting in Kube v1.22",
 			clientCert: newClientCert(t, ca, "test-username", []string{"test-group1", "test-group2"}),
 			clientMutateHeaders: func(header http.Header) {
 				header["Impersonate-Uid"] = []string{"008"}
 			},
-			wantError: `an error on the server ("Internal Server Error: \"/api/v1/namespaces\": requested [{UID  008  authentication.k8s.io/v1  }] without impersonating a user") has prevented the request from succeeding (get namespaces)`,
+			wantError: `requested [{UID  008  authentication.k8s.io/v1  }] without impersonating a user`,
 			wantAuthorizerAttributes: func(_credentialID string) []authorizer.AttributesRecord {
 				return []authorizer.AttributesRecord{}
 			},

@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package clientsecretrequest
@@ -161,7 +161,7 @@ func TestCreate(t *testing.T) {
 			wantErrStatus: &metav1.Status{
 				Status: metav1.StatusFailure,
 				Message: `OIDCClientSecretRequest.clientsecret.supervisor.pinniped.dev "client.oauth.pinniped.dev-some-client-name" ` +
-					`is invalid: dryRun: Unsupported value: []string{"stuff"}`,
+					`is invalid: dryRun: Unsupported value: ["stuff"]`,
 				Reason: metav1.StatusReasonInvalid,
 				Code:   http.StatusUnprocessableEntity,
 				Details: &metav1.StatusDetails{
@@ -170,7 +170,7 @@ func TestCreate(t *testing.T) {
 					Name:  "client.oauth.pinniped.dev-some-client-name",
 					Causes: []metav1.StatusCause{{
 						Type:    "FieldValueNotSupported",
-						Message: "Unsupported value: []string{\"stuff\"}",
+						Message: `Unsupported value: ["stuff"]`,
 						Field:   "dryRun",
 					}},
 				},

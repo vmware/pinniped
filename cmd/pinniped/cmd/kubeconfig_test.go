@@ -1749,7 +1749,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -1819,7 +1818,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -1883,7 +1881,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -1950,7 +1947,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2033,7 +2029,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2116,7 +2111,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2201,7 +2195,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2281,7 +2274,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-sso
 					current-context: kind-context-sso
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-sso
 					  user:
@@ -2400,7 +2392,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2509,7 +2500,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2586,7 +2576,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2665,7 +2654,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2742,7 +2730,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2815,7 +2802,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2895,7 +2881,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -2982,7 +2967,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3070,7 +3054,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3158,7 +3141,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3236,7 +3218,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3319,7 +3300,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3385,7 +3365,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3446,7 +3425,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3507,7 +3485,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3569,7 +3546,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3631,7 +3607,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3692,7 +3667,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3752,7 +3726,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:
@@ -3818,7 +3791,6 @@ func TestGetKubeconfig(t *testing.T) {
 					  name: kind-context-pinniped
 					current-context: kind-context-pinniped
 					kind: Config
-					preferences: {}
 					users:
 					- name: kind-user-pinniped
 					  user:

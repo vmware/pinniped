@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package conciergeclient
@@ -229,9 +229,7 @@ func TestExchangeToken(t *testing.T) {
 				`{
 				  "kind": "TokenCredentialRequest",
 				  "apiVersion": "login.concierge.pinniped.dev/v1alpha1",
-				  "metadata": {
-					"creationTimestamp": null
-				  },
+				  "metadata": {},
 				  "spec": {
 					"token": "test-token",
 					"authenticator": {
