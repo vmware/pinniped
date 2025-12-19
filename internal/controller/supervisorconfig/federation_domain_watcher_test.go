@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package supervisorconfig
@@ -2087,7 +2087,9 @@ func TestTestFederationDomainWatcherControllerSync(t *testing.T) {
 			t.Parallel()
 
 			federationDomainsSetter := &fakeFederationDomainsSetter{}
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := supervisorfake.NewSimpleClientset()
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedInformerClient := supervisorfake.NewSimpleClientset()
 			for _, o := range tt.inputObjects {
 				require.NoError(t, pinnipedAPIClient.Tracker().Add(o))

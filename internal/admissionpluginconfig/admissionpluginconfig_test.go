@@ -235,10 +235,10 @@ func TestConfigureAdmissionPlugins(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeClient := kubernetesfake.NewSimpleClientset()
+			kubeClient := kubernetesfake.NewClientset()
 			kubeClient.Resources = tt.availableAPIResources
 
-			// Unfortunately, kubernetesfake.NewSimpleClientset() does not support using reactors to
+			// Unfortunately, NewClientset() does not support using reactors to
 			// cause discovery to return errors. Instead, we will make our own fake implementation of the
 			// discovery client's interface and only mock the parts that we need for this test.
 			discoveryClient := newFakeDiscoveryClient(kubeClient)

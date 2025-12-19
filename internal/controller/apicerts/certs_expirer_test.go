@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package apicerts
@@ -90,7 +90,7 @@ func TestExpirerControllerFilters(t *testing.T) {
 			t.Parallel()
 
 			secretsInformer := k8sinformers.NewSharedInformerFactory(
-				kubernetesfake.NewSimpleClientset(),
+				kubernetesfake.NewClientset(),
 				0,
 			).Core().V1().Secrets()
 			withInformer := testutil.NewObservableWithInformerOption()
@@ -224,7 +224,7 @@ func TestExpirerControllerSync(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			kubeAPIClient := kubernetesfake.NewSimpleClientset()
+			kubeAPIClient := kubernetesfake.NewClientset()
 			if test.configKubeAPIClient != nil {
 				test.configKubeAPIClient(kubeAPIClient)
 			}
@@ -232,7 +232,7 @@ func TestExpirerControllerSync(t *testing.T) {
 			testRV := "rv_001"
 			testUID := types.UID("uid_002")
 
-			kubeInformerClient := kubernetesfake.NewSimpleClientset()
+			kubeInformerClient := kubernetesfake.NewClientset()
 			name := certsSecretResourceName
 			namespace := "some-namespace"
 			if test.fillSecretData != nil {

@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package supervisorstorage
@@ -179,8 +179,8 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			kubeInformerClient = kubernetesfake.NewSimpleClientset()
-			kubeClient = kubernetesfake.NewSimpleClientset()
+			kubeInformerClient = kubernetesfake.NewClientset()
+			kubeClient = kubernetesfake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
 			frozenNow = time.Now().UTC()
 			fakeClock = clocktesting.NewFakeClock(frozenNow)

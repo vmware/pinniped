@@ -1777,9 +1777,11 @@ func TestAgentController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			conciergeClientset := conciergefake.NewSimpleClientset(tt.pinnipedObjects...)
 			conciergeInformers := conciergeinformers.NewSharedInformerFactory(conciergeClientset, 0)
 
+			//nolint:staticcheck // using NewClientset() is possible here, but it will require updating test expectations
 			kubeClientset := kubefake.NewSimpleClientset(tt.kubeObjects...)
 			if tt.addKubeReactions != nil {
 				tt.addKubeReactions(kubeClientset)

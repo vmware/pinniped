@@ -1,4 +1,4 @@
-// Copyright 2023-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package serviceaccounttokencleanup
@@ -173,8 +173,8 @@ func TestSync(t *testing.T) {
 func setupKubernetes(t *testing.T, namespace string) (*kubernetesfake.Clientset, kubeinformers.SharedInformerFactory) {
 	t.Helper()
 
-	kubeAPIClient := kubernetesfake.NewSimpleClientset()
-	kubeInformerClient := kubernetesfake.NewSimpleClientset()
+	kubeAPIClient := kubernetesfake.NewClientset()
+	kubeInformerClient := kubernetesfake.NewClientset()
 
 	kubeInformers := kubeinformers.NewSharedInformerFactory(
 		kubeInformerClient,

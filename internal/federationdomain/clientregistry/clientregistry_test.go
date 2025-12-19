@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package clientregistry
@@ -256,8 +256,9 @@ func TestClientManager(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := fake.NewClientset()
 			secrets := kubeClient.CoreV1().Secrets(testNamespace)
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients(testNamespace)
 			subject := NewClientManager(

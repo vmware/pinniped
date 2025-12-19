@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package supervisorconfig
@@ -167,8 +167,9 @@ func TestJWKSObserverControllerSync(t *testing.T) {
 
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			kubeInformerClient = kubernetesfake.NewSimpleClientset()
+			kubeInformerClient = kubernetesfake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedInformerClient = supervisorfake.NewSimpleClientset()
 			pinnipedInformers = supervisorinformers.NewSharedInformerFactory(pinnipedInformerClient, 0)
 			issuerToJWKSSetter = &fakeIssuerToJWKSMapSetter{}

@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package pkce
@@ -215,7 +215,7 @@ func TestCreateWithWrongRequesterDataTypes(t *testing.T) {
 }
 
 func makeTestSubject(lifetimeFunc timeouts.StorageLifetime) (context.Context, *fake.Clientset, corev1client.SecretInterface, pkce.PKCERequestStorage) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	secrets := client.CoreV1().Secrets(namespace)
 	return context.Background(),
 		client,

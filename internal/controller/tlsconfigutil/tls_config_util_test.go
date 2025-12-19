@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package tlsconfigutil
@@ -474,7 +474,7 @@ func TestValidateTLSConfig(t *testing.T) {
 			var secretsInformer corev1informers.SecretInformer
 			var configMapInformer corev1informers.ConfigMapInformer
 
-			fakeClient := fake.NewSimpleClientset(tt.k8sObjects...)
+			fakeClient := fake.NewClientset(tt.k8sObjects...)
 			sharedInformers := informers.NewSharedInformerFactory(fakeClient, 0)
 			configMapInformer = sharedInformers.Core().V1().ConfigMaps()
 			secretsInformer = sharedInformers.Core().V1().Secrets()

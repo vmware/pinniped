@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package generator
@@ -104,7 +104,7 @@ func TestSupervisorSecretsControllerFilterSecret(t *testing.T) {
 			t.Parallel()
 
 			secretInformer := k8sinformers.NewSharedInformerFactory(
-				kubernetesfake.NewSimpleClientset(),
+				kubernetesfake.NewClientset(),
 				0,
 			).Core().V1().Secrets()
 			withInformer := testutil.NewObservableWithInformerOption()
@@ -131,7 +131,7 @@ func TestSupervisorSecretsControllerFilterSecret(t *testing.T) {
 func TestSupervisorSecretsControllerInitialEvent(t *testing.T) {
 	initialEventOption := testutil.NewObservableWithInitialEventOption()
 	secretInformer := k8sinformers.NewSharedInformerFactory(
-		kubernetesfake.NewSimpleClientset(),
+		kubernetesfake.NewClientset(),
 		0,
 	).Core().V1().Secrets()
 	_ = NewSupervisorSecretsController(
@@ -420,11 +420,11 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 				}
 			}
 
-			apiClient := kubernetesfake.NewSimpleClientset()
+			apiClient := kubernetesfake.NewClientset()
 			if test.apiClient != nil {
 				test.apiClient(t, apiClient)
 			}
-			informerClient := kubernetesfake.NewSimpleClientset()
+			informerClient := kubernetesfake.NewClientset()
 
 			storedSecret := generatedSecret.DeepCopy()
 			if test.storedSecret != nil {

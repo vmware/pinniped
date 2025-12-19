@@ -293,6 +293,7 @@ func TestWhoami(t *testing.T) {
 				if test.gettingClientsetErr != nil {
 					return nil, nil, nil, test.gettingClientsetErr
 				}
+				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				conciergeClient := conciergefake.NewSimpleClientset()
 				conciergeClient.PrependReactor("create", "whoamirequests", func(_ kubetesting.Action) (bool, runtime.Object, error) {
 					if test.callingAPIErr != nil {

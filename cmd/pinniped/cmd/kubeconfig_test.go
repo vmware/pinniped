@@ -3858,14 +3858,17 @@ func TestGetKubeconfig(t *testing.T) {
 				if tt.getClientsetErr != nil {
 					return nil, nil, nil, tt.getClientsetErr
 				}
+				//nolint:staticcheck // as of v0.35.0, this package does not offer a NewClientset() function
 				fakeAggregatorClient := aggregatorfake.NewSimpleClientset(tt.apiServiceObjects...)
 				fakeKubeClient := fake.NewClientset()
 				if tt.kubeObjects != nil {
 					kubeObjects := tt.kubeObjects(string(testServerCA))
 					fakeKubeClient = fake.NewClientset(kubeObjects...)
 				}
+				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				fakeConciergeClient := conciergefake.NewSimpleClientset()
 				if tt.conciergeObjects != nil {
+					//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 					fakeConciergeClient = conciergefake.NewSimpleClientset(tt.conciergeObjects(string(testServerCA), testServer.URL)...)
 				}
 				if len(tt.conciergeReactions) > 0 {

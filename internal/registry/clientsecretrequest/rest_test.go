@@ -1628,7 +1628,7 @@ func TestCreate(t *testing.T) {
 				testutil.SetGlobalKlogLevel(t, originalKLogLevel) //nolint:staticcheck // old test of code using trace.Log()
 			})
 
-			kubeClient := kubefake.NewSimpleClientset()
+			kubeClient := kubefake.NewClientset()
 			secretsClient := kubeClient.CoreV1().Secrets(namespace)
 			// Production code depends on secrets having a resource version.
 			// Our seedHashes mechanism with the fake client unfortunately does not cause a resourceVersion to be set on the secret.
@@ -1644,6 +1644,7 @@ func TestCreate(t *testing.T) {
 				tt.seedHashes(oidcClientSecretStore)
 			}
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			if tt.seedOIDCClients != nil {
 				for _, client := range tt.seedOIDCClients {

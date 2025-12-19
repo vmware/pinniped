@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package localuserauthenticator
@@ -50,7 +50,7 @@ func TestWebhook(t *testing.T) {
 	group0, group1 := "some-group-0", "some-group-1"
 	groups := group0 + " , " + group1
 
-	kubeClient := kubernetesfake.NewSimpleClientset()
+	kubeClient := kubernetesfake.NewClientset()
 	addSecretToFakeClientTracker(t, kubeClient, user, password, groups)
 	addSecretToFakeClientTracker(t, kubeClient, otherUser, otherPassword, groups)
 	addSecretToFakeClientTracker(t, kubeClient, colonUser, colonPassword, groups)

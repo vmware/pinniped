@@ -1,4 +1,4 @@
-// Copyright 2020-2023 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package apicerts
@@ -148,8 +148,9 @@ func TestAPIServiceUpdaterControllerSync(t *testing.T) {
 
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			kubeInformerClient = kubernetesfake.NewSimpleClientset()
+			kubeInformerClient = kubernetesfake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
+			//nolint:staticcheck // as of v0.35.0, this package does not offer a NewClientset() function
 			aggregatorAPIClient = aggregatorfake.NewSimpleClientset()
 		})
 

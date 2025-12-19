@@ -345,8 +345,9 @@ func TestManager(t *testing.T) {
 					Build(),
 				).BuildDynamicUpstreamIDPProvider()
 
-			kubeClient = fake.NewSimpleClientset()
+			kubeClient = fake.NewClientset()
 			secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			oidcClientsClient := supervisorfake.NewSimpleClientset().ConfigV1alpha1().OIDCClients("some-namespace")
 
 			cache := secret.Cache{}

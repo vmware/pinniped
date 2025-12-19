@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package token
@@ -5216,7 +5216,8 @@ func exchangeAuthcodeForTokens(
 		test.modifyAuthRequest(authRequest)
 	}
 
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
+	//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 	supervisorClient := supervisorfake.NewSimpleClientset()
 	secrets = kubeClient.CoreV1().Secrets("some-namespace")
 	oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")

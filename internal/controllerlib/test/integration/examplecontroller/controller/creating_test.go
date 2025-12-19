@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package controller
@@ -93,7 +93,7 @@ func TestNewExampleCreatingController(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := fake.NewClientset()
 			for i := range tt.args.services {
 				service := tt.args.services[i]
 				err := kubeClient.Tracker().Add(service)

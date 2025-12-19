@@ -2437,10 +2437,11 @@ func TestController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakeSupervisorClient := supervisorfake.NewSimpleClientset(tt.githubIdentityProviders...)
 			supervisorInformers := supervisorinformers.NewSharedInformerFactory(fakeSupervisorClient, 0)
 
-			fakeKubeClient := kubernetesfake.NewSimpleClientset(tt.secretsAndConfigMaps...)
+			fakeKubeClient := kubernetesfake.NewClientset(tt.secretsAndConfigMaps...)
 			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(fakeKubeClient, 0)
 
 			idpCache := dynamicupstreamprovider.NewDynamicUpstreamIDPProvider()
@@ -2830,14 +2831,16 @@ func TestController_OnlyWantActions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakeSupervisorClient := supervisorfake.NewSimpleClientset(tt.githubIdentityProviders...)
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorInformers := supervisorinformers.NewSharedInformerFactory(supervisorfake.NewSimpleClientset(tt.githubIdentityProviders...), 0)
 
 			if tt.addSupervisorReactors != nil {
 				tt.addSupervisorReactors(fakeSupervisorClient)
 			}
 
-			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewSimpleClientset(tt.secrets...), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(tt.secrets...), 0)
 
 			logger, _ := plog.TestLogger(t)
 
@@ -2957,7 +2960,7 @@ func TestGitHubUpstreamWatcherControllerFilterSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewSimpleClientset(), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0)
 
 			logger, _ := plog.TestLogger(t)
 
@@ -2967,7 +2970,9 @@ func TestGitHubUpstreamWatcherControllerFilterSecret(t *testing.T) {
 			_ = New(
 				"some-namespace",
 				dynamicupstreamprovider.NewDynamicUpstreamIDPProvider(),
+				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorfake.NewSimpleClientset(),
+				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorinformers.NewSharedInformerFactory(supervisorfake.NewSimpleClientset(), 0).IDP().V1alpha1().GitHubIdentityProviders(),
 				secretInformer,
 				kubeInformers.Core().V1().ConfigMaps(),
@@ -3018,14 +3023,16 @@ func TestGitHubUpstreamWatcherControllerFilterConfigMaps(t *testing.T) {
 			logger, _ := plog.TestLogger(t)
 
 			observableInformers := testutil.NewObservableWithInformerOption()
-			configMapInformer := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewSimpleClientset(), 0).Core().V1().ConfigMaps()
+			configMapInformer := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0).Core().V1().ConfigMaps()
 
 			_ = New(
 				namespace,
 				dynamicupstreamprovider.NewDynamicUpstreamIDPProvider(),
+				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorfake.NewSimpleClientset(),
+				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorinformers.NewSharedInformerFactory(supervisorfake.NewSimpleClientset(), 0).IDP().V1alpha1().GitHubIdentityProviders(),
-				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewSimpleClientset(), 0).Core().V1().Secrets(),
+				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0).Core().V1().Secrets(),
 				configMapInformer,
 				logger,
 				observableInformers.WithInformer,
@@ -3074,15 +3081,17 @@ func TestGitHubUpstreamWatcherControllerFilterGitHubIDP(t *testing.T) {
 			logger, _ := plog.TestLogger(t)
 
 			observableInformers := testutil.NewObservableWithInformerOption()
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			gitHubIdentityProviderInformer := supervisorinformers.NewSharedInformerFactory(supervisorfake.NewSimpleClientset(), 0).IDP().V1alpha1().GitHubIdentityProviders()
 
 			_ = New(
 				namespace,
 				dynamicupstreamprovider.NewDynamicUpstreamIDPProvider(),
+				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorfake.NewSimpleClientset(),
 				gitHubIdentityProviderInformer,
-				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewSimpleClientset(), 0).Core().V1().Secrets(),
-				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewSimpleClientset(), 0).Core().V1().ConfigMaps(),
+				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0).Core().V1().Secrets(),
+				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0).Core().V1().ConfigMaps(),
 				logger,
 				observableInformers.WithInformer,
 				clock.RealClock{},

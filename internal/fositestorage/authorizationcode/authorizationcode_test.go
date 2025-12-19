@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package authorizationcode
@@ -277,7 +277,7 @@ func TestCreateWithWrongRequesterDataTypes(t *testing.T) {
 }
 
 func makeTestSubject(lifetimeFunc timeouts.StorageLifetime) (context.Context, *fake.Clientset, corev1client.SecretInterface, fositeoauth2.AuthorizeCodeStorage) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	secrets := client.CoreV1().Secrets(namespace)
 	return context.Background(),
 		client,
@@ -387,7 +387,7 @@ func TestFuzzAndJSONNewValidEmptyAuthorizeCodeSession(t *testing.T) {
 
 	const name = "fuzz" // value is irrelevant
 	ctx := context.Background()
-	secrets := fake.NewSimpleClientset().CoreV1().Secrets(name)
+	secrets := fake.NewClientset().CoreV1().Secrets(name)
 	storage := New(secrets, func() time.Time { return fakeNow }, func(requester fosite.Requester) time.Duration { return lifetime })
 
 	// issue a create using the fuzzed request to confirm that marshalling works

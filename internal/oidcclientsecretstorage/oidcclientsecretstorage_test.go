@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidcclientsecretstorage
@@ -117,7 +117,7 @@ func TestGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := fake.NewClientset()
 			if tt.secret != nil {
 				require.NoError(t, kubeClient.Tracker().Add(tt.secret))
 			}
@@ -326,7 +326,7 @@ func TestSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := fake.NewClientset()
 			if tt.seedSecret != nil {
 				require.NoError(t, kubeClient.Tracker().Add(tt.seedSecret))
 			}
@@ -390,7 +390,7 @@ func TestGetStorageSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := fake.NewClientset()
 			require.NoError(t, kubeClient.Tracker().Add(tt.secret))
 			subject := New(kubeClient.CoreV1().Secrets("some-namespace"))
 

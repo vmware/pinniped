@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package kubecertagent
@@ -142,7 +142,7 @@ func TestLegacyPodCleanerController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeClientset := kubefake.NewSimpleClientset(tt.kubeObjects...)
+			kubeClientset := kubefake.NewClientset(tt.kubeObjects...)
 			if tt.addKubeReactions != nil {
 				tt.addKubeReactions(kubeClientset)
 			}

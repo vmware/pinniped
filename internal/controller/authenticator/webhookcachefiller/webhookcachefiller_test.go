@@ -2118,12 +2118,13 @@ func TestController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := conciergefake.NewSimpleClientset(tt.webhookAuthenticators...)
 			if tt.configClient != nil {
 				tt.configClient(pinnipedAPIClient)
 			}
 			pinnipedInformers := conciergeinformers.NewSharedInformerFactory(pinnipedAPIClient, 0)
-			kubeInformers := k8sinformers.NewSharedInformerFactory(kubernetesfake.NewSimpleClientset(tt.secretsAndConfigMaps...), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactory(kubernetesfake.NewClientset(tt.secretsAndConfigMaps...), 0)
 			cache := authncache.New()
 
 			logger, log := plog.TestLogger(t)
@@ -2377,9 +2378,10 @@ func TestControllerFilterSecret(t *testing.T) {
 			nowDoesntMatter := time.Date(1122, time.September, 33, 4, 55, 56, 778899, time.Local)
 			frozenClock := clocktesting.NewFakeClock(nowDoesntMatter)
 
-			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewSimpleClientset(), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := conciergefake.NewSimpleClientset()
 			pinnipedInformers := conciergeinformers.NewSharedInformerFactory(pinnipedAPIClient, 0)
 			observableInformers := testutil.NewObservableWithInformerOption()
@@ -2440,9 +2442,10 @@ func TestControllerFilterConfigMap(t *testing.T) {
 			nowDoesntMatter := time.Date(1122, time.September, 33, 4, 55, 56, 778899, time.Local)
 			frozenClock := clocktesting.NewFakeClock(nowDoesntMatter)
 
-			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewSimpleClientset(), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := conciergefake.NewSimpleClientset()
 			pinnipedInformers := conciergeinformers.NewSharedInformerFactory(pinnipedAPIClient, 0)
 			observableInformers := testutil.NewObservableWithInformerOption()
