@@ -777,26 +777,15 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 			})
 
 			_, errUID := testlib.NewKubeclient(t, nestedImpersonationUIDOnly).Kubernetes.CoreV1().Secrets("foo").Get(ctx, "bar", metav1.GetOptions{})
-			msg := `Internal Server Error: "/api/v1/namespaces/foo/secrets/bar": requested [{UID  some-awesome-uid  authentication.k8s.io/v1  }] without impersonating a user`
-			full := fmt.Sprintf(`an error on the server (%q) has prevented the request from succeeding (get secrets bar)`, msg)
-			require.EqualError(t, errUID, full)
-			require.True(t, apierrors.IsInternalError(errUID), errUID)
+			msg := `requested [{UID  some-awesome-uid  authentication.k8s.io/v1  }] without impersonating a user`
+			require.EqualError(t, errUID, msg)
+			require.True(t, apierrors.IsBadRequest(errUID), errUID) // starting in k8s 1.35 libs, this was changed from internal error to bad request
 			require.Equal(t, &apierrors.StatusError{
 				ErrStatus: metav1.Status{
-					Status: metav1.StatusFailure,
-					Code:   http.StatusInternalServerError,
-					Reason: metav1.StatusReasonInternalError,
-					Details: &metav1.StatusDetails{
-						Name: "bar",
-						Kind: "secrets",
-						Causes: []metav1.StatusCause{
-							{
-								Type:    metav1.CauseTypeUnexpectedServerResponse,
-								Message: msg,
-							},
-						},
-					},
-					Message: full,
+					Status:  metav1.StatusFailure,
+					Code:    http.StatusBadRequest,
+					Reason:  metav1.StatusReasonBadRequest,
+					Message: msg,
 				},
 			}, errUID)
 
@@ -1408,7 +1397,7 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 
 					whoami, errWho := impersonationProxyAdminRestClientAsAnonymous.Post().Body([]byte(`{}`)).AbsPath("/apis/identity.concierge." + env.APIGroupSuffix + "/v1alpha1/whoamirequests").DoRaw(ctx)
 					require.NoError(t, errWho, testlib.Sdump(errWho))
-					require.True(t, strings.HasPrefix(string(whoami), `{"kind":"WhoAmIRequest","apiVersion":"identity.concierge.`+env.APIGroupSuffix+`/v1alpha1","metadata":{"creationTimestamp":null},"spec":{},"status":{"kubernetesUserInfo":{"user":{"username":"system:anonymous","groups":["system:unauthenticated"],"extra":{"original-user-info.impersonation-proxy.concierge.pinniped.dev":["{\"username\":`), string(whoami))
+					require.True(t, strings.HasPrefix(string(whoami), `{"kind":"WhoAmIRequest","apiVersion":"identity.concierge.`+env.APIGroupSuffix+`/v1alpha1","metadata":{},"spec":{},"status":{"kubernetesUserInfo":{"user":{"username":"system:anonymous","groups":["system:unauthenticated"],"extra":{"original-user-info.impersonation-proxy.concierge.pinniped.dev":["{\"username\":`), string(whoami))
 
 					healthz, errHealth := impersonationProxyAdminRestClientAsAnonymous.Get().AbsPath("/healthz").DoRaw(ctx)
 					require.NoError(t, errHealth, testlib.Sdump(errHealth))
