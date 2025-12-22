@@ -130,9 +130,7 @@ func TestWhoami(t *testing.T) {
 				{
 				  "kind": "WhoAmIRequest",
 				  "apiVersion": "identity.concierge.pinniped.dev/v1alpha1",
-				  "metadata": {
-				    "creationTimestamp": null
-				  },
+				  "metadata": {},
 				  "spec": {},
 				  "status": {
 				    "kubernetesUserInfo": {
@@ -154,9 +152,7 @@ func TestWhoami(t *testing.T) {
 				{
 				  "kind": "WhoAmIRequest",
 				  "apiVersion": "identity.concierge.tuna.io/v1alpha1",
-				  "metadata": {
-				    "creationTimestamp": null
-				  },
+				  "metadata": {},
 				  "spec": {},
 				  "status": {
 				    "kubernetesUserInfo": {
@@ -177,8 +173,7 @@ func TestWhoami(t *testing.T) {
 			wantStdout: here.Doc(`
 				apiVersion: identity.concierge.pinniped.dev/v1alpha1
 				kind: WhoAmIRequest
-				metadata:
-				  creationTimestamp: null
+				metadata: {}
 				spec: {}
 				status:
 				  kubernetesUserInfo:
@@ -195,8 +190,7 @@ func TestWhoami(t *testing.T) {
 			wantStdout: here.Doc(`
 				apiVersion: identity.concierge.tuna.io/v1alpha1
 				kind: WhoAmIRequest
-				metadata:
-				  creationTimestamp: null
+				metadata: {}
 				spec: {}
 				status:
 				  kubernetesUserInfo:
@@ -299,6 +293,7 @@ func TestWhoami(t *testing.T) {
 				if test.gettingClientsetErr != nil {
 					return nil, nil, nil, test.gettingClientsetErr
 				}
+				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				conciergeClient := conciergefake.NewSimpleClientset()
 				conciergeClient.PrependReactor("create", "whoamirequests", func(_ kubetesting.Action) (bool, runtime.Object, error) {
 					if test.callingAPIErr != nil {

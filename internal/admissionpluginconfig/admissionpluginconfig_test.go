@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/server/options"
 	"k8s.io/client-go/discovery"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
 
@@ -235,10 +235,10 @@ func TestConfigureAdmissionPlugins(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeClient := kubernetesfake.NewSimpleClientset()
+			kubeClient := kubefake.NewClientset()
 			kubeClient.Resources = tt.availableAPIResources
 
-			// Unfortunately, kubernetesfake.NewSimpleClientset() does not support using reactors to
+			// Unfortunately, NewClientset() does not support using reactors to
 			// cause discovery to return errors. Instead, we will make our own fake implementation of the
 			// discovery client's interface and only mock the parts that we need for this test.
 			discoveryClient := newFakeDiscoveryClient(kubeClient)
@@ -275,12 +275,12 @@ func TestConfigureAdmissionPlugins(t *testing.T) {
 }
 
 type fakeDiscoveryClient struct {
-	fakeClientSet *kubernetesfake.Clientset
+	fakeClientSet *kubefake.Clientset
 }
 
 var _ discovery.ServerResourcesInterface = &fakeDiscoveryClient{}
 
-func newFakeDiscoveryClient(fakeClientSet *kubernetesfake.Clientset) *fakeDiscoveryClient {
+func newFakeDiscoveryClient(fakeClientSet *kubefake.Clientset) *fakeDiscoveryClient {
 	return &fakeDiscoveryClient{
 		fakeClientSet: fakeClientSet,
 	}

@@ -1,4 +1,4 @@
-// Copyright 2021-2023 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package clusterhost
@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 )
 
@@ -143,7 +143,7 @@ func TestHasControlPlaneNodes(t *testing.T) {
 	for _, tt := range tests {
 		test := tt
 		t.Run(test.name, func(t *testing.T) {
-			kubeClient := kubernetesfake.NewSimpleClientset()
+			kubeClient := kubefake.NewClientset()
 			if test.listNodesErr != nil {
 				listNodesErr := test.listNodesErr
 				kubeClient.PrependReactor(

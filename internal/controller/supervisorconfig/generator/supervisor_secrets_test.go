@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package generator
@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	kubetesting "k8s.io/client-go/testing"
 
 	"go.pinniped.dev/internal/controllerlib"
@@ -104,7 +104,7 @@ func TestSupervisorSecretsControllerFilterSecret(t *testing.T) {
 			t.Parallel()
 
 			secretInformer := k8sinformers.NewSharedInformerFactory(
-				kubernetesfake.NewSimpleClientset(),
+				kubefake.NewClientset(),
 				0,
 			).Core().V1().Secrets()
 			withInformer := testutil.NewObservableWithInformerOption()
@@ -131,7 +131,7 @@ func TestSupervisorSecretsControllerFilterSecret(t *testing.T) {
 func TestSupervisorSecretsControllerInitialEvent(t *testing.T) {
 	initialEventOption := testutil.NewObservableWithInitialEventOption()
 	secretInformer := k8sinformers.NewSharedInformerFactory(
-		kubernetesfake.NewSimpleClientset(),
+		kubefake.NewClientset(),
 		0,
 	).Core().V1().Secrets()
 	_ = NewSupervisorSecretsController(
@@ -199,7 +199,7 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 		name               string
 		storedSecret       func(**corev1.Secret)
 		generateKey        func() ([]byte, error)
-		apiClient          func(*testing.T, *kubernetesfake.Clientset)
+		apiClient          func(*testing.T, *kubefake.Clientset)
 		wantError          string
 		wantActions        []kubetesting.Action
 		wantCallbackSecret []byte
@@ -256,7 +256,7 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 			storedSecret: func(secret **corev1.Secret) {
 				*secret = nil
 			},
-			apiClient: func(t *testing.T, client *kubernetesfake.Clientset) {
+			apiClient: func(t *testing.T, client *kubefake.Clientset) {
 				client.PrependReactor("create", "secrets", func(action kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("some create error")
 				})
@@ -271,7 +271,7 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 			storedSecret: func(secret **corev1.Secret) {
 				(*secret).Data["key"] = []byte("too short") // force updating
 			},
-			apiClient: func(t *testing.T, client *kubernetesfake.Clientset) {
+			apiClient: func(t *testing.T, client *kubefake.Clientset) {
 				client.PrependReactor("update", "secrets", func(action kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("some update error")
 				})
@@ -287,7 +287,7 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 			storedSecret: func(secret **corev1.Secret) {
 				(*secret).Data["key"] = []byte("too short") // force updating
 			},
-			apiClient: func(t *testing.T, client *kubernetesfake.Clientset) {
+			apiClient: func(t *testing.T, client *kubefake.Clientset) {
 				client.PrependReactor("get", "secrets", func(action kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("some get error")
 				})
@@ -302,7 +302,7 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 			storedSecret: func(secret **corev1.Secret) {
 				(*secret).Data["key"] = []byte("too short") // force updating
 			},
-			apiClient: func(t *testing.T, client *kubernetesfake.Clientset) {
+			apiClient: func(t *testing.T, client *kubefake.Clientset) {
 				client.PrependReactor("update", "secrets", func(action kubetesting.Action) (bool, runtime.Object, error) {
 					var err error
 					once.Do(func() {
@@ -324,7 +324,7 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 			storedSecret: func(secret **corev1.Secret) {
 				(*secret).Data["key"] = []byte("too short") // force updating
 			},
-			apiClient: func(t *testing.T, client *kubernetesfake.Clientset) {
+			apiClient: func(t *testing.T, client *kubefake.Clientset) {
 				client.PrependReactor("get", "secrets", func(action kubetesting.Action) (bool, runtime.Object, error) {
 					return true, otherGeneratedSecret, nil
 				})
@@ -361,7 +361,7 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 			storedSecret: func(secret **corev1.Secret) {
 				(*secret).Data["key"] = []byte("too short") // force updating
 			},
-			apiClient: func(t *testing.T, client *kubernetesfake.Clientset) {
+			apiClient: func(t *testing.T, client *kubefake.Clientset) {
 				client.PrependReactor("get", "secrets", func(action kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, apierrors.NewNotFound(secretsGVR.GroupResource(), generatedSecretName)
 				})
@@ -380,7 +380,7 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 			storedSecret: func(secret **corev1.Secret) {
 				(*secret).Data["key"] = []byte("too short") // force updating
 			},
-			apiClient: func(t *testing.T, client *kubernetesfake.Clientset) {
+			apiClient: func(t *testing.T, client *kubefake.Clientset) {
 				client.PrependReactor("get", "secrets", func(action kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, apierrors.NewNotFound(secretsGVR.GroupResource(), generatedSecretName)
 				})
@@ -420,11 +420,11 @@ func TestSupervisorSecretsControllerSync(t *testing.T) {
 				}
 			}
 
-			apiClient := kubernetesfake.NewSimpleClientset()
+			apiClient := kubefake.NewClientset()
 			if test.apiClient != nil {
 				test.apiClient(t, apiClient)
 			}
-			informerClient := kubernetesfake.NewSimpleClientset()
+			informerClient := kubefake.NewClientset()
 
 			storedSecret := generatedSecret.DeepCopy()
 			if test.storedSecret != nil {

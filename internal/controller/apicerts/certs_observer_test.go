@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package apicerts
@@ -15,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	"go.pinniped.dev/internal/certauthority"
 	"go.pinniped.dev/internal/controllerlib"
@@ -105,7 +105,7 @@ func TestObserverControllerSync(t *testing.T) {
 		var r *require.Assertions
 
 		var subject controllerlib.Controller
-		var kubeInformerClient *kubernetesfake.Clientset
+		var kubeInformerClient *kubefake.Clientset
 		var kubeInformers k8sinformers.SharedInformerFactory
 		var cancelContext context.Context
 		var cancelContextCancelFunc context.CancelFunc
@@ -144,7 +144,7 @@ func TestObserverControllerSync(t *testing.T) {
 
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			kubeInformerClient = kubernetesfake.NewSimpleClientset()
+			kubeInformerClient = kubefake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
 			dynamicCertProvider = dynamiccert.NewServingCert(name)
 		})

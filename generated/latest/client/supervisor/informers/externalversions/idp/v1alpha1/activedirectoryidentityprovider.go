@@ -44,7 +44,7 @@ func NewActiveDirectoryIdentityProviderInformer(client versioned.Interface, name
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredActiveDirectoryIdentityProviderInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -69,7 +69,7 @@ func NewFilteredActiveDirectoryIdentityProviderInformer(client versioned.Interfa
 				}
 				return client.IDPV1alpha1().ActiveDirectoryIdentityProviders(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&supervisoridpv1alpha1.ActiveDirectoryIdentityProvider{},
 		resyncPeriod,
 		indexers,

@@ -261,7 +261,7 @@ func TestKubectlOIDCClientSecretRequest_Parallel(t *testing.T) {
 			if tt.wantErr != "" {
 				require.EqualError(t, err, tt.wantErr)
 			} else {
-				require.NoError(t, err)
+				require.NoError(t, err, "got stdout:\n%s\ngot stderr:\n%s", stdOut.String(), stdErr.String())
 			}
 
 			tt.assertOnStdOut(t, oidcClient.Name, stdOut.String())

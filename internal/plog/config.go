@@ -58,7 +58,7 @@ func ValidateAndSetLogLevelAndFormatGlobally(ctx context.Context, spec LogSpec) 
 		panic(err) // programmer error
 	}
 	// the range for klogLevel is [0,108]
-	globalLevel.SetLevel(zapcore.Level(-klogLevel)) // klog levels are inverted when zap handles them
+	globalLevel.SetLevel(zapcore.Level(-klogLevel)) //nolint:gosec // klog levels are inverted when zap handles them
 
 	var encoding string
 	switch spec.Format {

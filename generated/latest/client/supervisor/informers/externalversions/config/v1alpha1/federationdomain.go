@@ -44,7 +44,7 @@ func NewFederationDomainInformer(client versioned.Interface, namespace string, r
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredFederationDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -69,7 +69,7 @@ func NewFilteredFederationDomainInformer(client versioned.Interface, namespace s
 				}
 				return client.ConfigV1alpha1().FederationDomains(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&supervisorconfigv1alpha1.FederationDomain{},
 		resyncPeriod,
 		indexers,

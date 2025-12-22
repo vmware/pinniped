@@ -73,7 +73,7 @@ func Parse(endpoint string, defaultPort uint16) (HostPort, error) {
 
 	return HostPort{
 		Host: host,
-		Port: uint16(integerPort), // this cast is checked by validation.IsValidPortNum above
+		Port: uint16(integerPort), //nolint:gosec // this cast is checked by validation.IsValidPortNum above
 	}, nil
 }
 

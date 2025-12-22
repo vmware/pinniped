@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package crud
@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	clocktesting "k8s.io/utils/clock/testing"
 )
@@ -1291,7 +1291,8 @@ func TestStorage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			client := fake.NewSimpleClientset()
+			//nolint:staticcheck // using NewClientset() is possible here, but it will require updating test expectations
+			client := kubefake.NewSimpleClientset()
 			if tt.mocks != nil {
 				tt.mocks(t, client)
 			}

@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package leaderelection
@@ -61,7 +61,7 @@ func Test_releaseLock_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			internalClient := kubefake.NewSimpleClientset()
+			internalClient := kubefake.NewClientset()
 			isLeader := &isLeaderTracker{tracker: &atomic.Bool{}}
 
 			leaderElectorCtx, cancel := context.WithCancel(context.Background())

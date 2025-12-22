@@ -43,7 +43,7 @@ func NewJWTAuthenticatorInformer(client versioned.Interface, resyncPeriod time.D
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredJWTAuthenticatorInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -68,7 +68,7 @@ func NewFilteredJWTAuthenticatorInformer(client versioned.Interface, resyncPerio
 				}
 				return client.AuthenticationV1alpha1().JWTAuthenticators().Watch(ctx, options)
 			},
-		},
+		}, client),
 		&conciergeauthenticationv1alpha1.JWTAuthenticator{},
 		resyncPeriod,
 		indexers,

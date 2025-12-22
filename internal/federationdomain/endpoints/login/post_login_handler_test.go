@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package login
@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 	"k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	supervisorconfigv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/config/v1alpha1"
 	supervisorfake "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake"
@@ -280,7 +280,7 @@ func TestPostLoginEndpoint(t *testing.T) {
 		return urlToReturn
 	}
 
-	addFullyCapableDynamicClientAndSecretToKubeResources := func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+	addFullyCapableDynamicClientAndSecretToKubeResources := func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 		oidcClient, secret := testutil.FullyCapableOIDCClientAndStorageSecret(t,
 			"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID, downstreamRedirectURI, nil,
 			[]string{testutil.HashedPassword1AtGoMinCost}, oidcclientvalidator.Validate)
@@ -298,7 +298,7 @@ func TestPostLoginEndpoint(t *testing.T) {
 	tests := []struct {
 		name          string
 		idps          *testidplister.UpstreamIDPListerBuilder
-		kubeResources func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset)
+		kubeResources func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset)
 		decodedState  *oidc.UpstreamStateParamData
 		formParams    url.Values
 		reqURIQuery   url.Values
@@ -707,7 +707,7 @@ func TestPostLoginEndpoint(t *testing.T) {
 		{
 			name: "happy LDAP login when there are additional allowed downstream requested scopes with dynamic client, when dynamic client is not allowed to request username and does not request username",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(upstreamLDAPIdentityProvider),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude username scope)
@@ -741,7 +741,7 @@ func TestPostLoginEndpoint(t *testing.T) {
 		{
 			name: "happy LDAP login when there are additional allowed downstream requested scopes with dynamic client, when dynamic client is not allowed to request groups and does not request groups",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(upstreamLDAPIdentityProvider),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude groups scope)
@@ -785,7 +785,7 @@ func TestPostLoginEndpoint(t *testing.T) {
 							},
 						}),
 					).Build()),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude groups scope)
@@ -1225,7 +1225,7 @@ func TestPostLoginEndpoint(t *testing.T) {
 		{
 			name: "using dynamic client which is not allowed to request username scope in authorize request but requests it anyway",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(upstreamLDAPIdentityProvider),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude username scope)
@@ -1245,7 +1245,7 @@ func TestPostLoginEndpoint(t *testing.T) {
 		{
 			name: "using dynamic client which is not allowed to request groups scope in authorize request but requests it anyway",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(upstreamLDAPIdentityProvider),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude groups scope)
@@ -1296,7 +1296,8 @@ func TestPostLoginEndpoint(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := kubefake.NewClientset()
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
 			oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")

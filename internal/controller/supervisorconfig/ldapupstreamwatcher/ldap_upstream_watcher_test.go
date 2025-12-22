@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package ldapupstreamwatcher
@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	idpv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/idp/v1alpha1"
 	supervisorfake "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake"
@@ -94,10 +94,11 @@ func TestLDAPUpstreamWatcherControllerFilterSecrets(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			ldapIDPInformer := pinnipedInformers.IDP().V1alpha1().LDAPIdentityProviders()
-			fakeKubeClient := fake.NewSimpleClientset()
+			fakeKubeClient := kubefake.NewClientset()
 			kubeInformers := informers.NewSharedInformerFactory(fakeKubeClient, 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
@@ -139,10 +140,11 @@ func TestLDAPUpstreamWatcherControllerFilterConfigMaps(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			ldapIDPInformer := pinnipedInformers.IDP().V1alpha1().LDAPIdentityProviders()
-			fakeKubeClient := fake.NewSimpleClientset()
+			fakeKubeClient := kubefake.NewClientset()
 			kubeInformers := informers.NewSharedInformerFactory(fakeKubeClient, 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
@@ -184,10 +186,11 @@ func TestLDAPUpstreamWatcherControllerFilterLDAPIdentityProviders(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			ldapIDPInformer := pinnipedInformers.IDP().V1alpha1().LDAPIdentityProviders()
-			fakeKubeClient := fake.NewSimpleClientset()
+			fakeKubeClient := kubefake.NewClientset()
 			kubeInformers := informers.NewSharedInformerFactory(fakeKubeClient, 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
@@ -1405,9 +1408,10 @@ func TestLDAPUpstreamWatcherControllerSync(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset(tt.inputUpstreams...)
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
-			fakeKubeClient := fake.NewSimpleClientset(tt.inputSecrets...)
+			fakeKubeClient := kubefake.NewClientset(tt.inputSecrets...)
 			kubeInformers := informers.NewSharedInformerFactory(fakeKubeClient, 0)
 			cache := dynamicupstreamprovider.NewDynamicUpstreamIDPProvider()
 			cache.SetLDAPIdentityProviders([]upstreamprovider.UpstreamLDAPIdentityProviderI{

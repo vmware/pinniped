@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	supervisorconfigv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/config/v1alpha1"
 	supervisorfake "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake"
@@ -212,7 +212,7 @@ func TestCallbackEndpoint(t *testing.T) {
 	// Note that fosite puts the granted scopes as a param in the redirect URI even though the spec doesn't seem to require it
 	happyDownstreamRedirectLocationRegexp := downstreamRedirectURI + `\?code=([^&]+)&scope=openid\+username\+groups&state=` + happyDownstreamState
 
-	addFullyCapableDynamicClientAndSecretToKubeResources := func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+	addFullyCapableDynamicClientAndSecretToKubeResources := func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 		oidcClient, secret := testutil.FullyCapableOIDCClientAndStorageSecret(t,
 			"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID, downstreamRedirectURI, nil,
 			[]string{testutil.HashedPassword1AtGoMinCost}, oidcclientvalidator.Validate)
@@ -227,7 +227,7 @@ func TestCallbackEndpoint(t *testing.T) {
 		name string
 
 		idps          *testidplister.UpstreamIDPListerBuilder
-		kubeResources func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset)
+		kubeResources func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset)
 		method        string
 		path          string
 		body          string
@@ -1054,7 +1054,7 @@ func TestCallbackEndpoint(t *testing.T) {
 		{
 			name: "using dynamic client which is not allowed to request username scope, and does not actually request username scope in authorize request, does not get username in ID token",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(happyOIDCUpstream().Build()),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude username scope)
@@ -1097,7 +1097,7 @@ func TestCallbackEndpoint(t *testing.T) {
 		{
 			name: "using dynamic client which is not allowed to request groups scope, and does not actually request groups scope in authorize request, does not get groups in ID token",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(happyOIDCUpstream().Build()),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude groups scope)
@@ -1566,7 +1566,7 @@ func TestCallbackEndpoint(t *testing.T) {
 		{
 			name: "using dynamic client which is not allowed to request username scope in authorize request but requests it anyway",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(happyOIDCUpstream().Build()),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude username scope)
@@ -1595,7 +1595,7 @@ func TestCallbackEndpoint(t *testing.T) {
 		{
 			name: "using dynamic client which is not allowed to request groups scope in authorize request but requests it anyway",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(happyOIDCUpstream().Build()),
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				oidcClient, secret := testutil.OIDCClientAndStorageSecret(t,
 					"some-namespace", downstreamDynamicClientID, downstreamDynamicClientUID,
 					[]supervisorconfigv1alpha1.GrantType{"authorization_code", "refresh_token"}, // token exchange not allowed (required to exclude groups scope)
@@ -2166,7 +2166,8 @@ func TestCallbackEndpoint(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := kubefake.NewClientset()
+			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			secrets := kubeClient.CoreV1().Secrets("some-namespace")
 			oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")

@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package apicerts
@@ -206,6 +206,7 @@ func TestUpdateAPIService(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
+			//nolint:staticcheck // as of v0.35.0, this package does not offer a NewClientset() function
 			client := aggregatorv1fake.NewSimpleClientset()
 			if tt.mocks != nil {
 				tt.mocks(client)

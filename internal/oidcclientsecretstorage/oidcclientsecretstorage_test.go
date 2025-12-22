@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidcclientsecretstorage
@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 
 	"go.pinniped.dev/internal/testutil"
@@ -117,7 +117,7 @@ func TestGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := kubefake.NewClientset()
 			if tt.secret != nil {
 				require.NoError(t, kubeClient.Tracker().Add(tt.secret))
 			}
@@ -148,7 +148,7 @@ func TestSet(t *testing.T) {
 		oidcClientUID  types.UID
 		hashes         []string
 		seedSecret     *corev1.Secret
-		addReactors    func(*fake.Clientset)
+		addReactors    func(*kubefake.Clientset)
 		wantErr        string
 		wantActions    []coretesting.Action
 	}{
@@ -236,7 +236,7 @@ func TestSet(t *testing.T) {
 			oidcClientName: "some-client",
 			oidcClientUID:  types.UID("some-example-uid1"),
 			hashes:         []string{"foo", "bar"},
-			addReactors: func(clientSet *fake.Clientset) {
+			addReactors: func(clientSet *kubefake.Clientset) {
 				clientSet.PrependReactor("create", "secrets", func(action coretesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("some create error")
 				})
@@ -291,7 +291,7 @@ func TestSet(t *testing.T) {
 					"pinniped-storage-version": []byte("1"),
 				},
 			},
-			addReactors: func(clientSet *fake.Clientset) {
+			addReactors: func(clientSet *kubefake.Clientset) {
 				clientSet.PrependReactor("update", "secrets", func(action coretesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("some update error maybe a conflict or something else")
 				})
@@ -326,7 +326,7 @@ func TestSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := kubefake.NewClientset()
 			if tt.seedSecret != nil {
 				require.NoError(t, kubeClient.Tracker().Add(tt.seedSecret))
 			}
@@ -390,7 +390,7 @@ func TestGetStorageSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeClient := fake.NewSimpleClientset()
+			kubeClient := kubefake.NewClientset()
 			require.NoError(t, kubeClient.Tracker().Add(tt.secret))
 			subject := New(kubeClient.CoreV1().Secrets("some-namespace"))
 

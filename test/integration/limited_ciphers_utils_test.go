@@ -115,7 +115,7 @@ func expectTLSConfigForServicePort(
 ) {
 	portAsInt, err := strconv.Atoi(localPortAsStr)
 	require.NoError(t, err)
-	portAsUint := uint16(portAsInt) // okay to cast because it will only be legal port numbers
+	portAsUint := uint16(portAsInt) //nolint:gosec // okay to cast because it will only be legal port numbers
 
 	startKubectlPortForward(ctx, t, localPortAsStr, "443", serviceName, serviceNamespace)
 

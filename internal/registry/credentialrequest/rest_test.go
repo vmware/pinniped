@@ -597,7 +597,7 @@ func TestCreate(t *testing.T) {
 				})
 
 			requireAPIError(t, response, err, apierrors.IsInvalid,
-				`.pinniped.dev "request name" is invalid: dryRun: Unsupported value: []string{"some dry run flag"}`)
+				`.pinniped.dev "request name" is invalid: dryRun: Unsupported value: ["some dry run flag"]`)
 		})
 
 		it("CreateFailsWhenNamespaceIsNotEmpty", func() {

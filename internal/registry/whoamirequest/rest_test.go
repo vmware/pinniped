@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package whoamirequest
@@ -92,7 +92,7 @@ func TestCreate(t *testing.T) {
 				options:          &metav1.CreateOptions{DryRun: []string{"stuff"}},
 			},
 			want:    nil,
-			wantErr: `SomeKind.identity.concierge.pinniped.dev "some-name" is invalid: dryRun: Unsupported value: []string{"stuff"}`,
+			wantErr: `SomeKind.identity.concierge.pinniped.dev "some-name" is invalid: dryRun: Unsupported value: ["stuff"]`,
 		},
 		{
 			name: "bad namespace",

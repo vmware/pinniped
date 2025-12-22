@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -68,6 +68,10 @@ fi
 KUBE_1_30_OR_NEWER="no"
 if [[ "$KUBE_MAJOR_NUMBER" -gt "1" || ( "$KUBE_MAJOR_NUMBER" == "1" && "$KUBE_MINOR_NUMBER" -ge "30" ) ]]; then
   KUBE_1_30_OR_NEWER="yes"
+fi
+KUBE_1_35_OR_NEWER="no"
+if [[ "$KUBE_MAJOR_NUMBER" -gt "1" || ( "$KUBE_MAJOR_NUMBER" == "1" && "$KUBE_MINOR_NUMBER" -ge "35" ) ]]; then
+  KUBE_1_35_OR_NEWER="yes"
 fi
 
 # KUBE_MODULE_VERSION is just version of client libraries (e.g., 'v0.28.9-rc-0').
@@ -226,22 +230,38 @@ if [[ "$KUBE_1_30_OR_NEWER" == "yes" ]]; then
 
   echo "generating API clients and openapi..."
 
+  # Note that --extra-pkgs can be set to generate openapi docs for other k8s APIs that our types depend upon
+  # aside from the default k8s packages that are already added automatically by the kube::codegen::gen_openapi script
+  # (meta/v1, runtime, and version). E.g. TokenCredentialRequestSpec uses corev1.TypedLocalObjectReference, so we
+  # add core/v1 when running codegen for the Pinniped aggregated APIs here.
+  concierge_gen_openapi_args=(
+    "${OUTPUT_DIR}/apis/concierge"
+    --update-report
+    --extra-pkgs "k8s.io/api/core/v1"
+    --output-dir "${OUTPUT_DIR}/client/concierge/openapi"
+    --output-pkg "${BASE_PKG}/generated/${KUBE_MINOR_VERSION}/client/concierge"
+    --boilerplate "${ROOT}/hack/boilerplate.go.txt"
+  )
+  supervisor_gen_openapi_args=(
+    "${OUTPUT_DIR}/apis/supervisor"
+    --update-report
+    --extra-pkgs "k8s.io/api/core/v1"
+    --output-dir "${OUTPUT_DIR}/client/supervisor/openapi"
+    --output-pkg "${BASE_PKG}/generated/${KUBE_MINOR_VERSION}/client/supervisor"
+    --boilerplate "${ROOT}/hack/boilerplate.go.txt"
+  )
+  if [[ "$KUBE_1_35_OR_NEWER" == "yes" ]]; then
+    concierge_gen_openapi_args+=(--output-model-name-file "zz_generated.model_name.go")
+    supervisor_gen_openapi_args+=(--output-model-name-file "zz_generated.model_name.go")
+  fi
+
   pushd "${OUTPUT_DIR}/apis/concierge" > /dev/null
   kube::codegen::gen_client "${OUTPUT_DIR}/apis/concierge" \
     --with-watch \
     --output-dir "${OUTPUT_DIR}/client/concierge" \
     --output-pkg "${BASE_PKG}/generated/${KUBE_MINOR_VERSION}/client/concierge" \
     --boilerplate "${ROOT}/hack/boilerplate.go.txt" 2>&1 | sed "s|^|gen-client-concierge > |"
-  # Note that --extra-pkgs can be set to generate openapi docs for other k8s APIs that our types depend upon
-  # aside from the default k8s packages that are already added automatically by the kube::codegen::gen_openapi script
-  # (meta/v1, runtime, and version). E.g. TokenCredentialRequestSpec uses corev1.TypedLocalObjectReference, so we
-  # add core/v1 when running codegen for the Concierge aggregated APIs here.
-  kube::codegen::gen_openapi "${OUTPUT_DIR}/apis/concierge" \
-    --update-report \
-    --extra-pkgs "k8s.io/api/core/v1" \
-    --output-dir "${OUTPUT_DIR}/client/concierge/openapi" \
-    --output-pkg "${BASE_PKG}/generated/${KUBE_MINOR_VERSION}/client/concierge" \
-    --boilerplate "${ROOT}/hack/boilerplate.go.txt" 2>&1 | sed "s|^|gen-openapi-concierge > |"
+  kube::codegen::gen_openapi "${concierge_gen_openapi_args[@]}" 2>&1 | sed "s|^|gen-openapi-concierge > |"
   popd > /dev/null
 
   pushd "${OUTPUT_DIR}/apis/supervisor" > /dev/null
@@ -250,12 +270,7 @@ if [[ "$KUBE_1_30_OR_NEWER" == "yes" ]]; then
     --output-dir "${OUTPUT_DIR}/client/supervisor" \
     --output-pkg "${BASE_PKG}/generated/${KUBE_MINOR_VERSION}/client/supervisor" \
     --boilerplate "${ROOT}/hack/boilerplate.go.txt" 2>&1 | sed "s|^|gen-client-supervisor > |"
-  kube::codegen::gen_openapi "${OUTPUT_DIR}/apis/supervisor" \
-    --update-report \
-    --extra-pkgs "k8s.io/api/core/v1" \
-    --output-dir "${OUTPUT_DIR}/client/supervisor/openapi" \
-    --output-pkg "${BASE_PKG}/generated/${KUBE_MINOR_VERSION}/client/supervisor" \
-    --boilerplate "${ROOT}/hack/boilerplate.go.txt" 2>&1 | sed "s|^|gen-openapi-supervisor > |"
+  kube::codegen::gen_openapi "${supervisor_gen_openapi_args[@]}" 2>&1 | sed "s|^|gen-openapi-supervisor > |"
   popd > /dev/null
 
   # Tidy the client module after codegen.

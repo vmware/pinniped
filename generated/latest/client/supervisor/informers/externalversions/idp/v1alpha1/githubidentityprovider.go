@@ -44,7 +44,7 @@ func NewGitHubIdentityProviderInformer(client versioned.Interface, namespace str
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredGitHubIdentityProviderInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -69,7 +69,7 @@ func NewFilteredGitHubIdentityProviderInformer(client versioned.Interface, names
 				}
 				return client.IDPV1alpha1().GitHubIdentityProviders(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&supervisoridpv1alpha1.GitHubIdentityProvider{},
 		resyncPeriod,
 		indexers,

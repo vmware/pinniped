@@ -90,6 +90,8 @@ linters:
           alias: supervisorclientsetscheme
         - pkg: go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake
           alias: supervisorfake
+        - pkg: k8s.io/client-go/kubernetes/fake
+          alias: kubefake
         - pkg: go.pinniped.dev/generated/latest/apis/supervisor/idp/v1alpha1
           alias: idpv1alpha1
         - pkg: go.pinniped.dev/generated/latest/client/concierge/informers/externalversions
