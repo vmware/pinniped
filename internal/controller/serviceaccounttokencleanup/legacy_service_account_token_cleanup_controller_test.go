@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubeinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	kubetesting "k8s.io/client-go/testing"
 
 	"go.pinniped.dev/internal/controllerlib"
@@ -77,7 +77,7 @@ func TestSync(t *testing.T) {
 		name               string
 		secretNameToDelete string
 		namespace          string
-		addReactors        func(*kubernetesfake.Clientset)
+		addReactors        func(*kubefake.Clientset)
 		expectedErrMessage string
 		expectedActions    []kubetesting.Action
 	}{
@@ -106,7 +106,7 @@ func TestSync(t *testing.T) {
 			name:               "returns API errors",
 			secretNameToDelete: "secret-to-delete",
 			namespace:          "other-namespace",
-			addReactors: func(clientset *kubernetesfake.Clientset) {
+			addReactors: func(clientset *kubefake.Clientset) {
 				clientset.PrependReactor(
 					"delete",
 					"secrets",
@@ -170,11 +170,11 @@ func TestSync(t *testing.T) {
 	}
 }
 
-func setupKubernetes(t *testing.T, namespace string) (*kubernetesfake.Clientset, kubeinformers.SharedInformerFactory) {
+func setupKubernetes(t *testing.T, namespace string) (*kubefake.Clientset, kubeinformers.SharedInformerFactory) {
 	t.Helper()
 
-	kubeAPIClient := kubernetesfake.NewClientset()
-	kubeInformerClient := kubernetesfake.NewClientset()
+	kubeAPIClient := kubefake.NewClientset()
+	kubeInformerClient := kubefake.NewClientset()
 
 	kubeInformers := kubeinformers.NewSharedInformerFactory(
 		kubeInformerClient,

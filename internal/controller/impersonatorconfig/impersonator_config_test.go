@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	clocktesting "k8s.io/utils/clock/testing"
 
@@ -282,11 +282,11 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 		var r *require.Assertions
 
 		var subject controllerlib.Controller
-		var kubeAPIClient *kubernetesfake.Clientset
+		var kubeAPIClient *kubefake.Clientset
 		var pinnipedAPIClient *conciergefake.Clientset
 		var pinnipedInformerClient *conciergefake.Clientset
 		var pinnipedInformers conciergeinformers.SharedInformerFactory
-		var kubeInformerClient *kubernetesfake.Clientset
+		var kubeInformerClient *kubefake.Clientset
 		var kubeInformers k8sinformers.SharedInformerFactory
 		var cancelContext context.Context
 		var cancelContextCancelFunc context.CancelFunc
@@ -807,19 +807,19 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			waitForObjectToAppearInInformer(service, informer)
 		}
 
-		var addLoadBalancerServiceToTracker = func(resourceName string, client *kubernetesfake.Clientset) {
+		var addLoadBalancerServiceToTracker = func(resourceName string, client *kubefake.Clientset) {
 			loadBalancerService := newLoadBalancerService(resourceName, corev1.ServiceStatus{})
 			r.NoError(client.Tracker().Add(loadBalancerService))
 		}
 
-		var addLoadBalancerServiceWithIngressToTracker = func(resourceName string, ingress []corev1.LoadBalancerIngress, client *kubernetesfake.Clientset) {
+		var addLoadBalancerServiceWithIngressToTracker = func(resourceName string, ingress []corev1.LoadBalancerIngress, client *kubefake.Clientset) {
 			loadBalancerService := newLoadBalancerService(resourceName, corev1.ServiceStatus{
 				LoadBalancer: corev1.LoadBalancerStatus{Ingress: ingress},
 			})
 			r.NoError(client.Tracker().Add(loadBalancerService))
 		}
 
-		var addClusterIPServiceToTracker = func(resourceName string, clusterIP string, client *kubernetesfake.Clientset) {
+		var addClusterIPServiceToTracker = func(resourceName string, clusterIP string, client *kubefake.Clientset) {
 			clusterIPService := newClusterIPService(resourceName, corev1.ServiceStatus{}, corev1.ServiceSpec{
 				Type:      corev1.ServiceTypeClusterIP,
 				ClusterIP: clusterIP,
@@ -835,7 +835,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			r.NoError(client.Tracker().Add(clusterIPService))
 		}
 
-		var addDualStackClusterIPServiceToTracker = func(resourceName string, clusterIP0 string, clusterIP1 string, client *kubernetesfake.Clientset) {
+		var addDualStackClusterIPServiceToTracker = func(resourceName string, clusterIP0 string, clusterIP1 string, client *kubefake.Clientset) {
 			clusterIPService := newClusterIPService(resourceName, corev1.ServiceStatus{}, corev1.ServiceSpec{
 				Type:       corev1.ServiceTypeClusterIP,
 				ClusterIP:  clusterIP0,
@@ -852,21 +852,21 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			r.NoError(client.Tracker().Add(clusterIPService))
 		}
 
-		var addSecretToTrackers = func(secret *corev1.Secret, clients ...*kubernetesfake.Clientset) {
+		var addSecretToTrackers = func(secret *corev1.Secret, clients ...*kubefake.Clientset) {
 			for _, client := range clients {
 				secretCopy := secret.DeepCopy()
 				r.NoError(client.Tracker().Add(secretCopy))
 			}
 		}
 
-		var addServiceToTrackers = func(service *corev1.Service, clients ...*kubernetesfake.Clientset) {
+		var addServiceToTrackers = func(service *corev1.Service, clients ...*kubefake.Clientset) {
 			for _, client := range clients {
 				serviceCopy := service.DeepCopy()
 				r.NoError(client.Tracker().Add(serviceCopy))
 			}
 		}
 
-		var deleteServiceFromTracker = func(resourceName string, client *kubernetesfake.Clientset) {
+		var deleteServiceFromTracker = func(resourceName string, client *kubefake.Clientset) {
 			r.NoError(client.Tracker().Delete(
 				schema.GroupVersionResource{Version: "v1", Resource: "services"},
 				installedInNamespace,
@@ -874,7 +874,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			))
 		}
 
-		var deleteSecretFromTracker = func(resourceName string, client *kubernetesfake.Clientset) {
+		var deleteSecretFromTracker = func(resourceName string, client *kubefake.Clientset) {
 			r.NoError(client.Tracker().Delete(
 				schema.GroupVersionResource{Version: "v1", Resource: "secrets"},
 				installedInNamespace,
@@ -882,7 +882,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			))
 		}
 
-		var addNodeWithRoleToTracker = func(role string, client *kubernetesfake.Clientset) {
+		var addNodeWithRoleToTracker = func(role string, client *kubefake.Clientset) {
 			r.NoError(client.Tracker().Add(
 				&corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1132,11 +1132,11 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			pinnipedInformerClient = conciergefake.NewSimpleClientset()
 			pinnipedInformers = conciergeinformers.NewSharedInformerFactoryWithOptions(pinnipedInformerClient, 0)
 
-			kubeInformerClient = kubernetesfake.NewClientset()
+			kubeInformerClient = kubefake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactoryWithOptions(kubeInformerClient, 0,
 				k8sinformers.WithNamespace(installedInNamespace),
 			)
-			kubeAPIClient = kubernetesfake.NewClientset()
+			kubeAPIClient = kubefake.NewClientset()
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient = conciergefake.NewSimpleClientset()
 			frozenNow = time.Date(2021, time.March, 2, 7, 42, 0, 0, time.Local)

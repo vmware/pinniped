@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	kubetesting "k8s.io/client-go/testing"
 
 	supervisorconfigv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/config/v1alpha1"
@@ -171,7 +171,7 @@ func TestJWKSWriterControllerFilterSecret(t *testing.T) {
 			t.Parallel()
 
 			secretInformer := k8sinformers.NewSharedInformerFactory(
-				kubernetesfake.NewClientset(),
+				kubefake.NewClientset(),
 				0,
 			).Core().V1().Secrets()
 			federationDomainInformer := supervisorinformers.NewSharedInformerFactory(
@@ -225,7 +225,7 @@ func TestJWKSWriterControllerFilterFederationDomain(t *testing.T) {
 			t.Parallel()
 
 			secretInformer := k8sinformers.NewSharedInformerFactory(
-				kubernetesfake.NewClientset(),
+				kubefake.NewClientset(),
 				0,
 			).Core().V1().Secrets()
 			federationDomainInformer := supervisorinformers.NewSharedInformerFactory(
@@ -332,7 +332,7 @@ func TestJWKSWriterControllerSync(t *testing.T) {
 		name                        string
 		key                         controllerlib.Key
 		secrets                     []*corev1.Secret
-		configKubeClient            func(*kubernetesfake.Clientset)
+		configKubeClient            func(*kubefake.Clientset)
 		configPinnipedClient        func(*supervisorfake.Clientset)
 		federationDomains           []*supervisorconfigv1alpha1.FederationDomain
 		generateKeyErr              error
@@ -600,7 +600,7 @@ func TestJWKSWriterControllerSync(t *testing.T) {
 			federationDomains: []*supervisorconfigv1alpha1.FederationDomain{
 				goodFederationDomain,
 			},
-			configKubeClient: func(client *kubernetesfake.Clientset) {
+			configKubeClient: func(client *kubefake.Clientset) {
 				client.PrependReactor("get", "secrets", func(_ kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("some get error")
 				})
@@ -613,7 +613,7 @@ func TestJWKSWriterControllerSync(t *testing.T) {
 			federationDomains: []*supervisorconfigv1alpha1.FederationDomain{
 				goodFederationDomain,
 			},
-			configKubeClient: func(client *kubernetesfake.Clientset) {
+			configKubeClient: func(client *kubefake.Clientset) {
 				client.PrependReactor("create", "secrets", func(_ kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("some create error")
 				})
@@ -629,7 +629,7 @@ func TestJWKSWriterControllerSync(t *testing.T) {
 			secrets: []*corev1.Secret{
 				newSecret("", ""),
 			},
-			configKubeClient: func(client *kubernetesfake.Clientset) {
+			configKubeClient: func(client *kubefake.Clientset) {
 				client.PrependReactor("update", "secrets", func(_ kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("some update error")
 				})
@@ -675,8 +675,8 @@ func TestJWKSWriterControllerSync(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			kubeAPIClient := kubernetesfake.NewClientset()
-			kubeInformerClient := kubernetesfake.NewClientset()
+			kubeAPIClient := kubefake.NewClientset()
+			kubeInformerClient := kubefake.NewClientset()
 			for _, secret := range test.secrets {
 				require.NoError(t, kubeAPIClient.Tracker().Add(secret))
 				require.NoError(t, kubeInformerClient.Tracker().Add(secret))

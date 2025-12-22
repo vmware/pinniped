@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	clocktesting "k8s.io/utils/clock/testing"
 )
@@ -1292,7 +1292,7 @@ func TestStorage(t *testing.T) {
 			t.Parallel()
 
 			//nolint:staticcheck // using NewClientset() is possible here, but it will require updating test expectations
-			client := fake.NewSimpleClientset()
+			client := kubefake.NewSimpleClientset()
 			if tt.mocks != nil {
 				tt.mocks(t, client)
 			}

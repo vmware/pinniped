@@ -38,7 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/warning"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/utils/ptr"
 
@@ -343,7 +343,7 @@ type authcodeExchangeInputs struct {
 	want                          tokenEndpointResponseExpectedValues
 }
 
-func addFullyCapableDynamicClientAndSecretToKubeResources(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+func addFullyCapableDynamicClientAndSecretToKubeResources(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 	oidcClient, secret := testutil.FullyCapableOIDCClientAndStorageSecret(t,
 		"some-namespace",
 		dynamicClientID,
@@ -357,8 +357,8 @@ func addFullyCapableDynamicClientAndSecretToKubeResources(t *testing.T, supervis
 	require.NoError(t, kubeClient.Tracker().Add(secret))
 }
 
-func addFullyCapableDynamicClientWithCustomIDTokenLifetimeAndSecretToKubeResources(idTokenLifetime int32) func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
-	return func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+func addFullyCapableDynamicClientWithCustomIDTokenLifetimeAndSecretToKubeResources(idTokenLifetime int32) func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
+	return func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 		oidcClient, secret := testutil.FullyCapableOIDCClientAndStorageSecret(t,
 			"some-namespace",
 			dynamicClientID,
@@ -390,7 +390,7 @@ func TestTokenEndpointAuthcodeExchange(t *testing.T) {
 	tests := []struct {
 		name             string
 		authcodeExchange authcodeExchangeInputs
-		kubeResources    func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset)
+		kubeResources    func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset)
 	}{
 		// happy path
 		{
@@ -1067,7 +1067,7 @@ func TestTokenEndpointWhenAuthcodeIsUsedTwice(t *testing.T) {
 	tests := []struct {
 		name             string
 		authcodeExchange authcodeExchangeInputs
-		kubeResources    func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset)
+		kubeResources    func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset)
 	}{
 		{
 			name: "authcode exchange succeeds once and then fails when the same authcode is used again",
@@ -1181,7 +1181,7 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 		modifyRequestHeaders func(r *http.Request)
 		modifyStorage        func(t *testing.T, storage *storage.KubeStorage, secrets v1.SecretInterface, pendingRequest *http.Request)
 		requestedAudience    string
-		kubeResources        func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset)
+		kubeResources        func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset)
 
 		wantStatus            int
 		wantErrorType         string
@@ -1404,7 +1404,7 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 		},
 		{
 			name: "dynamic client lacks the required urn:ietf:params:oauth:grant-type:token-exchange grant type",
-			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+			kubeResources: func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 				namespace, clientID, clientUID, redirectURI := "some-namespace", dynamicClientID, dynamicClientUID, goodRedirectURI
 				oidcClient := &supervisorconfigv1alpha1.OIDCClient{
 					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: clientID, Generation: 1, UID: types.UID(clientUID)},
@@ -2375,7 +2375,7 @@ func TestRefreshGrant(t *testing.T) {
 	tests := []struct {
 		name                      string
 		idps                      *testidplister.UpstreamIDPListerBuilder
-		kubeResources             func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset)
+		kubeResources             func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset)
 		authcodeExchange          authcodeExchangeInputs
 		refreshRequest            refreshRequestInputs
 		modifyRefreshTokenStorage func(t *testing.T, oauthStore *storage.KubeStorage, secrets v1.SecretInterface, refreshToken string)
@@ -5200,7 +5200,7 @@ func exchangeAuthcodeForTokens(
 	t *testing.T,
 	test authcodeExchangeInputs,
 	idps federationdomainproviders.FederationDomainIdentityProvidersListerFinderI,
-	kubeResources func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset),
+	kubeResources func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset),
 ) (
 	subject http.Handler,
 	rsp *httptest.ResponseRecorder,
@@ -5216,7 +5216,7 @@ func exchangeAuthcodeForTokens(
 		test.modifyAuthRequest(authRequest)
 	}
 
-	kubeClient := fake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 	supervisorClient := supervisorfake.NewSimpleClientset()
 	secrets = kubeClient.CoreV1().Secrets("some-namespace")

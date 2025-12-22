@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	idpv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/idp/v1alpha1"
 	supervisorfake "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake"
@@ -99,7 +99,7 @@ func TestActiveDirectoryUpstreamWatcherControllerFilterSecrets(t *testing.T) {
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			activeDirectoryIDPInformer := pinnipedInformers.IDP().V1alpha1().ActiveDirectoryIdentityProviders()
-			fakeKubeClient := fake.NewClientset()
+			fakeKubeClient := kubefake.NewClientset()
 			kubeInformers := informers.NewSharedInformerFactory(fakeKubeClient, 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
@@ -145,7 +145,7 @@ func TestActiveDirectoryUpstreamWatcherControllerFilterConfigMaps(t *testing.T) 
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			activeDirectoryIDPInformer := pinnipedInformers.IDP().V1alpha1().ActiveDirectoryIdentityProviders()
-			fakeKubeClient := fake.NewClientset()
+			fakeKubeClient := kubefake.NewClientset()
 			kubeInformers := informers.NewSharedInformerFactory(fakeKubeClient, 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
@@ -191,7 +191,7 @@ func TestActiveDirectoryUpstreamWatcherControllerFilterActiveDirectoryIdentityPr
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			activeDirectoryIDPInformer := pinnipedInformers.IDP().V1alpha1().ActiveDirectoryIdentityProviders()
-			fakeKubeClient := fake.NewClientset()
+			fakeKubeClient := kubefake.NewClientset()
 			kubeInformers := informers.NewSharedInformerFactory(fakeKubeClient, 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
@@ -2313,7 +2313,7 @@ func TestActiveDirectoryUpstreamWatcherControllerSync(t *testing.T) {
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset(tt.inputUpstreams...)
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
-			fakeKubeClient := fake.NewClientset(tt.inputK8sObjects...)
+			fakeKubeClient := kubefake.NewClientset(tt.inputK8sObjects...)
 			kubeInformers := informers.NewSharedInformerFactory(fakeKubeClient, 0)
 			cache := dynamicupstreamprovider.NewDynamicUpstreamIDPProvider()
 			cache.SetActiveDirectoryIdentityProviders([]upstreamprovider.UpstreamLDAPIdentityProviderI{

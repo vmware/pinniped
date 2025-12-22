@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidctestutil
@@ -15,7 +15,7 @@ import (
 	"github.com/ory/fosite"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	kubetesting "k8s.io/client-go/testing"
 
@@ -32,7 +32,7 @@ func RequireAuthCodeRegexpMatch(
 	t *testing.T,
 	actualContent string,
 	wantRegexp string,
-	kubeClient *fake.Clientset,
+	kubeClient *kubefake.Clientset,
 	secretsClient v1.SecretInterface,
 	oauthStore fositestoragei.AllFositeStorage,
 	wantDownstreamGrantedScopes []string,

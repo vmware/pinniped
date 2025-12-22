@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	"k8s.io/utils/ptr"
 
@@ -40,7 +40,7 @@ func TestClientManager(t *testing.T) {
 		name                   string
 		secrets                []*corev1.Secret
 		oidcClients            []*supervisorconfigv1alpha1.OIDCClient
-		addKubeReactions       func(client *fake.Clientset)
+		addKubeReactions       func(client *kubefake.Clientset)
 		addSupervisorReactions func(client *supervisorfake.Clientset)
 		run                    func(t *testing.T, subject *ClientManager)
 	}{
@@ -169,7 +169,7 @@ func TestClientManager(t *testing.T) {
 			oidcClients: []*supervisorconfigv1alpha1.OIDCClient{
 				{ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: testName, Generation: 1234, UID: testUID}},
 			},
-			addKubeReactions: func(client *fake.Clientset) {
+			addKubeReactions: func(client *kubefake.Clientset) {
 				client.PrependReactor("get", "secrets", func(action coretesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, fmt.Errorf("some get Secrets error")
 				})
@@ -256,7 +256,7 @@ func TestClientManager(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeClient := fake.NewClientset()
+			kubeClient := kubefake.NewClientset()
 			secrets := kubeClient.CoreV1().Secrets(testNamespace)
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()

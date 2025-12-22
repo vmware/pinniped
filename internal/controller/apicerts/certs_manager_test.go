@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 
 	"go.pinniped.dev/internal/controllerlib"
@@ -123,8 +123,8 @@ func TestManagerControllerSync(t *testing.T) {
 		var r *require.Assertions
 
 		var subject controllerlib.Controller
-		var kubeAPIClient *kubernetesfake.Clientset
-		var kubeInformerClient *kubernetesfake.Clientset
+		var kubeAPIClient *kubefake.Clientset
+		var kubeInformerClient *kubefake.Clientset
 		var kubeInformers k8sinformers.SharedInformerFactory
 		var cancelContext context.Context
 		var cancelContextCancelFunc context.CancelFunc
@@ -170,9 +170,9 @@ func TestManagerControllerSync(t *testing.T) {
 
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			kubeInformerClient = kubernetesfake.NewClientset()
+			kubeInformerClient = kubefake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
-			kubeAPIClient = kubernetesfake.NewClientset()
+			kubeAPIClient = kubefake.NewClientset()
 		})
 
 		it.After(func() {

@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	kubetesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/clientcmd"
 	v1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
@@ -3860,10 +3860,10 @@ func TestGetKubeconfig(t *testing.T) {
 				}
 				//nolint:staticcheck // as of v0.35.0, this package does not offer a NewClientset() function
 				fakeAggregatorClient := aggregatorfake.NewSimpleClientset(tt.apiServiceObjects...)
-				fakeKubeClient := fake.NewClientset()
+				fakeKubeClient := kubefake.NewClientset()
 				if tt.kubeObjects != nil {
 					kubeObjects := tt.kubeObjects(string(testServerCA))
-					fakeKubeClient = fake.NewClientset(kubeObjects...)
+					fakeKubeClient = kubefake.NewClientset(kubeObjects...)
 				}
 				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				fakeConciergeClient := conciergefake.NewSimpleClientset()

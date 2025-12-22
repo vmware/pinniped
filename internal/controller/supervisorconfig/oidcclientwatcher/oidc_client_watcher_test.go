@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	supervisorconfigv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/config/v1alpha1"
 	supervisorfake "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake"
@@ -63,7 +63,7 @@ func TestOIDCClientWatcherControllerFilterSecret(t *testing.T) {
 			t.Parallel()
 
 			secretInformer := k8sinformers.NewSharedInformerFactory(
-				kubernetesfake.NewClientset(),
+				kubefake.NewClientset(),
 				0,
 			).Core().V1().Secrets()
 			oidcClientsInformer := supervisorinformers.NewSharedInformerFactory(
@@ -133,7 +133,7 @@ func TestOIDCClientWatcherControllerFilterOIDCClient(t *testing.T) {
 			t.Parallel()
 
 			secretInformer := k8sinformers.NewSharedInformerFactory(
-				kubernetesfake.NewClientset(),
+				kubefake.NewClientset(),
 				0,
 			).Core().V1().Secrets()
 			oidcClientsInformer := supervisorinformers.NewSharedInformerFactory(
@@ -963,7 +963,7 @@ func TestOIDCClientWatcherControllerSync(t *testing.T) {
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClientForInformers := supervisorfake.NewSimpleClientset(tt.inputObjects...)
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClientForInformers, 0)
-			fakeKubeClient := kubernetesfake.NewClientset(tt.inputSecrets...)
+			fakeKubeClient := kubefake.NewClientset(tt.inputSecrets...)
 			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(fakeKubeClient, 0)
 
 			controller := NewOIDCClientWatcherController(

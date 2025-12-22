@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	authenticationv1alpha1 "go.pinniped.dev/generated/latest/apis/concierge/authentication/v1alpha1"
 	idpv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/idp/v1alpha1"
@@ -474,7 +474,7 @@ func TestValidateTLSConfig(t *testing.T) {
 			var secretsInformer corev1informers.SecretInformer
 			var configMapInformer corev1informers.ConfigMapInformer
 
-			fakeClient := fake.NewClientset(tt.k8sObjects...)
+			fakeClient := kubefake.NewClientset(tt.k8sObjects...)
 			sharedInformers := informers.NewSharedInformerFactory(fakeClient, 0)
 			configMapInformer = sharedInformers.Core().V1().ConfigMaps()
 			secretsInformer = sharedInformers.Core().V1().Secrets()

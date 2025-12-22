@@ -27,7 +27,7 @@ import (
 	k8sinformers "k8s.io/client-go/informers"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	"go.pinniped.dev/internal/certauthority"
 	"go.pinniped.dev/internal/dynamiccert"
@@ -50,7 +50,7 @@ func TestWebhook(t *testing.T) {
 	group0, group1 := "some-group-0", "some-group-1"
 	groups := group0 + " , " + group1
 
-	kubeClient := kubernetesfake.NewClientset()
+	kubeClient := kubefake.NewClientset()
 	addSecretToFakeClientTracker(t, kubeClient, user, password, groups)
 	addSecretToFakeClientTracker(t, kubeClient, otherUser, otherPassword, groups)
 	addSecretToFakeClientTracker(t, kubeClient, colonUser, colonPassword, groups)
@@ -550,7 +550,7 @@ func authenticatedResponseJSON(user string, groups []string) *authenticationv1be
 	}
 }
 
-func addSecretToFakeClientTracker(t *testing.T, kubeClient *kubernetesfake.Clientset, username, password, groups string) {
+func addSecretToFakeClientTracker(t *testing.T, kubeClient *kubefake.Clientset, username, password, groups string) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	require.NoError(t, err)
 

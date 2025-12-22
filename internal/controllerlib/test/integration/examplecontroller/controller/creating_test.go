@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/events"
 
@@ -93,7 +93,7 @@ func TestNewExampleCreatingController(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			kubeClient := fake.NewClientset()
+			kubeClient := kubefake.NewClientset()
 			for i := range tt.args.services {
 				service := tt.args.services[i]
 				err := kubeClient.Tracker().Add(service)

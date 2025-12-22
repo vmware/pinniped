@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/cache"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	"k8s.io/utils/clock"
 	clocktesting "k8s.io/utils/clock/testing"
@@ -2441,7 +2441,7 @@ func TestController(t *testing.T) {
 			fakeSupervisorClient := supervisorfake.NewSimpleClientset(tt.githubIdentityProviders...)
 			supervisorInformers := supervisorinformers.NewSharedInformerFactory(fakeSupervisorClient, 0)
 
-			fakeKubeClient := kubernetesfake.NewClientset(tt.secretsAndConfigMaps...)
+			fakeKubeClient := kubefake.NewClientset(tt.secretsAndConfigMaps...)
 			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(fakeKubeClient, 0)
 
 			idpCache := dynamicupstreamprovider.NewDynamicUpstreamIDPProvider()
@@ -2840,7 +2840,7 @@ func TestController_OnlyWantActions(t *testing.T) {
 				tt.addSupervisorReactors(fakeSupervisorClient)
 			}
 
-			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(tt.secrets...), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(tt.secrets...), 0)
 
 			logger, _ := plog.TestLogger(t)
 
@@ -2960,7 +2960,7 @@ func TestGitHubUpstreamWatcherControllerFilterSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0)
 
 			logger, _ := plog.TestLogger(t)
 
@@ -3023,7 +3023,7 @@ func TestGitHubUpstreamWatcherControllerFilterConfigMaps(t *testing.T) {
 			logger, _ := plog.TestLogger(t)
 
 			observableInformers := testutil.NewObservableWithInformerOption()
-			configMapInformer := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0).Core().V1().ConfigMaps()
+			configMapInformer := k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0).Core().V1().ConfigMaps()
 
 			_ = New(
 				namespace,
@@ -3032,7 +3032,7 @@ func TestGitHubUpstreamWatcherControllerFilterConfigMaps(t *testing.T) {
 				supervisorfake.NewSimpleClientset(),
 				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorinformers.NewSharedInformerFactory(supervisorfake.NewSimpleClientset(), 0).IDP().V1alpha1().GitHubIdentityProviders(),
-				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0).Core().V1().Secrets(),
+				k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0).Core().V1().Secrets(),
 				configMapInformer,
 				logger,
 				observableInformers.WithInformer,
@@ -3090,8 +3090,8 @@ func TestGitHubUpstreamWatcherControllerFilterGitHubIDP(t *testing.T) {
 				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorfake.NewSimpleClientset(),
 				gitHubIdentityProviderInformer,
-				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0).Core().V1().Secrets(),
-				k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0).Core().V1().ConfigMaps(),
+				k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0).Core().V1().Secrets(),
+				k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0).Core().V1().ConfigMaps(),
 				logger,
 				observableInformers.WithInformer,
 				clock.RealClock{},

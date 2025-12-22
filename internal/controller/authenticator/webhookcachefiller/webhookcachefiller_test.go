@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	clocktesting "k8s.io/utils/clock/testing"
 	"k8s.io/utils/ptr"
@@ -2124,7 +2124,7 @@ func TestController(t *testing.T) {
 				tt.configClient(pinnipedAPIClient)
 			}
 			pinnipedInformers := conciergeinformers.NewSharedInformerFactory(pinnipedAPIClient, 0)
-			kubeInformers := k8sinformers.NewSharedInformerFactory(kubernetesfake.NewClientset(tt.secretsAndConfigMaps...), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactory(kubefake.NewClientset(tt.secretsAndConfigMaps...), 0)
 			cache := authncache.New()
 
 			logger, log := plog.TestLogger(t)
@@ -2378,7 +2378,7 @@ func TestControllerFilterSecret(t *testing.T) {
 			nowDoesntMatter := time.Date(1122, time.September, 33, 4, 55, 56, 778899, time.Local)
 			frozenClock := clocktesting.NewFakeClock(nowDoesntMatter)
 
-			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
@@ -2442,7 +2442,7 @@ func TestControllerFilterConfigMap(t *testing.T) {
 			nowDoesntMatter := time.Date(1122, time.September, 33, 4, 55, 56, 778899, time.Local)
 			frozenClock := clocktesting.NewFakeClock(nowDoesntMatter)
 
-			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubernetesfake.NewClientset(), 0)
+			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function

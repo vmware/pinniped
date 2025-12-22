@@ -24,7 +24,7 @@ import (
 	"golang.org/x/oauth2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/utils/ptr"
 
@@ -642,7 +642,7 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 		return &copyOfCustomSession
 	}
 
-	addFullyCapableDynamicClientAndSecretToKubeResources := func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset) {
+	addFullyCapableDynamicClientAndSecretToKubeResources := func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset) {
 		oidcClient, secret := testutil.FullyCapableOIDCClientAndStorageSecret(t,
 			"some-namespace", dynamicClientID, dynamicClientUID, downstreamRedirectURI, nil,
 			[]string{testutil.HashedPassword1AtGoMinCost}, oidcclientvalidator.Validate)
@@ -664,7 +664,7 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 		name string
 
 		idps                 *testidplister.UpstreamIDPListerBuilder
-		kubeResources        func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *fake.Clientset)
+		kubeResources        func(t *testing.T, supervisorClient *supervisorfake.Clientset, kubeClient *kubefake.Clientset)
 		generateCSRF         func() (csrftoken.CSRFToken, error)
 		generatePKCE         func() (pkce.Code, error)
 		generateNonce        func() (nonce.Nonce, error)
@@ -4098,7 +4098,7 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 		subject http.Handler,
 		kubeOauthStore *storage.KubeStorage,
 		supervisorClient *supervisorfake.Clientset,
-		kubeClient *fake.Clientset,
+		kubeClient *kubefake.Clientset,
 		secretsClient v1.SecretInterface,
 		actualAuditLog *bytes.Buffer,
 	) {
@@ -4232,7 +4232,7 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			kubeClient := fake.NewClientset()
+			kubeClient := kubefake.NewClientset()
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
@@ -4269,7 +4269,7 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 		// Double-check that we are re-using the happy path test case here as we intend.
 		require.Equal(t, "OIDC upstream browser flow happy path using GET without a CSRF cookie", test.name)
 
-		kubeClient := fake.NewClientset()
+		kubeClient := kubefake.NewClientset()
 		//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 		supervisorClient := supervisorfake.NewSimpleClientset()
 		secretsClient := kubeClient.CoreV1().Secrets("some-namespace")

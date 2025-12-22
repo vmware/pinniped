@@ -1,4 +1,4 @@
-// Copyright 2021-2023 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package testutil
@@ -8,7 +8,7 @@ import (
 
 	"github.com/ory/fosite/handler/openid"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	testing2 "k8s.io/client-go/testing"
 
 	"go.pinniped.dev/internal/psession"
@@ -39,10 +39,10 @@ func NewFakePinnipedSession() *psession.PinnipedSession {
 	}
 }
 
-func LogActualJSONFromCreateAction(t *testing.T, client *fake.Clientset, actionIndex int) {
+func LogActualJSONFromCreateAction(t *testing.T, client *kubefake.Clientset, actionIndex int) {
 	t.Log("actual value of CreateAction secret data", string(client.Actions()[actionIndex].(testing2.CreateActionImpl).Object.(*corev1.Secret).Data["pinniped-storage-data"]))
 }
 
-func LogActualJSONFromUpdateAction(t *testing.T, client *fake.Clientset, actionIndex int) {
+func LogActualJSONFromUpdateAction(t *testing.T, client *kubefake.Clientset, actionIndex int) {
 	t.Log("actual value of UpdateAction secret data", string(client.Actions()[actionIndex].(testing2.UpdateActionImpl).Object.(*corev1.Secret).Data["pinniped-storage-data"]))
 }

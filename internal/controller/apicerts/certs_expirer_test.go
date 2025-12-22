@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	kubetesting "k8s.io/client-go/testing"
 
 	"go.pinniped.dev/internal/controllerlib"
@@ -90,7 +90,7 @@ func TestExpirerControllerFilters(t *testing.T) {
 			t.Parallel()
 
 			secretsInformer := k8sinformers.NewSharedInformerFactory(
-				kubernetesfake.NewClientset(),
+				kubefake.NewClientset(),
 				0,
 			).Core().V1().Secrets()
 			withInformer := testutil.NewObservableWithInformerOption()
@@ -127,7 +127,7 @@ func TestExpirerControllerSync(t *testing.T) {
 		name                string
 		renewBefore         time.Duration
 		fillSecretData      func(*testing.T, map[string][]byte)
-		configKubeAPIClient func(*kubernetesfake.Clientset)
+		configKubeAPIClient func(*kubefake.Clientset)
 		wantDelete          bool
 		wantLog             string
 		wantError           string
@@ -197,7 +197,7 @@ func TestExpirerControllerSync(t *testing.T) {
 
 				m[fakeTestKey] = certPEM
 			},
-			configKubeAPIClient: func(c *kubernetesfake.Clientset) {
+			configKubeAPIClient: func(c *kubefake.Clientset) {
 				c.PrependReactor("delete", "secrets", func(_ kubetesting.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New("delete failed: some delete error")
 				})
@@ -224,7 +224,7 @@ func TestExpirerControllerSync(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			kubeAPIClient := kubernetesfake.NewClientset()
+			kubeAPIClient := kubefake.NewClientset()
 			if test.configKubeAPIClient != nil {
 				test.configKubeAPIClient(kubeAPIClient)
 			}
@@ -232,7 +232,7 @@ func TestExpirerControllerSync(t *testing.T) {
 			testRV := "rv_001"
 			testUID := types.UID("uid_002")
 
-			kubeInformerClient := kubernetesfake.NewClientset()
+			kubeInformerClient := kubefake.NewClientset()
 			name := certsSecretResourceName
 			namespace := "some-namespace"
 			if test.fillSecretData != nil {

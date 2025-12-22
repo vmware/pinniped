@@ -15,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	supervisorconfigv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/config/v1alpha1"
 	supervisorfake "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake"
@@ -126,7 +126,7 @@ func TestJWKSObserverControllerSync(t *testing.T) {
 			r                       *require.Assertions
 			subject                 controllerlib.Controller
 			pinnipedInformerClient  *supervisorfake.Clientset
-			kubeInformerClient      *kubernetesfake.Clientset
+			kubeInformerClient      *kubefake.Clientset
 			pinnipedInformers       supervisorinformers.SharedInformerFactory
 			kubeInformers           k8sinformers.SharedInformerFactory
 			cancelContext           context.Context
@@ -167,7 +167,7 @@ func TestJWKSObserverControllerSync(t *testing.T) {
 
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			kubeInformerClient = kubernetesfake.NewClientset()
+			kubeInformerClient = kubefake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedInformerClient = supervisorfake.NewSimpleClientset()

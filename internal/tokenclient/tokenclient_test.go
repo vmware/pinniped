@@ -14,7 +14,7 @@ import (
 	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	coretesting "k8s.io/client-go/testing"
 	"k8s.io/utils/clock"
@@ -30,7 +30,7 @@ const (
 
 func TestNew(t *testing.T) {
 	mockWhatToDoWithTokenFunc := *new(WhatToDoWithTokenFunc)
-	mockClient := fake.NewClientset().CoreV1().ServiceAccounts("")
+	mockClient := kubefake.NewClientset().CoreV1().ServiceAccounts("")
 	mockTime := time.Now()
 	mockClock := clocktesting.NewFakeClock(mockTime)
 	logger, _ := plog.TestLogger(t)
@@ -171,7 +171,7 @@ func TestFetchToken(t *testing.T) {
 
 			require.NotEmpty(t, tt.serviceAccountName)
 
-			mockClient := fake.NewClientset()
+			mockClient := kubefake.NewClientset()
 			tokenClient := New(
 				tt.serviceAccountName,
 				mockClient.CoreV1().ServiceAccounts("any-namespace-works"),
@@ -322,7 +322,7 @@ func TestStart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockClient := fake.NewClientset()
+			mockClient := kubefake.NewClientset()
 			logger, _ := plog.TestLogger(t)
 
 			var mutex sync.Mutex

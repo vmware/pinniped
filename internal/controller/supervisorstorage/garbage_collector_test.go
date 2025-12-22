@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	kubetesting "k8s.io/client-go/testing"
 	"k8s.io/utils/clock"
 	clocktesting "k8s.io/utils/clock/testing"
@@ -131,8 +131,8 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 		var (
 			r                       *require.Assertions
 			subject                 controllerlib.Controller
-			kubeInformerClient      *kubernetesfake.Clientset
-			kubeClient              *kubernetesfake.Clientset
+			kubeInformerClient      *kubefake.Clientset
+			kubeClient              *kubefake.Clientset
 			kubeInformers           k8sinformers.SharedInformerFactory
 			cancelContext           context.Context
 			cancelContextCancelFunc context.CancelFunc
@@ -179,8 +179,8 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			kubeInformerClient = kubernetesfake.NewClientset()
-			kubeClient = kubernetesfake.NewClientset()
+			kubeInformerClient = kubefake.NewClientset()
+			kubeClient = kubefake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
 			frozenNow = time.Now().UTC()
 			fakeClock = clocktesting.NewFakeClock(frozenNow)

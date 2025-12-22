@@ -17,7 +17,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/sclevine/spec"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	supervisorfake "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake"
 	"go.pinniped.dev/internal/config/supervisor"
@@ -43,7 +43,7 @@ func TestManager(t *testing.T) {
 			fallbackHandlerWasCalled bool
 			dynamicJWKSProvider      jwks.DynamicJWKSProvider
 			federationDomainIDPs     []*federationdomainproviders.FederationDomainIdentityProvider
-			kubeClient               *fake.Clientset
+			kubeClient               *kubefake.Clientset
 		)
 
 		const (
@@ -345,7 +345,7 @@ func TestManager(t *testing.T) {
 					Build(),
 				).BuildDynamicUpstreamIDPProvider()
 
-			kubeClient = fake.NewClientset()
+			kubeClient = kubefake.NewClientset()
 			secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			oidcClientsClient := supervisorfake.NewSimpleClientset().ConfigV1alpha1().OIDCClients("some-namespace")

@@ -17,7 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	coretesting "k8s.io/client-go/testing"
 	clocktesting "k8s.io/utils/clock/testing"
@@ -350,8 +350,8 @@ func TestCreateWithoutRequesterID(t *testing.T) {
 	require.Equal(t, request.ID, actualSecret.Labels["storage.pinniped.dev/request-id"])
 }
 
-func makeTestSubject(lifetimeFunc timeouts.StorageLifetime) (context.Context, *fake.Clientset, corev1client.SecretInterface, RevocationStorage) {
-	client := fake.NewClientset()
+func makeTestSubject(lifetimeFunc timeouts.StorageLifetime) (context.Context, *kubefake.Clientset, corev1client.SecretInterface, RevocationStorage) {
+	client := kubefake.NewClientset()
 	secrets := client.CoreV1().Secrets(namespace)
 	return context.Background(),
 		client,

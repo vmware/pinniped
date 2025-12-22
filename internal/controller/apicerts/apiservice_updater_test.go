@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sinformers "k8s.io/client-go/informers"
-	kubernetesfake "k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	aggregatorfake "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/fake"
@@ -109,7 +109,7 @@ func TestAPIServiceUpdaterControllerSync(t *testing.T) {
 
 		var subject controllerlib.Controller
 		var aggregatorAPIClient *aggregatorfake.Clientset
-		var kubeInformerClient *kubernetesfake.Clientset
+		var kubeInformerClient *kubefake.Clientset
 		var kubeInformers k8sinformers.SharedInformerFactory
 		var cancelContext context.Context
 		var cancelContextCancelFunc context.CancelFunc
@@ -148,7 +148,7 @@ func TestAPIServiceUpdaterControllerSync(t *testing.T) {
 
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			kubeInformerClient = kubernetesfake.NewClientset()
+			kubeInformerClient = kubefake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
 			//nolint:staticcheck // as of v0.35.0, this package does not offer a NewClientset() function
 			aggregatorAPIClient = aggregatorfake.NewSimpleClientset()
