@@ -34,6 +34,7 @@ groups:
       - ready-to-release
   - name: int-k8s-versions
     jobs:
+      - ready-for-int # this job is auto-triggered, but show it again here to make it easy to see in the UI which versions are ready to go
       - run-int-k8s-versions
       - integration-test-1.22
       - integration-test-1.23
@@ -50,6 +51,7 @@ groups:
       - integration-test-1.34
   - name: int-misc
     jobs:
+      - ready-for-int # this job is auto-triggered, but show it again here to make it easy to see in the UI which versions are ready to go
       - run-int-misc
       - integration-test-latest-arm64
       - integration-test-idps-firewalled
@@ -63,6 +65,7 @@ groups:
       - uninstall-existing-ns-test
   - name: int-cloud-providers
     jobs:
+      - ready-for-int # this job is auto-triggered, but show it again here to make it easy to see in the UI which versions are ready to go
       - run-int-cloud-providers
       - integration-test-gke-rapid
       - integration-test-gke-stable
@@ -885,7 +888,7 @@ jobs:
           - get: pinniped
             version: every
             passed:
-              - ready-for-acceptance
+              - ready-for-int
               # Repeat these from ready-for-int because we want to refer to them also in the "passed"
               # constraints for the other resources below, so we can be sure that the pinniped resource
               # version has passed these jobs *together* with the other resource versions below.
@@ -918,7 +921,7 @@ jobs:
           - get: pinniped
             version: every
             passed:
-              - ready-for-acceptance
+              - ready-for-int
               # Repeat these from ready-for-int because we want to refer to them also in the "passed"
               # constraints for the other resources below, so we can be sure that the pinniped resource
               # version has passed these jobs *together* with the other resource versions below.
@@ -951,7 +954,7 @@ jobs:
           - get: pinniped
             version: every
             passed:
-              - ready-for-acceptance
+              - ready-for-int
               # Repeat these from ready-for-int because we want to refer to them also in the "passed"
               # constraints for the other resources below, so we can be sure that the pinniped resource
               # version has passed these jobs *together* with the other resource versions below.
