@@ -3,7 +3,7 @@
 # Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM golang:1.25.5-bookworm as build-env
+FROM golang:1.25.6-bookworm as build-env
 WORKDIR /work
 COPY . .
 ARG GOPROXY
