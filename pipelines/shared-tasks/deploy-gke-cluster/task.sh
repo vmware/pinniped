@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -18,7 +18,7 @@ if [[ -n "$CLUSTER_REGION" ]]; then
   region_or_zone_flag="--region=$CLUSTER_REGION"
   region_or_zone_suffix="region-$CLUSTER_REGION"
   # regional clusters have 3 nodes (one per zone, minimum 3 zones), so use a smaller machine type
-  machine_type="e2-medium"
+  machine_type="e2-standard-2"
 else
   region_or_zone_flag="--zone=$CLUSTER_ZONE"
   region_or_zone_suffix="zone-$CLUSTER_ZONE"
