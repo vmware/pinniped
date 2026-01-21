@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -21,6 +21,16 @@ git config user.name "Pinny"
 git remote add https_origin "https://${GH_TOKEN}@github.com/vmware/pinniped.git"
 
 # Add all the changed files.
+git add .
+
+# Print the current status to the log.
+git status
+
+# Update copyrights on the staged files, if needed.
+echo "Updating copyrights as needed ..."
+./hack/update-copyright-year.sh
+
+# Add all the changed files again, in case copyrights were updated.
 git add .
 
 # Print the current status to the log.
