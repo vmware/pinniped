@@ -1,4 +1,4 @@
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 display:
@@ -38,7 +38,7 @@ meta:
   # These version numbers should be updated periodically.
   codegen-versions: &codegen-versions
     # Choose which version of Golang to use in the codegen container images.
-    BUILD_ARG_GO_VERSION: '1.25.5'
+    BUILD_ARG_GO_VERSION: '1.25.6'
     # Choose which version of sigs.k8s.io/controller-tools/cmd/controller-gen to install
     # in the codegen container images.
     BUILD_ARG_CONTROLLER_GEN_VERSION: 0.20.0
