@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -11,6 +11,8 @@ git clone ./pinniped-in ./pinniped-out
 cd pinniped-out
 
 ./hack/update-go-mod/update-go-mod.sh
+
+./hack/update-go-mod/update-majors.sh
 
 # Print diff output to the screen so it is shown in the job output.
 echo
