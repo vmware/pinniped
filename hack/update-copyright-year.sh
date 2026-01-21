@@ -20,6 +20,7 @@ done
 
 if [[ "${#missing_copyright_files[@]}" -gt "0" ]]; then
     echo "Fixing copyright notice in the following files:"
+
     for f in "${missing_copyright_files[@]}"; do
         echo "    $f"
         # The rule when updating copyrights is to always keep the starting year,
@@ -38,6 +39,6 @@ if [[ "${#missing_copyright_files[@]}" -gt "0" ]]; then
           sed -E -e 's/Copyright ([0-9]{4}) the Pinniped contributors/Copyright \1-'"$year"' the Pinniped contributors/' -i '' "$f"
         fi
     done
+
     echo "Done!"
-    exit 1
 fi
