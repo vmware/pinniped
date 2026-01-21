@@ -36,7 +36,7 @@ for m in $modules; do
   found_new_version=$?
   if [[ $found_new_version == 0 ]]; then
     echo "Found new version $next_version. Replacing imports..."
-    find . -name './.*' -prune -o \
+    find . -wholename './.*' -prune -o \
       -path ./generated -prune -o \
       -type f -name '*.go' -print0 |
       xargs -0 sed -i '' "s#${m}#${next_version}#g"
