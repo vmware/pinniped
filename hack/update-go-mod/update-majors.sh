@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -46,20 +46,7 @@ done
 
 go mod tidy
 
-if git diff --quiet; then
-  echo
-  echo "No changes."
-else
-  echo
-  echo "Showing resulting diffs..."
-  git --no-pager diff
-
-  echo
-  echo "Running unit tests..."
-  ./hack/module.sh units
-fi
-
 popd >/dev/null
 
 echo
-echo "Done!"
+echo "Done updating majors! Check for git diffs to see results."
