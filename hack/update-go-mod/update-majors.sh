@@ -36,10 +36,19 @@ for m in $modules; do
   found_new_version=$?
   if [[ $found_new_version == 0 ]]; then
     echo "Found new version $next_version. Replacing imports..."
-    find . -wholename './.*' -prune -o \
-      -path ./generated -prune -o \
-      -type f -name '*.go' -print0 |
-      xargs -0 sed -i '' "s#${m}#${next_version}#g"
+    if [[ "$(uname -s)" == "Linux" ]]; then
+      # sed on Linux uses -i'' (no space in between).
+      find . -wholename './.*' -prune -o \
+        -path ./generated -prune -o \
+        -type f -name '*.go' -print0 |
+        xargs -0 sed -i'' "s#${m}#${next_version}#g"
+    else
+      # sed on MacOS uses -i '' (with space in between).
+      find . -wholename './.*' -prune -o \
+        -path ./generated -prune -o \
+        -type f -name '*.go' -print0 |
+        xargs -0 sed -i '' "s#${m}#${next_version}#g"
+    fi
   fi
   set -e
 done
