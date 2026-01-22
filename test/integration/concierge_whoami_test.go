@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 package integration
 
@@ -394,7 +394,7 @@ func maybeNeedsExtraWithSHA256(
 
 // whoami requests are non-mutating and safe to run in parallel with serial tests, see main_test.go.
 func TestWhoAmI_Anonymous_Parallel(t *testing.T) {
-	_ = testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupported)
+	_ = testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

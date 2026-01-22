@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -902,8 +902,8 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 			whoAmI, err = impersonationProxyAnonymousPinnipedConciergeClient.IdentityV1alpha1().WhoAmIRequests().
 				Create(ctx, &identityv1alpha1.WhoAmIRequest{}, metav1.CreateOptions{})
 
-			// we expect the impersonation proxy to match the behavior of KAS in regards to anonymous requests
-			if env.HasCapability(testlib.AnonymousAuthenticationSupported) {
+			// we expect the impersonation proxy to match the behavior of KAS in regard to anonymous requests
+			if env.HasCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints) {
 				require.NoError(t, err, testlib.Sdump(err))
 				require.Equal(t,
 					expectedWhoAmIRequestResponse(
@@ -1409,8 +1409,8 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 				})
 			})
 
-			t.Run("anonymous authentication enabled", func(t *testing.T) {
-				testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupported)
+			t.Run("anonymous authentication enabled for health checks", func(t *testing.T) {
+				testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupportedForHealthEndpoints)
 				parallelIfNotEKS(t)
 
 				// anonymous auth enabled
@@ -1421,11 +1421,50 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 				t.Run("non-resource request", func(t *testing.T) {
 					parallelIfNotEKS(t)
 
-					healthz, errHealth := impersonationProxyAnonymousRestClient.Get().AbsPath("/healthz").DoRaw(ctx)
-					require.NoError(t, errHealth, testlib.Sdump(errHealth))
-					require.Equal(t, "ok", string(healthz))
-				})
+					response, err := impersonationProxyAnonymousRestClient.Get().AbsPath("/healthz").DoRaw(ctx)
+					require.NoError(t, err, testlib.Sdump(err))
+					require.Equal(t, "ok", string(response))
 
+					response, err = impersonationProxyAnonymousRestClient.Get().AbsPath("/readyz").DoRaw(ctx)
+					require.NoError(t, err, testlib.Sdump(err))
+					require.Equal(t, "ok", string(response))
+
+					response, err = impersonationProxyAnonymousRestClient.Get().AbsPath("/livez").DoRaw(ctx)
+					require.NoError(t, err, testlib.Sdump(err))
+					require.Equal(t, "ok", string(response))
+				})
+			})
+
+			t.Run("anonymous authentication disabled for health checks", func(t *testing.T) {
+				testlib.IntegrationEnv(t).WithoutCapability(testlib.AnonymousAuthenticationSupportedForHealthEndpoints)
+				parallelIfNotEKS(t)
+
+				// anonymous auth disabled
+				// - hit the healthz endpoint (non-resource endpoint)
+				//   - through the impersonation proxy
+				//   - should fail Unauthorized
+				t.Run("non-resource request", func(t *testing.T) {
+					parallelIfNotEKS(t)
+
+					expectedResponse := `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Unauthorized","reason":"Unauthorized","code":401}` + "\n"
+
+					response, err := impersonationProxyAnonymousRestClient.Get().AbsPath("/healthz").DoRaw(ctx)
+					require.True(t, apierrors.IsUnauthorized(err), testlib.Sdump(err))
+					require.Equal(t, expectedResponse, string(response))
+
+					response, err = impersonationProxyAnonymousRestClient.Get().AbsPath("/readyz").DoRaw(ctx)
+					require.True(t, apierrors.IsUnauthorized(err), testlib.Sdump(err))
+					require.Equal(t, expectedResponse, string(response))
+
+					response, err = impersonationProxyAnonymousRestClient.Get().AbsPath("/livez").DoRaw(ctx)
+					require.True(t, apierrors.IsUnauthorized(err), testlib.Sdump(err))
+					require.Equal(t, expectedResponse, string(response))
+				})
+			})
+
+			t.Run("anonymous authentication enabled for other endpoints", func(t *testing.T) {
+				testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints)
+				parallelIfNotEKS(t)
 				// - hit the pods endpoint (a resource endpoint)
 				//   - through the impersonation proxy
 				//   - should fail forbidden
@@ -1462,21 +1501,9 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 				})
 			})
 
-			t.Run("anonymous authentication disabled", func(t *testing.T) {
-				testlib.IntegrationEnv(t).WithoutCapability(testlib.AnonymousAuthenticationSupported)
+			t.Run("anonymous authentication disabled for other endpoints", func(t *testing.T) {
+				testlib.IntegrationEnv(t).WithoutCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints)
 				parallelIfNotEKS(t)
-
-				// - hit the healthz endpoint (non-resource endpoint)
-				//   - through the impersonation proxy
-				//   - should fail unauthorized
-				//   - kube api server should reject it
-				t.Run("non-resource request", func(t *testing.T) {
-					parallelIfNotEKS(t)
-
-					healthz, err := impersonationProxyAnonymousRestClient.Get().AbsPath("/healthz").DoRaw(ctx)
-					require.True(t, apierrors.IsUnauthorized(err), testlib.Sdump(err))
-					require.Equal(t, `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Unauthorized","reason":"Unauthorized","code":401}`+"\n", string(healthz))
-				})
 
 				// - hit the pods endpoint (a resource endpoint)
 				//   - through the impersonation proxy
@@ -1491,7 +1518,7 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 					require.Equal(t, &corev1.Pod{}, pod)
 				})
 
-				// - request to whoami (pinniped resource endpoing)
+				// - request to whoami (pinniped resource endpoint)
 				//   - through the impersonation proxy
 				//   - should fail unauthorized
 				//   - kube api server should reject it
@@ -1982,7 +2009,7 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 		// include an unsuccessful impersonation strategy saying that it was manually configured to be disabled.
 		requireDisabledStrategy(ctx, t, env, adminConciergeClient)
 
-		if !env.HasCapability(testlib.ClusterSigningKeyIsAvailable) && env.HasCapability(testlib.AnonymousAuthenticationSupported) {
+		if !env.HasCapability(testlib.ClusterSigningKeyIsAvailable) && env.HasCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints) {
 			// This cluster does not support the cluster signing key strategy, so now that we've manually disabled the
 			// impersonation strategy, we should be left with no working strategies.
 			// Given that there are no working strategies, a TokenCredentialRequest which would otherwise work should now

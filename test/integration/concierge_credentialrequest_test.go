@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -218,7 +218,7 @@ func TestCredentialRequest_Browser(t *testing.T) {
 // for its localhost listener via --listen-port=env.CLIUpstreamOIDC.CallbackURL.Port() per oidcLoginCommand.
 // Since ports are global to the process, tests using oidcLoginCommand must be run serially.
 func TestCredentialRequest_JWTAuthenticatorRulesToDisallowLogin_Browser(t *testing.T) {
-	env := testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupported)
+	env := testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints)
 
 	basicSpec := &authenticationv1alpha1.JWTAuthenticatorSpec{
 		Issuer:   env.CLIUpstreamOIDC.Issuer,
@@ -321,7 +321,7 @@ func TestCredentialRequest_JWTAuthenticatorRulesToDisallowLogin_Browser(t *testi
 
 // TCRs are non-mutating and safe to run in parallel with serial tests, see main_test.go.
 func TestCredentialRequest_ShouldFailWhenTheAuthenticatorDoesNotExist_Parallel(t *testing.T) {
-	env := testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupported)
+	env := testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	t.Cleanup(cancel)
@@ -344,7 +344,7 @@ func TestCredentialRequest_ShouldFailWhenTheAuthenticatorDoesNotExist_Parallel(t
 
 // TCRs are non-mutating and safe to run in parallel with serial tests, see main_test.go.
 func TestCredentialRequest_ShouldFailWhenTheRequestIsValidButTheTokenDoesNotAuthenticateTheUser_Parallel(t *testing.T) {
-	env := testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupported)
+	env := testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints)
 
 	// Create a testWebhook so we have a legitimate authenticator to pass to the TokenCredentialRequest API.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -365,7 +365,7 @@ func TestCredentialRequest_ShouldFailWhenTheRequestIsValidButTheTokenDoesNotAuth
 
 // TCRs are non-mutating and safe to run in parallel with serial tests, see main_test.go.
 func TestCredentialRequest_ShouldFailWhenRequestDoesNotIncludeToken_Parallel(t *testing.T) {
-	env := testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupported)
+	env := testlib.IntegrationEnv(t).WithCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints)
 
 	// Create a testWebhook so we have a legitimate authenticator to pass to the TokenCredentialRequest API.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
