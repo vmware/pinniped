@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package impersonator
@@ -101,19 +101,21 @@ func TestImpersonator(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                            string
-		clientCert                      clientCert
-		clientImpersonateUser           rest.ImpersonationConfig
-		clientMutateHeaders             func(http.Header)
-		clientNextProtos                []string
-		kubeAPIServerStatusCode         int
-		kubeAPIServerHealthz            http.Handler
-		anonymousAuthDisabled           bool
-		noServiceAcctTokenInCache       bool // when true, no available service account token for the impersonator to use
-		wantKubeAPIServerRequestHeaders func(credentialID string) http.Header
-		wantError                       string
-		wantConstructionError           string
-		wantAuthorizerAttributes        func(credentialID string) []authorizer.AttributesRecord
+		name                              string
+		clientCert                        clientCert
+		clientImpersonateUser             rest.ImpersonationConfig
+		clientMutateHeaders               func(http.Header)
+		clientNextProtos                  []string
+		kubeAPIServerStatusCode           int
+		kubeAPIServerHealthz              http.Handler
+		kubeAPIServerNodes                http.Handler
+		anonymousAuthForHealthDisabled    bool
+		anonymousAuthForOtherAPIsDisabled bool
+		noServiceAcctTokenInCache         bool // when true, no available service account token for the impersonator to use
+		wantKubeAPIServerRequestHeaders   func(credentialID string) http.Header
+		wantError                         string
+		wantConstructionError             string
+		wantAuthorizerAttributes          func(credentialID string) []authorizer.AttributesRecord
 	}{
 		{
 			name:       "happy path",
@@ -140,7 +142,7 @@ func TestImpersonator(t *testing.T) {
 			},
 		},
 		{
-			name:       "happy path with forbidden healthz",
+			name:       "happy path with forbidden healthz (anonymous auth for health checks is allowed)",
 			clientCert: newClientCert(t, ca, "test-username", []string{"test-group1", "test-group2"}),
 			kubeAPIServerHealthz: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusForbidden)
@@ -168,13 +170,104 @@ func TestImpersonator(t *testing.T) {
 			},
 		},
 		{
-			name:       "happy path with unauthorized healthz",
+			name:       "happy path with forbidden nodes (anonymous auth for other APIs is allowed)",
+			clientCert: newClientCert(t, ca, "test-username", []string{"test-group1", "test-group2"}),
+			kubeAPIServerNodes: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte("no nodes for you"))
+			}),
+			wantKubeAPIServerRequestHeaders: func(credentialID string) http.Header {
+				return http.Header{
+					"Impersonate-User":  {"test-username"},
+					"Impersonate-Group": {"test-group1", "test-group2", "system:authenticated"},
+					"Authorization":     {"Bearer some-service-account-token"},
+					"User-Agent":        {"test-agent"},
+					"Accept":            {"application/vnd.kubernetes.protobuf,application/json"},
+					"Accept-Encoding":   {"gzip"},
+					"X-Forwarded-For":   {"127.0.0.1"},
+					"Impersonate-Extra-Authentication.kubernetes.io%2fcredential-Id": {credentialID},
+				}
+			},
+			wantAuthorizerAttributes: func(credentialID string) []authorizer.AttributesRecord {
+				return []authorizer.AttributesRecord{
+					{
+						User: defaultInfoForTestUsername(credentialID),
+						Verb: "list", Namespace: "", APIGroup: "", APIVersion: "v1", Resource: "namespaces", Subresource: "", Name: "", ResourceRequest: true, Path: "/api/v1/namespaces",
+					},
+				}
+			},
+		},
+		{
+			name:       "happy path with unauthorized healthz (anonymous auth for health checks is disallowed)",
 			clientCert: newClientCert(t, ca, "test-username", []string{"test-group1", "test-group2"}),
 			kubeAPIServerHealthz: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusUnauthorized)
 				_, _ = w.Write([]byte("no healthz for you"))
 			}),
-			anonymousAuthDisabled: true,
+			anonymousAuthForHealthDisabled: true,
+			wantKubeAPIServerRequestHeaders: func(credentialID string) http.Header {
+				return http.Header{
+					"Impersonate-User":  {"test-username"},
+					"Impersonate-Group": {"test-group1", "test-group2", "system:authenticated"},
+					"Authorization":     {"Bearer some-service-account-token"},
+					"User-Agent":        {"test-agent"},
+					"Accept":            {"application/vnd.kubernetes.protobuf,application/json"},
+					"Accept-Encoding":   {"gzip"},
+					"X-Forwarded-For":   {"127.0.0.1"},
+					"Impersonate-Extra-Authentication.kubernetes.io%2fcredential-Id": {credentialID},
+				}
+			},
+			wantAuthorizerAttributes: func(credentialID string) []authorizer.AttributesRecord {
+				return []authorizer.AttributesRecord{
+					{
+						User: defaultInfoForTestUsername(credentialID),
+						Verb: "list", Namespace: "", APIGroup: "", APIVersion: "v1", Resource: "namespaces", Subresource: "", Name: "", ResourceRequest: true, Path: "/api/v1/namespaces",
+					},
+				}
+			},
+		},
+		{
+			name:       "happy path with unauthorized nodes (anonymous auth for other APIs is disallowed)",
+			clientCert: newClientCert(t, ca, "test-username", []string{"test-group1", "test-group2"}),
+			kubeAPIServerNodes: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte("no nodes for you"))
+			}),
+			anonymousAuthForOtherAPIsDisabled: true,
+			wantKubeAPIServerRequestHeaders: func(credentialID string) http.Header {
+				return http.Header{
+					"Impersonate-User":  {"test-username"},
+					"Impersonate-Group": {"test-group1", "test-group2", "system:authenticated"},
+					"Authorization":     {"Bearer some-service-account-token"},
+					"User-Agent":        {"test-agent"},
+					"Accept":            {"application/vnd.kubernetes.protobuf,application/json"},
+					"Accept-Encoding":   {"gzip"},
+					"X-Forwarded-For":   {"127.0.0.1"},
+					"Impersonate-Extra-Authentication.kubernetes.io%2fcredential-Id": {credentialID},
+				}
+			},
+			wantAuthorizerAttributes: func(credentialID string) []authorizer.AttributesRecord {
+				return []authorizer.AttributesRecord{
+					{
+						User: defaultInfoForTestUsername(credentialID),
+						Verb: "list", Namespace: "", APIGroup: "", APIVersion: "v1", Resource: "namespaces", Subresource: "", Name: "", ResourceRequest: true, Path: "/api/v1/namespaces",
+					},
+				}
+			},
+		},
+		{
+			name:       "happy path with unauthorized healthz and nodes (anonymous auth for everything is disallowed)",
+			clientCert: newClientCert(t, ca, "test-username", []string{"test-group1", "test-group2"}),
+			kubeAPIServerHealthz: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte("no healthz for you"))
+			}),
+			kubeAPIServerNodes: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte("no nodes for you"))
+			}),
+			anonymousAuthForHealthDisabled:    true,
+			anonymousAuthForOtherAPIsDisabled: true,
 			wantKubeAPIServerRequestHeaders: func(credentialID string) http.Header {
 				return http.Header{
 					"Impersonate-User":  {"test-username"},
@@ -747,7 +840,16 @@ func TestImpersonator(t *testing.T) {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte("broken"))
 			}),
-			wantConstructionError:    `could not detect if anonymous authentication is enabled: an error on the server ("broken") has prevented the request from succeeding`,
+			wantConstructionError:    `could not detect if anonymous authentication is enabled: error from healthz API: an error on the server ("broken") has prevented the request from succeeding`,
+			wantAuthorizerAttributes: nil,
+		},
+		{
+			name: "unexpected nodes response",
+			kubeAPIServerNodes: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte("broken"))
+			}),
+			wantConstructionError:    `could not detect if anonymous authentication is enabled: error from v1 nodes API: an error on the server ("broken") has prevented the request from succeeding`,
 			wantAuthorizerAttributes: nil,
 		},
 		{
@@ -832,7 +934,7 @@ func TestImpersonator(t *testing.T) {
 			var testKubeAPIServerSawHeaders http.Header
 			testKubeAPIServer, testKubeAPIServerCA := tlsserver.TestServerIPv4(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				tlsConfigFunc := func(rootCAs *x509.CertPool) *tls.Config {
-					// Requests to get configmaps, flowcontrol requests, and healthz requests
+					// Requests to get configmaps, nodes, flowcontrol requests, and healthz requests
 					// are not done by our http round trippers that specify only one protocol
 					// (either http1.1 or http2, not both).
 					// For all other requests from the impersonator, if it is not an upgrade
@@ -844,7 +946,8 @@ func TestImpersonator(t *testing.T) {
 					case "/api/v1/namespaces/kube-system/configmaps",
 						fmt.Sprintf("/apis/flowcontrol.apiserver.k8s.io/%s/prioritylevelconfigurations", priorityLevelConfigurationsVersion),
 						fmt.Sprintf("/apis/flowcontrol.apiserver.k8s.io/%s/flowschemas", flowSchemasVersion),
-						"/healthz":
+						"/healthz",
+						"/api/v1/nodes":
 					default:
 						if !httpstream.IsUpgradeRequest(r) {
 							secure.NextProtos = []string{secure.NextProtos[0]}
@@ -900,6 +1003,15 @@ func TestImpersonator(t *testing.T) {
 					_, _ = fmt.Fprint(w, "probed")
 					return
 
+				case "/readyz", "/readyz/etcd", "/livez":
+					require.Equal(t, http.MethodGet, r.Method)
+
+					// match the KAS endpoint's behavior
+					w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+					w.Header().Set("X-Content-Type-Options", "nosniff")
+					_, _ = fmt.Fprint(w, "ok")
+					return
+
 				case "/healthz":
 					require.Equal(t, http.MethodGet, r.Method)
 					require.Empty(t, r.Header.Get("Authorization"))
@@ -914,6 +1026,24 @@ func TestImpersonator(t *testing.T) {
 					w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 					w.Header().Set("X-Content-Type-Options", "nosniff")
 					_, _ = fmt.Fprint(w, "ok")
+					return
+
+				case "/api/v1/nodes":
+					// In these tests, the test client doesn't call the nodes API through the impersonator,
+					// but the impersonator production code uses the nodes API to probe whether anonymous auth
+					// is enabled or not, similar to what it does with the healthz API.
+					require.Equal(t, http.MethodGet, r.Method)
+					require.Empty(t, r.Header.Get("Authorization"))
+					require.Contains(t, r.Header.Get("User-Agent"), "kubernetes")
+
+					if tt.kubeAPIServerNodes != nil {
+						tt.kubeAPIServerNodes.ServeHTTP(w, r)
+						return
+					}
+
+					// by default just return success
+					w.Header().Add("Content-Type", "application/json; charset=UTF-8")
+					_, _ = fmt.Fprint(w, `{}`)
 					return
 
 				case "/apis/login.concierge.pinniped.dev/v1alpha1/tokencredentialrequests":
@@ -1142,8 +1272,40 @@ func TestImpersonator(t *testing.T) {
 			rc, err := rest.RESTClientFor(anonymousConfig)
 			require.NoError(t, err)
 
+			// It would be nice to also call /healthz through the impersonator here, but this unit test makes it
+			// difficult because of the expectations that it sets differently for APIs that are expected to be called
+			// by external clients versus those expected to be called by the impersonator itself.
+			// We can test calling /readyz and /livez, but note that calling /healthz should also work the same.
+			readyzBody, errReadyz := rc.Get().AbsPath("/readyz").DoRaw(ctx)
+			if tt.anonymousAuthForHealthDisabled {
+				require.True(t, apierrors.IsUnauthorized(errReadyz), errReadyz)
+				require.Equal(t, `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Unauthorized","reason":"Unauthorized","code":401}`+"\n", string(readyzBody))
+			} else {
+				require.NoError(t, errReadyz)
+				require.Equal(t, "ok", string(readyzBody))
+			}
+
+			// We don't treat sub-paths of health check endpoints as health check endpoints. Treat sub-paths as "other" endpoints.
+			readyzEtcdBody, errReadyzEtcd := rc.Get().AbsPath("/readyz/etcd").DoRaw(ctx)
+			if tt.anonymousAuthForOtherAPIsDisabled {
+				require.True(t, apierrors.IsUnauthorized(errReadyzEtcd), errReadyzEtcd)
+				require.Equal(t, `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Unauthorized","reason":"Unauthorized","code":401}`+"\n", string(readyzEtcdBody))
+			} else {
+				require.NoError(t, errReadyzEtcd)
+				require.Equal(t, "ok", string(readyzEtcdBody))
+			}
+
+			livezBody, errLivez := rc.Get().AbsPath("/livez").DoRaw(ctx)
+			if tt.anonymousAuthForHealthDisabled {
+				require.True(t, apierrors.IsUnauthorized(errLivez), errLivez)
+				require.Equal(t, `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Unauthorized","reason":"Unauthorized","code":401}`+"\n", string(livezBody))
+			} else {
+				require.NoError(t, errLivez)
+				require.Equal(t, "ok", string(livezBody))
+			}
+
 			probeBody, errProbe := rc.Get().AbsPath("/probe").DoRaw(ctx)
-			if tt.anonymousAuthDisabled {
+			if tt.anonymousAuthForOtherAPIsDisabled {
 				require.True(t, apierrors.IsUnauthorized(errProbe), errProbe)
 				require.Equal(t, `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Unauthorized","reason":"Unauthorized","code":401}`+"\n", string(probeBody))
 			} else {
@@ -1151,8 +1313,9 @@ func TestImpersonator(t *testing.T) {
 				require.Equal(t, "probed", string(probeBody))
 			}
 
+			// Fetch other resource that just happens to also be called tokencredentialrequests, but belongs to a different API group/version.
 			notTCRBody, errNotTCR := rc.Get().Resource("tokencredentialrequests").DoRaw(ctx)
-			if tt.anonymousAuthDisabled {
+			if tt.anonymousAuthForOtherAPIsDisabled {
 				require.True(t, apierrors.IsUnauthorized(errNotTCR), errNotTCR)
 				require.Equal(t, `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Unauthorized","reason":"Unauthorized","code":401}`+"\n", string(notTCRBody))
 			} else {
@@ -1161,7 +1324,7 @@ func TestImpersonator(t *testing.T) {
 			}
 
 			ducksBody, errDucks := rc.Get().Resource("ducks").DoRaw(ctx)
-			if tt.anonymousAuthDisabled {
+			if tt.anonymousAuthForOtherAPIsDisabled {
 				require.True(t, apierrors.IsUnauthorized(errDucks), errDucks)
 				require.Equal(t, `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Unauthorized","reason":"Unauthorized","code":401}`+"\n", string(ducksBody))
 			} else {
@@ -1194,8 +1357,24 @@ func TestImpersonator(t *testing.T) {
 					Verb: "create", Namespace: "", APIGroup: "login.concierge.walrus.tld", APIVersion: "v1alpha1", Resource: "tokencredentialrequests", Subresource: "", Name: "", ResourceRequest: true, Path: "/apis/login.concierge.walrus.tld/v1alpha1/tokencredentialrequests",
 				},
 			)
-			if !tt.anonymousAuthDisabled {
+			if !tt.anonymousAuthForHealthDisabled {
 				wantAuthorizerAttributes = append(wantAuthorizerAttributes,
+					authorizer.AttributesRecord{
+						User: &user.DefaultInfo{Name: "system:anonymous", UID: "", Groups: []string{"system:unauthenticated"}, Extra: nil},
+						Verb: "get", Namespace: "", APIGroup: "", APIVersion: "", Resource: "", Subresource: "", Name: "", ResourceRequest: false, Path: "/readyz",
+					},
+					authorizer.AttributesRecord{
+						User: &user.DefaultInfo{Name: "system:anonymous", UID: "", Groups: []string{"system:unauthenticated"}, Extra: nil},
+						Verb: "get", Namespace: "", APIGroup: "", APIVersion: "", Resource: "", Subresource: "", Name: "", ResourceRequest: false, Path: "/livez",
+					},
+				)
+			}
+			if !tt.anonymousAuthForOtherAPIsDisabled {
+				wantAuthorizerAttributes = append(wantAuthorizerAttributes,
+					authorizer.AttributesRecord{
+						User: &user.DefaultInfo{Name: "system:anonymous", UID: "", Groups: []string{"system:unauthenticated"}, Extra: nil},
+						Verb: "get", Namespace: "", APIGroup: "", APIVersion: "", Resource: "", Subresource: "", Name: "", ResourceRequest: false, Path: "/readyz/etcd",
+					},
 					authorizer.AttributesRecord{
 						User: &user.DefaultInfo{Name: "system:anonymous", UID: "", Groups: []string{"system:unauthenticated"}, Extra: nil},
 						Verb: "get", Namespace: "", APIGroup: "", APIVersion: "", Resource: "", Subresource: "", Name: "", ResourceRequest: false, Path: "/probe",
@@ -2261,4 +2440,78 @@ func (r *attributeRecorder) record(attributes authorizer.Attributes) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	r.attributes = append(r.attributes, *attributes.(*authorizer.AttributesRecord))
+}
+
+func Test_isRequestForHealthCheck(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{
+			path: "/healthz",
+			want: true,
+		},
+		{
+			path: "/livez",
+			want: true,
+		},
+		{
+			path: "/readyz",
+			want: true,
+		},
+		{
+			path: "/healthz/anything",
+			want: false,
+		},
+		{
+			path: "/livez/anything",
+			want: false,
+		},
+		{
+			path: "/readyz/anything",
+			want: false,
+		},
+		{
+			path: "/readyz/anything/",
+			want: false,
+		},
+		{
+			path: "/healthz/",
+			want: false,
+		},
+		{
+			path: "/livez/",
+			want: false,
+		},
+		{
+			path: "/readyz/",
+			want: false,
+		},
+		{
+			path: "/other",
+			want: false,
+		},
+		{
+			path: "/something/else",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			u := url.URL{Path: tt.path}
+			got := isRequestForHealthCheck(&http.Request{URL: &u})
+			require.Equal(t, tt.want, got)
+		})
+	}
+
+	t.Run("nil req", func(t *testing.T) {
+		got := isRequestForHealthCheck(nil)
+		require.False(t, got)
+	})
+
+	t.Run("nil URL", func(t *testing.T) {
+		got := isRequestForHealthCheck(&http.Request{})
+		require.False(t, got)
+	})
 }

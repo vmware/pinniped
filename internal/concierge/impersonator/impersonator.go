@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package impersonator
@@ -236,12 +236,12 @@ func newInternal(
 		serverConfig.AuditPolicyRuleEvaluator = policy.NewFakePolicyRuleEvaluator(auditinternal.LevelMetadata, nil)
 		serverConfig.AuditBackend = &auditfake.Backend{}
 
-		// Probe the API server to figure out if anonymous auth is enabled.
-		anonymousAuthEnabled, err := isAnonymousAuthEnabled(kubeClientUnsafeForProxying.JSONConfig)
+		// Probe the Kubernetes API server to figure out if anonymous auth is enabled.
+		anonymousAuthProbeResult, err := isAnonymousAuthEnabled(kubeClientUnsafeForProxying.JSONConfig)
 		if err != nil {
 			return nil, fmt.Errorf("could not detect if anonymous authentication is enabled: %w", err)
 		}
-		plog.Debug("anonymous authentication probed", "anonymousAuthEnabled", anonymousAuthEnabled)
+		plog.Debug("anonymous authentication probed", "results", anonymousAuthProbeResult)
 
 		// if we ever start unioning a TCR bearer token authenticator with serverConfig.Authenticator
 		// then we will need to update the related assumption in tokenPassthroughRoundTripper
@@ -251,8 +251,15 @@ func newInternal(
 			RequestFunc: func(req *http.Request) (*authenticator.Response, bool, error) {
 				resp, ok, err := delegatingAuthenticator.AuthenticateRequest(req)
 
-				// anonymous auth is enabled so no further check is necessary
-				if anonymousAuthEnabled {
+				reqIsHealthCheck := isRequestForHealthCheck(req)
+
+				if anonymousAuthProbeResult.HealthCheckEndpointsAllowAnonAuth && reqIsHealthCheck {
+					// anonymous auth is enabled for health check endpoints, so no further check is necessary
+					return resp, ok, err
+				}
+
+				if anonymousAuthProbeResult.OtherEndpointsAllowAnonAuth && !reqIsHealthCheck {
+					// anonymous auth is enabled for all other endpoints, so no further check is necessary
 					return resp, ok, err
 				}
 
@@ -266,6 +273,10 @@ func newInternal(
 					return resp, ok, err
 				}
 
+				// If we got this far, then anonymous auth is disabled for this request's path,
+				// and authentication succeeded, and the user is system:anonymous.
+				// Now we want to allow these anonymous users to make requests _only_ to the TCR endpoint.
+
 				reqInfo, ok := genericapirequest.RequestInfoFrom(req.Context())
 				if !ok {
 					return nil, false, constable.Error("no RequestInfo found in the context")
@@ -276,7 +287,7 @@ func newInternal(
 					return nil, false, nil
 				}
 
-				// any resource besides TKR should not be authenticated
+				// any resource besides TKR should not be authenticated because anonymous auth is disabled on this cluster
 				if !isTokenCredReq(reqInfo) {
 					return nil, false, nil
 				}
@@ -370,7 +381,46 @@ func getReverseProxyClient(baseConfig *rest.Config, cache tokenclient.ExpiringSi
 	return kubeclient.New(kubeclient.WithConfig(impersonationProxyRestConfig))
 }
 
-func isAnonymousAuthEnabled(config *rest.Config) (bool, error) {
+func isRequestForHealthCheck(req *http.Request) bool {
+	if req == nil || req.URL == nil {
+		// Shouldn't really happen but easy enough to handle here.
+		return false
+	}
+
+	path := req.URL.Path
+
+	// See https://kubernetes.io/docs/reference/using-api/health-checks.
+	// Although there are sub-paths for these endpoints, e.g. /healthz/etcd, the sub-paths are not made available
+	// for anonymous auth by GKE when anonymous auth is otherwise disabled, so let's mirror that behavior here.
+	switch path {
+	case "/healthz", "/readyz", "/livez":
+		return true
+	default:
+		return false
+	}
+}
+
+// anonAuthEnablement allows us to characterize the most common configurations for anonymous authentication:
+//
+//  1. Anonymous auth is disabled for the whole k8s API (e.g. AKS clusters).
+//  2. Anonymous auth is enabled for the whole k8s API (e.g. GKE clusters before Kubernetes 1.35).
+//  3. In newer clusters, anonymous auth can be selectively enabled only for certain API paths.
+//     See https://kubernetes.io/docs/reference/access-authn-authz/authentication/#anonymous-authenticator-configuration.
+//     Usually this is used to enable anonymous auth only for the three health check endpoints, and disable it for
+//     all other endpoints. This configuration was adpoted by GKE clusters starting with Kube 1.35 (as the default, but
+//     can be overridden by the user during cluster creation to instead allow anon auth for the whole API)
+//     and by EKS clusters starting with Kube 1.32.
+//
+// Of course, other configurations of which API paths allow should anonymous auth are possible, but we have no practical
+// way of auto-detecting them here. We could alternatively add new Pinniped configuration options instead of trying to
+// auto-detect anonymous authentication enablement here, but that would put extra burdon on the user to configure it
+// correctly. In practice, its almost always one of the three configurations described above.
+type anonAuthEnablement struct {
+	HealthCheckEndpointsAllowAnonAuth bool
+	OtherEndpointsAllowAnonAuth       bool
+}
+
+func isAnonymousAuthEnabled(config *rest.Config) (*anonAuthEnablement, error) {
 	anonymousConfig := kubeclient.SecureAnonymousClientConfig(config)
 
 	// we do not need either of these but RESTClientFor complains if they are not set
@@ -380,32 +430,54 @@ func isAnonymousAuthEnabled(config *rest.Config) (bool, error) {
 	// in case anyone looking at audit logs wants to know who is making the anonymous request
 	anonymousConfig.UserAgent = rest.DefaultKubernetesUserAgent()
 
-	rc, err := rest.RESTClientFor(anonymousConfig)
+	anonClient, err := rest.RESTClientFor(anonymousConfig)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
+	healthzAllowsAnonAuth, err := isAnonymousAuthEnabledForEndpoint(anonClient.Get().AbsPath("/healthz"))
+	if err != nil {
+		return nil, fmt.Errorf("error from healthz API: %w", err)
+	}
+
+	// As a heuristic to determine if anonymous auth is enabled for all other API endpoints,
+	// we probe one representative endpoint which should exist on all clusters. We assume that
+	// the result found at this endpoint is representative of the result for all non-heath endpoints.
+	otherAPIAllowsAnonAuth, err := isAnonymousAuthEnabledForEndpoint(
+		anonClient.Get().AbsPath("/api/v1/nodes").Param("limit", "1"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error from v1 nodes API: %w", err)
+	}
+
+	return &anonAuthEnablement{
+		HealthCheckEndpointsAllowAnonAuth: healthzAllowsAnonAuth,
+		OtherEndpointsAllowAnonAuth:       otherAPIAllowsAnonAuth,
+	}, nil
+}
+
+func isAnonymousAuthEnabledForEndpoint(anonReq *rest.Request) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	_, errHealthz := rc.Get().AbsPath("/healthz").DoRaw(ctx)
+	_, err := anonReq.DoRaw(ctx)
 
 	switch {
-	// 200 ok on healthz clearly indicates authentication success
-	case errHealthz == nil:
+	// 200 ok clearly indicates authentication success
+	case err == nil:
 		return true, nil
 
-	// we are authenticated but not authorized. anonymous authentication is enabled
-	case apierrors.IsForbidden(errHealthz):
+	// we are authenticated but not authorized: anonymous authentication is enabled at the endpoint
+	case apierrors.IsForbidden(err):
 		return true, nil
 
 	// failure to authenticate will return unauthorized (http misnomer)
-	case apierrors.IsUnauthorized(errHealthz):
+	case apierrors.IsUnauthorized(err):
 		return false, nil
 
 	// any other error is unexpected
 	default:
-		return false, errHealthz
+		return false, err
 	}
 }
 
