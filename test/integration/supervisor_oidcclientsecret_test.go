@@ -1,4 +1,4 @@
-// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -1040,11 +1040,11 @@ func TestOIDCClientSecretRequestUnauthenticated_Parallel(t *testing.T) {
 		}, metav1.CreateOptions{})
 	require.Error(t, err)
 
-	if env.KubernetesDistribution == testlib.AKSDistro {
-		// On AKS the error just says "Unauthorized".
-		require.Contains(t, err.Error(), "Unauthorized")
-	} else {
+	if env.HasCapability(testlib.AnonymousAuthenticationSupportedForOtherEndpoints) {
 		// Clusters which allow anonymous auth will give a more detailed error.
 		require.Contains(t, err.Error(), `User "system:anonymous" cannot create resource "oidcclientsecretrequests"`)
+	} else {
+		// On AKS and any other cluster which disallows anonymous auth, the error just says "Unauthorized".
+		require.Contains(t, err.Error(), "Unauthorized")
 	}
 }

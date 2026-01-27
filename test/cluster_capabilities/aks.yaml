@@ -1,4 +1,4 @@
-# Copyright 2021 the Pinniped contributors. All Rights Reserved.
+# Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # The name of the cluster type.
@@ -13,9 +13,13 @@ capabilities:
   # Will the cluster successfully provision a load balancer if requested?
   hasExternalLoadBalancerProvider: true
 
-  # Does the cluster allow requests without authentication?
-  # https://kubernetes.io/docs/reference/access-authn-authz/authentication/#anonymous-requests
-  anonymousAuthenticationSupported: false
-
   # Are LDAP ports on the Internet reachable without interference from network firewalls or proxies?
   canReachInternetLDAPPorts: true
+
+  # Does the cluster allow requests without authentication?
+  # https://kubernetes.io/docs/reference/access-authn-authz/authentication/#anonymous-requests
+  anonymousAuthentication:
+    healthEndpoints:
+      allowed: false
+    otherEndpoints:
+      allowed: false

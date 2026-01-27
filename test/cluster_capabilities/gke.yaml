@@ -1,4 +1,4 @@
-# Copyright 2020-2021 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # The name of the cluster type.
@@ -13,9 +13,14 @@ capabilities:
   # Will the cluster successfully provision a load balancer if requested?
   hasExternalLoadBalancerProvider: true
 
-  # Does the cluster allow requests without authentication?
-  # https://kubernetes.io/docs/reference/access-authn-authz/authentication/#anonymous-requests
-  anonymousAuthenticationSupported: true
-
   # Are LDAP ports on the Internet reachable without interference from network firewalls or proxies?
   canReachInternetLDAPPorts: true
+
+  # Does the cluster allow requests without authentication?
+  # https://kubernetes.io/docs/reference/access-authn-authz/authentication/#anonymous-requests
+  # Google disabled anonymous authentication in GKE clusters by default starting with k8s 1.35.
+  anonymousAuthentication:
+    healthEndpoints:
+      allowed: true
+    otherEndpoints:
+      allowedIfK8sMinorVersionLessThan: 35

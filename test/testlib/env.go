@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package testlib
@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -17,16 +18,18 @@ import (
 	"sigs.k8s.io/yaml"
 
 	authenticationv1alpha1 "go.pinniped.dev/generated/latest/apis/concierge/authentication/v1alpha1"
+	"go.pinniped.dev/internal/testutil"
 )
 
 type Capability string
 type KubeDistro string
 
 const (
-	ClusterSigningKeyIsAvailable     Capability = "clusterSigningKeyIsAvailable"
-	AnonymousAuthenticationSupported Capability = "anonymousAuthenticationSupported"
-	HasExternalLoadBalancerProvider  Capability = "hasExternalLoadBalancerProvider"
-	CanReachInternetLDAPPorts        Capability = "canReachInternetLDAPPorts"
+	ClusterSigningKeyIsAvailable                       Capability = "clusterSigningKeyIsAvailable"
+	HasExternalLoadBalancerProvider                    Capability = "hasExternalLoadBalancerProvider"
+	CanReachInternetLDAPPorts                          Capability = "canReachInternetLDAPPorts"
+	AnonymousAuthenticationSupportedForHealthEndpoints Capability = "anonymousAuthenticationSupportedForHealthEndpoints"
+	AnonymousAuthenticationSupportedForOtherEndpoints  Capability = "anonymousAuthenticationSupportedForOtherEndpoints"
 
 	KindDistro KubeDistro = "Kind"
 	GKEDistro  KubeDistro = "GKE"
@@ -34,6 +37,24 @@ const (
 	EKSDistro  KubeDistro = "EKS"
 	TKGSDistro KubeDistro = "TKGS"
 )
+
+type Capabilities struct {
+	ClusterSigningKeyIsAvailable    bool `json:"clusterSigningKeyIsAvailable"`
+	HasExternalLoadBalancerProvider bool `json:"hasExternalLoadBalancerProvider"`
+	CanReachInternetLDAPPorts       bool `json:"canReachInternetLDAPPorts"`
+
+	AnonymousAuthentication AnonymousAuthenticationCapabilities `json:"anonymousAuthentication"`
+}
+
+type AnonymousAuthenticationCapabilities struct {
+	HealthEndpoints AnonymousAuthenticationEndpointCapability `json:"healthEndpoints"`
+	OtherEndpoints  AnonymousAuthenticationEndpointCapability `json:"otherEndpoints"`
+}
+
+type AnonymousAuthenticationEndpointCapability struct {
+	Allowed                          bool   `json:"allowed"`
+	AllowedIfK8sMinorVersionLessThan string `json:"allowedIfK8sMinorVersionLessThan"`
+}
 
 // TestEnv captures all the external parameters consumed by our integration tests.
 type TestEnv struct {
@@ -50,7 +71,7 @@ type TestEnv struct {
 	SupervisorCustomLabels         map[string]string                               `json:"supervisorCustomLabels"`
 	ConciergeCustomLabels          map[string]string                               `json:"conciergeCustomLabels"`
 	KubernetesDistribution         KubeDistro                                      `json:"kubernetesDistribution"`
-	Capabilities                   map[Capability]bool                             `json:"capabilities"`
+	Capabilities                   Capabilities                                    `json:"capabilities"`
 	TestWebhook                    authenticationv1alpha1.WebhookAuthenticatorSpec `json:"testWebhook"`
 	SupervisorHTTPSAddress         string                                          `json:"supervisorHttpsAddress"`
 	SupervisorHTTPSIngressAddress  string                                          `json:"supervisorHttpsIngressAddress"`
@@ -400,9 +421,34 @@ func loadEnvVars(t *testing.T, result *TestEnv) {
 
 func (e *TestEnv) HasCapability(cap Capability) bool {
 	e.t.Helper()
-	isCapable, capabilityWasDescribed := e.Capabilities[cap]
-	require.Truef(e.t, capabilityWasDescribed, "the %q capability of the test environment was not described", cap)
-	return isCapable
+
+	switch cap {
+	case AnonymousAuthenticationSupportedForHealthEndpoints:
+		versionLessThan := e.Capabilities.AnonymousAuthentication.HealthEndpoints.AllowedIfK8sMinorVersionLessThan
+		if versionLessThan == "" {
+			return e.Capabilities.AnonymousAuthentication.HealthEndpoints.Allowed
+		}
+		minorVersionNumber, err := strconv.Atoi(versionLessThan)
+		require.NoError(e.t, err, "could not parse minor version number from AnonymousAuthentication HealthEndpoints capability as int")
+		return !testutil.KubeServerMinorVersionAtLeastInclusive(e.t, NewKubernetesClientset(e.t).Discovery(), minorVersionNumber)
+	case AnonymousAuthenticationSupportedForOtherEndpoints:
+		versionLessThan := e.Capabilities.AnonymousAuthentication.OtherEndpoints.AllowedIfK8sMinorVersionLessThan
+		if versionLessThan == "" {
+			return e.Capabilities.AnonymousAuthentication.OtherEndpoints.Allowed
+		}
+		minorVersionNumber, err := strconv.Atoi(versionLessThan)
+		require.NoError(e.t, err, "could not parse minor version number from AnonymousAuthentication OtherEndpoints capability as int")
+		return !testutil.KubeServerMinorVersionAtLeastInclusive(e.t, NewKubernetesClientset(e.t).Discovery(), minorVersionNumber)
+	case ClusterSigningKeyIsAvailable:
+		return e.Capabilities.ClusterSigningKeyIsAvailable
+	case HasExternalLoadBalancerProvider:
+		return e.Capabilities.HasExternalLoadBalancerProvider
+	case CanReachInternetLDAPPorts:
+		return e.Capabilities.CanReachInternetLDAPPorts
+	default:
+		require.Failf(e.t, "unknown capability type", "name: %s", cap)
+		return false
+	}
 }
 
 func (e *TestEnv) WithCapability(cap Capability) *TestEnv {
