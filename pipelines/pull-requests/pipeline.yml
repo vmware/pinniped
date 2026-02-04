@@ -631,6 +631,14 @@ jobs:
                 # 3.0.4 and 4.0.5 contain the fix.
                 CVE-2025-27144
 
+                # CVE-2026-24051 is in go.opentelemetry.io/otel/sdk before v1.40.0. This is an indirect dep that we
+                # get through various k8s modules and through fosite. The CVE description says that it only applies
+                # to MacOS. We do not use opentelemetry in the Pinniped CLI, and our other code never runs on MacOS,
+                # so we should have no exposure to this issue. We can wait for the next version of k8s packages to
+                # update this dependency, if they choose to do so.
+                # See https://ossindex.sonatype.org/vulnerability/CVE-2026-24051?component-type=golang&component-name=go.opentelemetry.io%2Fotel%2Fsdk&utm_source=nancy-client&utm_medium=integration&utm_content=1.2.0
+                CVE-2026-24051 until=2026-04-04
+
                 EOF
 
                 cat pinniped-modules/modules.json | nancy sleuth \
