@@ -20,7 +20,7 @@ require (
 	github.com/gofrs/flock v0.13.0
 	github.com/google/cel-go v0.27.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v79 v79.0.0
+	github.com/google/go-github/v80 v80.0.0
 	github.com/google/gofuzz v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/securecookie v1.1.2
