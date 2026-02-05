@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/google/go-github/v79/github"
+	"github.com/google/go-github/v80/github"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"go.pinniped.dev/internal/plog"
