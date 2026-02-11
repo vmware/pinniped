@@ -7,7 +7,7 @@ image_resource:
   type: registry-image
   source:
     repository: golang
-    tag: '1.25.6'
+    tag: '1.26.0'
 inputs:
   - name: pinniped
   - name: release-semver
