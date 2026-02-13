@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package supervisorconfig
@@ -682,7 +682,7 @@ func appendIdentityProvidersFoundCondition(
 	conditions []*metav1.Condition,
 ) []*metav1.Condition {
 	if len(idpNotFoundIndices) != 0 {
-		messages := []string{}
+		messages := make([]string, 0, len(idpNotFoundIndices))
 		for _, idpNotFoundIndex := range idpNotFoundIndices {
 			messages = append(messages, fmt.Sprintf("cannot find resource specified by .spec.identityProviders[%d].objectRef (with name %q)",
 				idpNotFoundIndex, federationDomainIdentityProviders[idpNotFoundIndex].ObjectRef.Name))

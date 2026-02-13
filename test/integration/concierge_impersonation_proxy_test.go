@@ -1723,7 +1723,7 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 		}
 
 		expectedAnnotations := func(credentialIssuerSpecAnnotations map[string]string, otherAnnotations map[string]string) map[string]string {
-			credentialIssuerSpecAnnotationKeys := []string{}
+			credentialIssuerSpecAnnotationKeys := make([]string, 0, len(credentialIssuerSpecAnnotations))
 			expectedAnnotations := map[string]string{}
 			// Expect the annotations specified on the CredentialIssuer spec to be present.
 			for k, v := range credentialIssuerSpecAnnotations {

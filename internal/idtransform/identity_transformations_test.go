@@ -1,4 +1,4 @@
-// Copyright 2023-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package idtransform
@@ -44,7 +44,7 @@ func (a fakeNilGroupTransformer) Source() any {
 type fakeAppendStringTransformer struct{}
 
 func (a fakeAppendStringTransformer) Evaluate(_ctx context.Context, username string, groups []string) (*TransformationResult, error) {
-	newGroups := []string{}
+	newGroups := make([]string, 0, len(groups))
 	for _, group := range groups {
 		newGroups = append(newGroups, group+":transformed")
 	}
@@ -78,7 +78,7 @@ func (a fakeDeleteUsernameAndGroupsTransformer) Source() any {
 type fakeAuthenticationDisallowedTransformer struct{}
 
 func (a fakeAuthenticationDisallowedTransformer) Evaluate(_ctx context.Context, username string, groups []string) (*TransformationResult, error) {
-	newGroups := []string{}
+	newGroups := make([]string, 0, len(groups))
 	for _, group := range groups {
 		newGroups = append(newGroups, group+":disallowed")
 	}

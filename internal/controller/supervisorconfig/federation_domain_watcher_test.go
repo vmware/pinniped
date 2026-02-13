@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package supervisorconfig
@@ -2182,7 +2182,7 @@ func makeFederationDomainIdentityProviderComparable(fdi *federationdomainprovide
 }
 
 func convertToComparableType(fdis []*federationdomainproviders.FederationDomainIssuer) []*comparableFederationDomainIssuer {
-	result := []*comparableFederationDomainIssuer{}
+	result := make([]*comparableFederationDomainIssuer, 0, len(fdis))
 	for _, fdi := range fdis {
 		identityProviders := fdi.IdentityProviders()
 		comparableFDIs := make([]*comparableFederationDomainIdentityProvider, len(identityProviders))
@@ -2217,7 +2217,7 @@ func expectedFederationDomainStatusUpdate(
 }
 
 func getFederationDomainStatusUpdates(t *testing.T, actions []coretesting.Action) []*supervisorconfigv1alpha1.FederationDomain {
-	federationDomains := []*supervisorconfigv1alpha1.FederationDomain{}
+	federationDomains := make([]*supervisorconfigv1alpha1.FederationDomain, 0, len(actions))
 
 	for _, action := range actions {
 		updateAction, ok := action.(coretesting.UpdateAction)
@@ -2320,7 +2320,7 @@ func TestTransformationPipelinesCanBeTestedForEqualityUsingSourceToMakeTestingEa
 	equalPipeline := idtransform.NewTransformationPipeline()
 	differentPipeline1 := idtransform.NewTransformationPipeline()
 	differentPipeline2 := idtransform.NewTransformationPipeline()
-	expectedSourceList := []any{}
+	expectedSourceList := make([]any, 0, len(transforms))
 
 	for i, transform := range transforms {
 		// Compile and append to a pipeline.

@@ -1,4 +1,4 @@
-// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package apiserver
@@ -80,7 +80,7 @@ func (c completedConfig) New() (*PinnipedServer, error) {
 		GenericAPIServer: genericServer,
 	}
 
-	var errs []error //nolint:prealloc
+	var errs []error
 	for _, f := range []func() (schema.GroupVersionResource, rest.Storage){
 		func() (schema.GroupVersionResource, rest.Storage) {
 			clientSecretReqGVR := c.ExtraConfig.ClientSecretSupervisorGroupVersion.WithResource("oidcclientsecretrequests")

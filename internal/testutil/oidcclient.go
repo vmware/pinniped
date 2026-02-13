@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package testutil
@@ -36,8 +36,9 @@ const (
 
 // allDynamicClientScopes returns a slice of all scopes that are supported by the Supervisor for dynamic clients.
 func allDynamicClientScopes() []supervisorconfigv1alpha1.Scope {
-	scopes := []supervisorconfigv1alpha1.Scope{}
-	for _, s := range strings.Split(AllDynamicClientScopesSpaceSep, " ") {
+	splitOnSpace := strings.Split(AllDynamicClientScopesSpaceSep, " ")
+	scopes := make([]supervisorconfigv1alpha1.Scope, 0, len(splitOnSpace))
+	for _, s := range splitOnSpace {
 		scopes = append(scopes, supervisorconfigv1alpha1.Scope(s))
 	}
 	return scopes

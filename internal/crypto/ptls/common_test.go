@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package ptls
@@ -74,7 +74,7 @@ func TestSetAllowedCiphersForTLSOneDotTwo(t *testing.T) {
 		err := SetUserConfiguredAllowedCipherSuitesForTLSOneDotTwo(userConfiguredAllowedCipherSuites)
 		require.NoError(t, err)
 		stored := getUserConfiguredAllowedCipherSuitesForTLSOneDotTwo()
-		var storedNames []string
+		storedNames := make([]string, 0, len(stored))
 		for _, suite := range stored {
 			storedNames = append(storedNames, suite.Name)
 		}
