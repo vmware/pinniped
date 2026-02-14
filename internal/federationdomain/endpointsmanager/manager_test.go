@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package endpointsmanager
@@ -110,7 +110,7 @@ func TestManager(t *testing.T) {
 			expectedFlowsJSON, err := json.Marshal(expectedFlows)
 			require.NoError(t, err)
 
-			expectedIDPJSONList := []string{}
+			expectedIDPJSONList := make([]string, 0, len(expectedIDPNames))
 			for i := range expectedIDPNames {
 				expectedIDPJSONList = append(expectedIDPJSONList, fmt.Sprintf(`{"name":"%s","type":"%s","flows":%s}`,
 					expectedIDPNames[i], expectedIDPTypes, expectedFlowsJSON))

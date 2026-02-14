@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package token
@@ -5980,7 +5980,7 @@ func deepCopyRequestForm(r *http.Request) *http.Request {
 }
 
 func getMapKeys(m map[string]any) []string {
-	keys := make([]string, 0)
+	keys := make([]string, 0, len(m))
 	for key := range m {
 		keys = append(keys, key)
 	}

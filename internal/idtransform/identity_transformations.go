@@ -1,4 +1,4 @@
-// Copyright 2023-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package idtransform defines upstream-to-downstream identity transformations which could be
@@ -90,7 +90,7 @@ func (p *TransformationPipeline) Evaluate(ctx context.Context, username string, 
 }
 
 func (p *TransformationPipeline) Source() []any {
-	result := []any{}
+	result := make([]any, 0, len(p.transforms))
 	for _, transform := range p.transforms {
 		result = append(result, transform.Source())
 	}

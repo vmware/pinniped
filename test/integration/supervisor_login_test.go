@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -346,7 +346,7 @@ func TestSupervisorLogin_Browser(t *testing.T) {
 		regexp.QuoteMeta("&sub=") + ".+" +
 		"$"
 
-	tests := []*supervisorLoginTestcase{
+	tests := []*supervisorLoginTestcase{ //nolint:prealloc
 		{
 			name:      "oidc with default username and groups claim settings",
 			maybeSkip: skipNever,
@@ -2829,7 +2829,7 @@ func supervisorLoginGithubTestcases(
 
 func wantGroupsInAdditionalClaimsIfGroupsExist(additionalClaims map[string]any, wantGroupsAdditionalClaimName string, wantGroups []string) map[string]any {
 	if len(wantGroups) > 0 {
-		var wantGroupsAnyType []any
+		wantGroupsAnyType := make([]any, 0, len(wantGroups))
 		for _, group := range wantGroups {
 			wantGroupsAnyType = append(wantGroupsAnyType, group)
 		}
@@ -2909,7 +2909,7 @@ func conditionsSummaryFromActualConditions(
 	caBundleConfigured bool,
 	expectedLDAPConnectionValidMessage string,
 ) [][]string {
-	conditionsSummary := [][]string{}
+	conditionsSummary := make([][]string, 0, len(conditions))
 	for _, condition := range conditions {
 		conditionsSummary = append(conditionsSummary, []string{condition.Type, string(condition.Status), condition.Reason})
 		t.Logf("Saw identity provider with Status.Condition Type=%s Status=%s Reason=%s Message=%s",
@@ -3351,7 +3351,7 @@ func verifyTokenResponse(
 	idTokenClaims := map[string]any{}
 	err = idToken.Claims(&idTokenClaims)
 	require.NoError(t, err)
-	idTokenClaimNames := []string{}
+	idTokenClaimNames := make([]string, 0, len(idTokenClaims))
 	for k := range idTokenClaims {
 		idTokenClaimNames = append(idTokenClaimNames, k)
 	}

@@ -1,4 +1,4 @@
-// Copyright 2023-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package federationdomainproviders
@@ -74,7 +74,7 @@ func NewFederationDomainIdentityProvidersListerFinder(
 	wrappedLister idplister.UpstreamIdentityProvidersLister,
 ) *FederationDomainIdentityProvidersListerFinder {
 	// Create a copy of the input slice so we won't need to worry about the caller accidentally changing it.
-	copyOfFederationDomainIdentityProviders := []*FederationDomainIdentityProvider{}
+	copyOfFederationDomainIdentityProviders := make([]*FederationDomainIdentityProvider, 0, len(federationDomainIssuer.IdentityProviders()))
 	// Create a map and a set for quick lookups of the same data that was passed in via the
 	// federationDomainIssuer parameter.
 	allowedResourceUIDs := sets.New[types.UID]()

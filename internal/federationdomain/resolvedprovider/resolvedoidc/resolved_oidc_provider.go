@@ -1,4 +1,4 @@
-// Copyright 2024-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package resolvedoidc
@@ -106,11 +106,12 @@ func (p *FederationDomainResolvedOIDCIdentityProvider) UpstreamAuthorizeRedirect
 		Scopes:      p.Provider.GetScopes(),
 	}
 
-	authCodeOptions := []oauth2.AuthCodeOption{
+	authCodeOptions := make([]oauth2.AuthCodeOption, 0, 3+len(p.Provider.GetAdditionalAuthcodeParams()))
+	authCodeOptions = append(authCodeOptions,
 		state.Nonce.Param(),
 		state.PKCE.Challenge(),
 		state.PKCE.Method(),
-	}
+	)
 
 	for key, val := range p.Provider.GetAdditionalAuthcodeParams() {
 		authCodeOptions = append(authCodeOptions, oauth2.SetAuthURLParam(key, val))

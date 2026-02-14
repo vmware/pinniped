@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package jwtcachefiller implements a controller for filling an authncache.Cache with each
@@ -305,7 +305,7 @@ func (c *jwtCacheFillerController) doExpensiveValidations(
 	okSoFar bool,
 ) (*cachedJWTAuthenticator, []*metav1.Condition, []error) {
 	var conditions []*metav1.Condition
-	var errs []error
+	errs := make([]error, 0, 4)
 
 	client := phttp.Default(caBundle.CertPool())
 	client.Timeout = 30 * time.Second // copied from Kube OIDC code

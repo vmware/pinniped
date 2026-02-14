@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package oidcclient implements a CLI OIDC login flow.
@@ -646,7 +646,7 @@ func (h *handlerState) maybePerformPinnipedSupervisorValidations() (idpdiscovery
 
 		if !slices.Contains(supportedIDPTypes, h.upstreamIdentityProviderType) {
 			convertIDPListToQuotedStringList := func() []string {
-				var temp []string
+				temp := make([]string, 0, len(supportedIDPTypes))
 				for _, idpType := range supportedIDPTypes {
 					temp = append(temp, fmt.Sprintf("%q", idpType))
 				}
@@ -706,7 +706,7 @@ func (h *handlerState) maybePerformPinnipedSupervisorValidations() (idpdiscovery
 		loginFlow = foundIDP.Flows[0]
 	}
 
-	var authorizeOptions []oauth2.AuthCodeOption
+	authorizeOptions := make([]oauth2.AuthCodeOption, 0, 2)
 
 	authorizeOptions = append(authorizeOptions,
 		oauth2.SetAuthURLParam(oidcapi.AuthorizeUpstreamIDPNameParamName, h.upstreamIdentityProviderName),

@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 /*
@@ -113,7 +113,7 @@ func decodeObj(r *http.Request) (runtime.Object, error) {
 	}
 
 	var obj runtime.Object
-	var errs []error //nolint:prealloc
+	var errs []error
 	codecsThatWeUseInOurCode := []runtime.NegotiatedSerializer{
 		kubescheme.Codecs,
 		aggregatorclientscheme.Codecs,

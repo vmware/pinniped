@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package githubupstreamwatcher implements a controller which watches GitHubIdentityProviders.
@@ -310,7 +310,7 @@ func (c *gitHubWatcherController) validateUpstreamAndUpdateConditions(ctx contex
 	*upstreamgithub.Provider, // If validated, returns the config
 	error, // This error will only refer to programmatic errors such as inability to perform a connection probe or dereference a pointer, not configuration errors
 ) {
-	conditions := make([]*metav1.Condition, 0)
+	conditions := make([]*metav1.Condition, 0, 6)
 	applicationErrors := make([]error, 0)
 
 	clientSecretCondition, clientID, clientSecret, clientSecretErr := c.validateClientSecret(upstream.Spec.Client.SecretName)

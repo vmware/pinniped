@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package webhookcachefiller implements a controller for filling an authncache.Cache with each added/updated WebhookAuthenticator.
@@ -256,7 +256,7 @@ func (c *webhookCacheFillerController) doExpensiveValidations(
 ) (*cachedWebhookAuthenticator, []*metav1.Condition, []error) {
 	var newWebhookAuthenticatorForCache *cachedWebhookAuthenticator
 	var conditions []*metav1.Condition
-	var errs []error
+	errs := make([]error, 0, 2)
 
 	conditions, tlsNegotiateErr := c.validateConnection(ctx, caBundle.CertPool(), endpointHostPort, conditions, okSoFar, usingProxyForHost, logger)
 	errs = append(errs, tlsNegotiateErr)
