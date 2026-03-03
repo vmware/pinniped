@@ -637,7 +637,7 @@ jobs:
                 # so we should have no exposure to this issue. We can wait for the next version of k8s packages to
                 # update this dependency, if they choose to do so.
                 # See https://ossindex.sonatype.org/vulnerability/CVE-2026-24051?component-type=golang&component-name=go.opentelemetry.io%2Fotel%2Fsdk&utm_source=nancy-client&utm_medium=integration&utm_content=1.2.0
-                CVE-2026-24051 until=2026-04-04
+                CVE-2026-24051 until=2026-06-04
 
                 EOF
 
