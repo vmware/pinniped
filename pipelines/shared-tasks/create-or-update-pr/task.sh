@@ -56,7 +56,7 @@ else
   # Fetch all the remote branches so we can use one of them.
   git fetch https_origin
   # Check if our local changes are different from what is already on the remote branch.
-  stagedAndUnstagedDiffs=$(git diff --no-pager https_origin/"$BRANCH")
+  stagedAndUnstagedDiffs=$(git --no-pager diff https_origin/"$BRANCH")
   if [[ "$stagedAndUnstagedDiffs" == "" ]]; then
     # The changes that we made locally are the same as what is already on the branch.
     echo "Local git changes are the same as what is already on remote branch $BRANCH. Done."
