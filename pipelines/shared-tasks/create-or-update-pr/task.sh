@@ -53,11 +53,18 @@ if [[ -z "$(git ls-remote https_origin "$BRANCH")" ]]; then
   new_branch="yes"
 else
   echo "The branch already exists, so pull it."
+  # Fetch all the remote branches so we can use one of them.
+  git fetch https_origin
+  # Check if our local changes are different from what is already on the remote branch.
+  stagedAndUnstagedDiffs=$(git diff --no-pager https_origin/"$BRANCH")
+  if [[ "$stagedAndUnstagedDiffs" == "" ]]; then
+    # The changes that we made locally are the same as what is already on the branch.
+    echo "Local git changes are the same as what is already on remote branch $BRANCH. Done."
+    exit 0
+  fi
   # Stash our changes before using git checkout and git reset, which both can throw away local changes.
   git status
   git stash
-  # Fetch all the remote branches so we can use one of them.
-  git fetch https_origin
   # The branch already exists, so reuse it.
   git checkout "$BRANCH"
   # Pull to sync up commits with the remote branch.
