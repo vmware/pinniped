@@ -4,7 +4,7 @@
 FROM gcr.io/go-containerregistry/crane as crane
 FROM mikefarah/yq:4.52.4 AS yq
 
-FROM golang:1.26.0
+FROM golang:1.26.1
 COPY --from=yq /usr/bin/yq /usr/local/bin
 COPY --from=crane /ko-app/crane /usr/local/bin
 ENTRYPOINT ["bash"]
