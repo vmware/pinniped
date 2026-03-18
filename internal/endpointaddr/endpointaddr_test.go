@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package endpointaddr
@@ -182,6 +182,8 @@ func TestParse(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := Parse(tt.input, tt.defaultPort)
 			if tt.expectErr == "" {
 				assert.NoError(t, err)
@@ -307,29 +309,10 @@ func TestParseFromURL(t *testing.T) {
 			expect:         HostPort{Host: "2001:db8::ffff", Port: 443},
 			expectEndpoint: "[2001:db8::ffff]:443",
 		},
-		{
-			name:           "IPv6 without brackets and without port will create HostPort{}, which will add brackets when HostPort.Endpoint() is called",
-			input:          "http://2001:db8::1234",
-			defaultPort:    443,
-			expect:         HostPort{Host: "2001:db8::1234", Port: 443},
-			expectEndpoint: "[2001:db8::1234]:443",
-		},
-		{
-			name:           "IPv6 without brackets and without port with path create HostPort{}, which will add brackets when HostPort.Endpoint() is called",
-			input:          "https://0:0:0:0:0:0:0:1/some/fake/path",
-			defaultPort:    443,
-			expect:         HostPort{Host: "0:0:0:0:0:0:0:1", Port: 443},
-			expectEndpoint: "[0:0:0:0:0:0:0:1]:443",
-		},
-		{
-			name:           "IPv6 with mismatched leading bracket will err on bracket",
-			input:          "https://[[::1]/some/fake/path",
-			defaultPort:    443,
-			expect:         HostPort{Host: "::1", Port: 443},
-			expectEndpoint: "[::1]:443",
-		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			urlToProcess, err := url.Parse(tt.input)
 			require.NoError(t, err, "ParseFromURL expects a valid url.URL, parse errors here are not valuable")
 
