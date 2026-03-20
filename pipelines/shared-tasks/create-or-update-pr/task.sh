@@ -56,13 +56,21 @@ else
   # Fetch all the remote branches so we can use one of them.
   git fetch https_origin
   echo "Comparing local changes to remote branch..."
-  # Check if our local changes are different from what is already on the remote branch.
-  stagedAndUnstagedDiffs=$(git --no-pager diff https_origin/"$BRANCH")
+  # Find the common ancestor commit between the PR branch and main. This is where the PR branch branches from main.
+  common_ancestor_commit="$(git merge-base https_origin/main https_origin/"$BRANCH")"
+  echo "Found common ancestor commit between the PR branch and main: $common_ancestor_commit"
+  # Find the first commit on the remote branch after it diverges from master.
+  remote_branch_first_commit=$(git rev-list --ancestry-path "$common_ancestor_commit"..https_origin/"$BRANCH" | tail -1)
+  echo "Found first commit on remote branch: $remote_branch_first_commit"
+  # Check if our local changes are different from what is already on the first commit of the remote branch.
+  # Only compare to the first commit because humans might have added more commits to the branch after it was updated by this script.
+  # We don't want to overwrite the human commits unless something needs to be changed in that first commit.
+  stagedAndUnstagedDiffs=$(git --no-pager diff "$remote_branch_first_commit")
   if [[ "$stagedAndUnstagedDiffs" == "" ]]; then
-    echo "Local git changes are the same as what is already on remote branch $BRANCH. Done."
+    echo "Local git changes are the same as what is already on first commit of remote branch $BRANCH. Done."
     exit 0
   else
-    echo "Local and remote had diffs:"
+    echo "Local and remote's first commit had diffs:"
     echo "$stagedAndUnstagedDiffs"
   fi
   # Stash our changes before using git checkout and git reset, which both can throw away local changes.
