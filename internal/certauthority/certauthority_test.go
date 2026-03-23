@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package certauthority
@@ -121,31 +121,12 @@ func TestNewInternal(t *testing.T) {
 		{
 			name: "failed to generate CA serial",
 			env: env{
-				serialRNG:  strings.NewReader(""),
-				keygenRNG:  strings.NewReader(""),
-				signingRNG: strings.NewReader(""),
+				serialRNG: strings.NewReader(""),
 			},
 			wantErr: "could not generate CA serial: EOF",
 		},
-		{
-			name: "failed to generate CA key",
-			env: env{
-				serialRNG:  strings.NewReader(strings.Repeat("x", 64)),
-				keygenRNG:  strings.NewReader(""),
-				signingRNG: strings.NewReader(""),
-			},
-			wantErr: "could not generate CA private key: EOF",
-		},
-		{
-			name: "failed to self-sign",
-			env: env{
-				serialRNG:  strings.NewReader(strings.Repeat("x", 64)),
-				keygenRNG:  strings.NewReader(strings.Repeat("y", 64)),
-				signingRNG: strings.NewReader(""),
-				clock:      func() time.Time { return now },
-			},
-			wantErr: "could not issue CA certificate: EOF",
-		},
+		// Note: Can't cause failures in GenerateKey or CreateCertificate by passing empty readers anymore
+		// starting in Go 1.26.1, so those error cases are untested now.
 		{
 			name: "success",
 			ttl:  time.Minute,
@@ -247,16 +228,8 @@ func TestIssue(t *testing.T) {
 			},
 			wantErr: "could not generate serial number for certificate: EOF",
 		},
-		{
-			name: "failed to generate keypair",
-			ca: CA{
-				env: env{
-					serialRNG: strings.NewReader(strings.Repeat("x", numRandBytes)),
-					keygenRNG: strings.NewReader(""),
-				},
-			},
-			wantErr: "could not generate private key: EOF",
-		},
+		// Note: Can't cause failures in GenerateKey or CreateCertificate by passing empty readers anymore
+		// starting in Go 1.26.1, so those error cases are untested now.
 		{
 			name: "invalid CA certificate",
 			ca: CA{

@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -3858,7 +3858,6 @@ func TestGetKubeconfig(t *testing.T) {
 				if tt.getClientsetErr != nil {
 					return nil, nil, nil, tt.getClientsetErr
 				}
-				//nolint:staticcheck // as of v0.35.0, this package does not offer a NewClientset() function
 				fakeAggregatorClient := aggregatorfake.NewSimpleClientset(tt.apiServiceObjects...)
 				fakeKubeClient := kubefake.NewClientset()
 				if tt.kubeObjects != nil {

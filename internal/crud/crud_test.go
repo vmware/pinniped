@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package crud
@@ -1291,7 +1291,6 @@ func TestStorage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // using NewClientset() is possible here, but it will require updating test expectations
 			client := kubefake.NewSimpleClientset()
 			if tt.mocks != nil {
 				tt.mocks(t, client)

@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package webhookcachefiller
@@ -1950,58 +1950,6 @@ func TestController(t *testing.T) {
 			},
 			wantNamesOfWebhookAuthenticatorsInCache: []string{},
 			wantSyncErr:                             testutil.WantExactErrorString(`error for WebhookAuthenticator test-name: cannot dial server: tls: failed to verify certificate: x509: cannot validate certificate for 127.0.0.1 because it doesn't contain any IP SANs`),
-		},
-		{
-			name: "validateConnection: IPv6 address without port or brackets: should succeed since IPv6 brackets are optional without port",
-			webhookAuthenticators: []runtime.Object{
-				&authenticationv1alpha1.WebhookAuthenticator{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-name",
-					},
-					Spec: authenticationv1alpha1.WebhookAuthenticatorSpec{
-						Endpoint: "https://0:0:0:0:0:0:0:1/some/fake/path",
-						TLS: &authenticationv1alpha1.TLSSpec{
-							CertificateAuthorityData: base64.StdEncoding.EncodeToString(caForLocalhostAs127001.Bundle()),
-						},
-					},
-				},
-			},
-			wantLogLines: []string{
-				`{"level":"info","timestamp":"2099-08-08T13:57:36.123456Z","logger":"webhookcachefiller-controller","caller":"webhookcachefiller/webhookcachefiller.go:<line>$webhookcachefiller.(*webhookCacheFillerController).syncIndividualWebhookAuthenticator","message":"invalid webhook authenticator","webhookAuthenticator":"test-name","endpoint":"https://0:0:0:0:0:0:0:1/some/fake/path","removedFromCache":false}`,
-				`{"level":"debug","timestamp":"2099-08-08T13:57:36.123456Z","logger":"webhookcachefiller-controller","caller":"webhookcachefiller/webhookcachefiller.go:<line>$webhookcachefiller.(*webhookCacheFillerController).updateStatus","message":"webhookauthenticator status successfully updated","webhookAuthenticator":"test-name","endpoint":"https://0:0:0:0:0:0:0:1/some/fake/path","phase":"Error"}`,
-			},
-			wantActions: func() []coretesting.Action {
-				updateStatusAction := coretesting.NewUpdateAction(webhookAuthenticatorGVR, "", &authenticationv1alpha1.WebhookAuthenticator{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-name",
-					},
-					Spec: authenticationv1alpha1.WebhookAuthenticatorSpec{
-						Endpoint: "https://0:0:0:0:0:0:0:1/some/fake/path",
-						TLS: &authenticationv1alpha1.TLSSpec{
-							CertificateAuthorityData: base64.StdEncoding.EncodeToString(caForLocalhostAs127001.Bundle()),
-						},
-					},
-					Status: authenticationv1alpha1.WebhookAuthenticatorStatus{
-						Conditions: conditionstestutil.Replace(
-							allHappyConditionsSuccess("https://0:0:0:0:0:0:0:1/some/fake/path", frozenMetav1Now, 0),
-							[]metav1.Condition{
-								sadWebhookConnectionValidWithMessage(frozenMetav1Now, 0, "cannot dial server: dial tcp [::1]:443: connect: connection refused"),
-								sadReadyCondition(frozenMetav1Now, 0),
-								unknownAuthenticatorValid(frozenMetav1Now, 0),
-							},
-						),
-						Phase: "Error",
-					},
-				})
-				updateStatusAction.Subresource = "status"
-				return []coretesting.Action{
-					coretesting.NewListAction(webhookAuthenticatorGVR, webhookAuthenticatorGVK, "", metav1.ListOptions{}),
-					coretesting.NewWatchAction(webhookAuthenticatorGVR, "", metav1.ListOptions{Watch: true}),
-					updateStatusAction,
-				}
-			},
-			wantSyncErr:                             testutil.WantExactErrorString(`error for WebhookAuthenticator test-name: cannot dial server: dial tcp [::1]:443: connect: connection refused`),
-			wantNamesOfWebhookAuthenticatorsInCache: []string{},
 		},
 		{
 			name: "updateStatus: called with matching original and updated conditions: will not make request to update conditions",

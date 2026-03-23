@@ -1,4 +1,4 @@
-// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package kubecertagent
@@ -1781,7 +1781,6 @@ func TestAgentController(t *testing.T) {
 			conciergeClientset := conciergefake.NewSimpleClientset(tt.pinnipedObjects...)
 			conciergeInformers := conciergeinformers.NewSharedInformerFactory(conciergeClientset, 0)
 
-			//nolint:staticcheck // using NewClientset() is possible here, but it will require updating test expectations
 			kubeClientset := kubefake.NewSimpleClientset(tt.kubeObjects...)
 			if tt.addKubeReactions != nil {
 				tt.addKubeReactions(kubeClientset)
