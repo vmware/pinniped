@@ -1,4 +1,4 @@
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 display:
@@ -217,7 +217,6 @@ jobs:
       - task: scan
         file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
         params:
-          GITHUB_TOKEN: ((ci-bot-access-token-with-read-user-permission))
           <<: *trivy_ignores
         input_mapping:
           image: pinniped-latest-release-image
@@ -236,7 +235,6 @@ jobs:
       - task: scan
         file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
         params:
-          GITHUB_TOKEN: ((ci-bot-access-token-with-read-user-permission))
           <<: *trivy_ignores
         input_mapping:
           image: pinniped-latest-main-image

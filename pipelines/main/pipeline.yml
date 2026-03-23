@@ -999,7 +999,6 @@ jobs:
           image: ci-build-image
         file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
         params:
-          GITHUB_TOKEN: ((ci-bot-access-token-with-read-user-permission))
           <<: *trivy_ignores
         <<: *notify_on_failure
 

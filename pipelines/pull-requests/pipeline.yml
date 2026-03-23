@@ -987,7 +987,6 @@ jobs:
         input_mapping:
           image: ci-build-image
         params:
-          GITHUB_TOKEN: ((ci-bot-access-token-with-read-user-permission))
           <<: *trivy_ignores
 
   - name: integration-test-oldest
