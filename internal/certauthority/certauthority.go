@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package certauthority implements a simple x509 certificate authority suitable for use in an aggregated API service.
@@ -112,6 +112,7 @@ func newInternal(commonName string, ttl time.Duration, env env) (*CA, error) {
 	}
 
 	// Generate a new P256 keypair.
+	// Note that starting in Go 1.26, the second argument to GenerateKey is often ignored.
 	ca.privateKey, err = ecdsa.GenerateKey(elliptic.P256(), env.keygenRNG)
 	if err != nil {
 		return nil, fmt.Errorf("could not generate CA private key: %w", err)
@@ -136,6 +137,7 @@ func newInternal(commonName string, ttl time.Duration, env env) (*CA, error) {
 	}
 
 	// Self-sign the CA to get the DER certificate.
+	// Note that starting in Go 1.26, the first argument to CreateCertificate is often ignored.
 	caCertBytes, err := x509.CreateCertificate(env.signingRNG, &caTemplate, &caTemplate, &ca.privateKey.PublicKey, ca.privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("could not issue CA certificate: %w", err)
