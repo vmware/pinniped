@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package browsertest provides integration test helpers for our browser-based tests.
@@ -19,7 +19,8 @@ import (
 	"time"
 
 	chromedpbrowser "github.com/chromedp/cdproto/browser"
-	"github.com/chromedp/cdproto/dom"
+	chromedpdom "github.com/chromedp/cdproto/dom"
+	chromedppage "github.com/chromedp/cdproto/page"
 	chromedpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/stretchr/testify/require"
@@ -137,8 +138,9 @@ func OpenBrowser(t *testing.T) *Browser {
 	// Grant permission to write to the clipboard because the Pinniped formpost UI has a button to copy the
 	// authcode to the clipboard, and we want to be able to use that button in tests.
 	require.NoError(t, chromedp.Run(chromeCtx,
-		chromedpbrowser.GrantPermissions(
-			[]chromedpbrowser.PermissionType{chromedpbrowser.PermissionTypeClipboardSanitizedWrite},
+		chromedpbrowser.SetPermission(
+			&chromedpbrowser.PermissionDescriptor{Name: chromedppage.PermissionsPolicyFeatureClipboardWrite.String()},
+			chromedpbrowser.PermissionSettingGranted,
 		),
 	))
 
@@ -196,11 +198,11 @@ func (b *Browser) dumpPage(t *testing.T) {
 	// Log the HTML of the current page.
 	var html string
 	b.runWithTimeout(t, b.timeout(), chromedp.ActionFunc(func(ctx context.Context) error {
-		node, err := dom.GetDocument().Do(ctx)
+		node, err := chromedpdom.GetDocument().Do(ctx)
 		if err != nil {
 			return err
 		}
-		html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+		html, err = chromedpdom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
 		return err
 	}))
 	var htmlBuf bytes.Buffer
