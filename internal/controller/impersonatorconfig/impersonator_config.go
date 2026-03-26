@@ -1,4 +1,4 @@
-// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package impersonatorconfig
@@ -11,8 +11,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"maps"
 	"net"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -56,6 +57,7 @@ const (
 	caKeyKey                     = "ca.key"
 	appLabelKey                  = "app"
 	annotationKeysKey            = "credentialissuer.pinniped.dev/annotation-keys"
+	labelKeysKey                 = "credentialissuer.pinniped.dev/label-keys"
 )
 
 type impersonatorConfigController struct {
@@ -626,6 +628,62 @@ func (c *impersonatorConfigController) ensureClusterIPServiceIsStopped(ctx conte
 	return utilerrors.FilterOut(err, apierrors.IsNotFound)
 }
 
+// recordDesiredKeysAsBookkeepingAnnotation adds a bookkeeping annotation to the given service that records which
+// keys were explicitly desired by this controller. This allows future runs to detect which keys have been removed
+// from the desired state (so they can be cleaned up) vs. which keys belong to other actors (which should
+// be left alone). The bookkeepingKey is the annotation key under which the JSON-encoded list of desired keys will
+// be stored. If the desiredMap is empty, no bookkeeping entry is added.
+func recordDesiredKeysAsBookkeepingAnnotation(service *corev1.Service, desiredMap map[string]string, bookkeepingKey string) error {
+	desiredKeys := slices.Sorted(maps.Keys(desiredMap))
+
+	if len(desiredKeys) > 0 {
+		keysJSONArray, err := json.Marshal(desiredKeys)
+		if err != nil {
+			return err // This shouldn't really happen. We should always be able to marshal an array of strings.
+		}
+
+		// Save the desired keys to a bookkeeping annotation on the service.
+		if service.Annotations == nil {
+			service.Annotations = map[string]string{}
+		}
+		service.Annotations[bookkeepingKey] = string(keysJSONArray)
+	}
+
+	return nil
+}
+
+func mergeMap(existingMap map[string]string, desiredMap map[string]string, existingBookkeepingSource map[string]string, bookkeepingKey string) map[string]string {
+	resultMap := maps.Clone(existingMap)
+	if resultMap == nil {
+		resultMap = map[string]string{}
+	}
+
+	// Merge desired into existing, with desired overwriting when there are conflicts.
+	for k, v := range desiredMap {
+		resultMap[k] = v
+	}
+
+	// Check if the existing Service contains a record of previous keys that were added by this controller.
+	// Note that in an upgrade, older versions of Pinniped might have created the Service without this bookkeeping entry.
+	oldDesiredKeysJSON, foundOldDesiredKeysJSON := existingBookkeepingSource[bookkeepingKey]
+	oldDesiredKeys := []string{}
+	if foundOldDesiredKeysJSON {
+		_ = json.Unmarshal([]byte(oldDesiredKeysJSON), &oldDesiredKeys)
+		// In the unlikely event that we cannot parse the value of our bookkeeping entry, just act like it
+		// wasn't present and update it to the new value that it should have based on the current desired state.
+	}
+
+	// Check if any keys which were previously managed by this controller are now gone from the desired state,
+	// which means that those now-missing keys should get deleted.
+	for _, oldKey := range oldDesiredKeys {
+		if _, existsInDesired := desiredMap[oldKey]; !existsInDesired {
+			delete(resultMap, oldKey)
+		}
+	}
+
+	return resultMap
+}
+
 func (c *impersonatorConfigController) createOrUpdateService(ctx context.Context, desiredService *corev1.Service) error {
 	log := c.log.WithValues("serviceType", desiredService.Spec.Type, "service", klog.KObj(desiredService))
 
@@ -634,19 +692,15 @@ func (c *impersonatorConfigController) createOrUpdateService(ctx context.Context
 	// to be able to detect that the missing key means that we should remove the key. This is needed to
 	// differentiate it from a key that was added by another actor, which we should not remove.
 	// But don't bother recording the requested annotations if there were no annotations requested.
-	desiredAnnotationKeys := make([]string, 0, len(desiredService.Annotations))
-	for k := range desiredService.Annotations {
-		desiredAnnotationKeys = append(desiredAnnotationKeys, k)
+	err := recordDesiredKeysAsBookkeepingAnnotation(desiredService, desiredService.Annotations, annotationKeysKey)
+	if err != nil {
+		return err
 	}
-	if len(desiredAnnotationKeys) > 0 {
-		// Sort them since they come out of the map in no particular order.
-		sort.Strings(desiredAnnotationKeys)
-		keysJSONArray, err := json.Marshal(desiredAnnotationKeys)
-		if err != nil {
-			return err // This shouldn't really happen. We should always be able to marshal an array of strings.
-		}
-		// Save the desired annotations to a bookkeeping annotation.
-		desiredService.Annotations[annotationKeysKey] = string(keysJSONArray)
+
+	// Similarly, prepare to remember which label keys were added by this controller.
+	err = recordDesiredKeysAsBookkeepingAnnotation(desiredService, desiredService.Labels, labelKeysKey)
+	if err != nil {
+		return err
 	}
 
 	// Get the Service from the informer, and create it if it does not already exist.
@@ -662,47 +716,33 @@ func (c *impersonatorConfigController) createOrUpdateService(ctx context.Context
 
 	// The Service already exists, so update only the specific fields that are meaningfully part of our desired state.
 	updatedService := existingService.DeepCopy()
-	updatedService.Labels = desiredService.Labels
 	updatedService.Spec.LoadBalancerIP = desiredService.Spec.LoadBalancerIP
 	updatedService.Spec.Type = desiredService.Spec.Type
 	updatedService.Spec.Selector = desiredService.Spec.Selector
 
 	// Do not simply overwrite the existing annotations with the desired annotations. Instead, merge-overwrite.
 	// Another actor in the system, like a human user or a non-Pinniped controller, might have updated the
-	// existing Service's annotations. If they did, then we do not want to overwrite those keys expect for
+	// existing Service's annotations. If they did, then we do not want to overwrite those keys except for
 	// the specific keys that are from the CredentialIssuer's spec, because if we overwrite keys belonging
 	// to another controller then we could end up infinitely flapping back and forth with the other controller,
 	// both updating that annotation on the Service.
-	if updatedService.Annotations == nil {
-		updatedService.Annotations = map[string]string{}
-	}
-	for k, v := range desiredService.Annotations {
-		updatedService.Annotations[k] = v
-	}
-
-	// Check if the the existing Service contains a record of previous annotations that were added by this controller.
-	// Note that in an upgrade, older versions of Pinniped might have created the Service without this bookkeeping annotation.
-	oldDesiredAnnotationKeysJSON, foundOldDesiredAnnotationKeysJSON := existingService.Annotations[annotationKeysKey]
-	oldDesiredAnnotationKeys := []string{}
-	if foundOldDesiredAnnotationKeysJSON {
-		_ = json.Unmarshal([]byte(oldDesiredAnnotationKeysJSON), &oldDesiredAnnotationKeys)
-		// In the unlikely event that we cannot parse the value of our bookkeeping annotation, just act like it
-		// wasn't present and update it to the new value that it should have based on the current desired state.
-	}
-
-	// Check if any annotations which were previously in the CredentialIssuer spec are now gone from the spec,
-	// which means that those now-missing annotations should get deleted.
-	for _, oldKey := range oldDesiredAnnotationKeys {
-		if _, existsInDesired := desiredService.Annotations[oldKey]; !existsInDesired {
-			delete(updatedService.Annotations, oldKey)
-		}
-	}
+	updatedService.Annotations = mergeMap(existingService.Annotations, desiredService.Annotations, existingService.Annotations, annotationKeysKey)
 
 	// If no annotations were requested, then remove the special bookkeeping annotation which might be
 	// leftover from a previous update. During the next update, non-existence will be taken to mean
 	// that no annotations were previously requested by the CredentialIssuer spec.
-	if len(desiredAnnotationKeys) == 0 {
+	if len(desiredService.Annotations) == 0 || mapHasExactlyOneKey(desiredService.Annotations, labelKeysKey) {
 		delete(updatedService.Annotations, annotationKeysKey)
+	}
+
+	// Same merge strategy as above, but for labels this time.
+	updatedService.Labels = mergeMap(existingService.Labels, desiredService.Labels, existingService.Annotations, labelKeysKey)
+
+	// If no labels were requested, then remove the special bookkeeping annotation which might be
+	// leftover from a previous update. During the next update, non-existence will be taken to mean
+	// that no labels were previously requested by this controller.
+	if len(desiredService.Labels) == 0 {
+		delete(updatedService.Annotations, labelKeysKey)
 	}
 
 	// If our updates didn't change anything, we're done.
@@ -1221,4 +1261,12 @@ func validateCredentialIssuerSpec(spec *conciergeconfigv1alpha1.ImpersonationPro
 	}
 
 	return nil
+}
+
+func mapHasExactlyOneKey(m map[string]string, key string) bool {
+	if len(m) != 1 {
+		return false
+	}
+	_, ok := m[key]
+	return ok
 }

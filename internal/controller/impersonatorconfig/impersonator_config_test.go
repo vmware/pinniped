@@ -1,4 +1,4 @@
-// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package impersonatorconfig
@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"reflect"
@@ -684,9 +685,10 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 		var newLoadBalancerService = func(resourceName string, status corev1.ServiceStatus) *corev1.Service {
 			return &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: installedInNamespace,
-					Labels:    labels,
+					Name:        resourceName,
+					Namespace:   installedInNamespace,
+					Labels:      labels,
+					Annotations: map[string]string{labelKeysKey: `["app","other-key"]`},
 				},
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeLoadBalancer,
@@ -706,9 +708,10 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 		var newClusterIPService = func(resourceName string, status corev1.ServiceStatus, spec corev1.ServiceSpec) *corev1.Service {
 			return &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: installedInNamespace,
-					Labels:    labels,
+					Name:        resourceName,
+					Namespace:   installedInNamespace,
+					Labels:      labels,
+					Annotations: map[string]string{labelKeysKey: `["app","other-key"]`},
 				},
 				Spec:   spec,
 				Status: status,
@@ -1020,7 +1023,6 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			r.Equal(installedInNamespace, updatedLoadBalancerService.Namespace)
 			r.Equal(corev1.ServiceTypeLoadBalancer, updatedLoadBalancerService.Spec.Type)
 			r.Equal("app-name", updatedLoadBalancerService.Spec.Selector["app"])
-			r.Equal(labels, updatedLoadBalancerService.Labels)
 			return updatedLoadBalancerService
 		}
 
@@ -1045,7 +1047,6 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			r.Equal(installedInNamespace, updatedLoadBalancerService.Namespace)
 			r.Equal(corev1.ServiceTypeClusterIP, updatedLoadBalancerService.Spec.Type)
 			r.Equal("app-name", updatedLoadBalancerService.Spec.Selector["app"])
-			r.Equal(labels, updatedLoadBalancerService.Labels)
 			return updatedLoadBalancerService
 		}
 
@@ -1078,12 +1079,12 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			r.NoError(err, "key does not match cert")
 			// Decode and parse the cert to check some of its fields.
 			block, _ := pem.Decode(createdCertPEM)
-			require.NotNil(t, block)
+			r.NotNil(block)
 			caCert, err := x509.ParseCertificate(block.Bytes)
-			require.NoError(t, err)
-			require.Equal(t, "Pinniped Impersonation Proxy Serving CA", caCert.Subject.CommonName)
-			require.WithinDuration(t, time.Now().Add(-5*time.Minute), caCert.NotBefore, 10*time.Second)
-			require.WithinDuration(t, time.Now().Add(100*time.Hour*24*365), caCert.NotAfter, 10*time.Second)
+			r.NoError(err)
+			r.Equal("Pinniped Impersonation Proxy Serving CA", caCert.Subject.CommonName)
+			r.WithinDuration(time.Now().Add(-5*time.Minute), caCert.NotBefore, 10*time.Second)
+			r.WithinDuration(time.Now().Add(100*time.Hour*24*365), caCert.NotAfter, 10*time.Second)
 			return createdCertPEM
 		}
 
@@ -1985,9 +1986,10 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 					r.Len(kubeAPIClient.Actions(), 3)
 					requireNodesListed(kubeAPIClient.Actions()[0])
 					lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
-					require.Equal(t, lbService.Annotations, map[string]string{
+					r.Equal(lbService.Annotations, map[string]string{
 						"some-annotation-key":                           "some-annotation-value",
 						"credentialissuer.pinniped.dev/annotation-keys": `["some-annotation-key"]`,
+						"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
 					})
 					requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 					requireTLSServerIsRunningWithoutCerts()
@@ -2180,7 +2182,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 					r.Len(kubeAPIClient.Actions(), 4)
 					requireNodesListed(kubeAPIClient.Actions()[0])
 					lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
-					require.Equal(t, lbService.Spec.LoadBalancerIP, localhostIP)
+					r.Equal(lbService.Spec.LoadBalancerIP, localhostIP)
 					ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 					requireTLSSecretWasCreated(kubeAPIClient.Actions()[3], ca)
 					// Check that the server is running and that TLS certs that are being served are are for fakeHostnameWithPort.
@@ -2755,7 +2757,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			})
 		})
 
-		when("requesting a load balancer via CredentialIssuer, then updating the annotations", func() {
+		when("requesting a load balancer via CredentialIssuer, then updating the annotations and labels", func() {
 			it.Before(func() {
 				addSecretToTrackers(mTLSClientCertCASecret, kubeInformerClient)
 				addCredentialIssuerToTrackers(conciergeconfigv1alpha1.CredentialIssuer{
@@ -2781,7 +2783,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
-				require.Equal(t, map[string]string(nil), lbService.Annotations) // there should be no annotations at first
+				r.Equal(map[string]string{"credentialissuer.pinniped.dev/label-keys": `["app","other-key"]`}, lbService.Annotations)
 				ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 				requireTLSSecretWasCreated(kubeAPIClient.Actions()[3], ca)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
@@ -2789,11 +2791,10 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				requireMTLSClientCertProviderHasLoadedCerts(mTLSClientCertCACertPEM, mTLSClientCertCAPrivateKeyPEM)
 
 				// Simulate another actor in the system, like a human user or a non-Pinniped controller,
-				// updating the new Service's annotations. The map was nil, so we can overwrite the whole thing,
-				lbService.Annotations = map[string]string{
-					"annotation-from-unrelated-controller-key": "annotation-from-unrelated-controller-val",
-					"my-annotation-key":                        "my-annotation-from-unrelated-controller-val",
-				}
+				// updating the new Service's annotations and labels to add some more.
+				lbService.Annotations["annotation-from-unrelated-controller-key"] = "annotation-from-unrelated-controller-val"
+				lbService.Annotations["my-annotation-key"] = "my-annotation-from-unrelated-controller-val"
+				lbService.Labels["my-label-key"] = "my-label-from-unrelated-controller-val"
 
 				// Simulate the informer cache's background update from its watch.
 				addObjectToKubeInformerAndWait(lbService, kubeInformers.Core().V1().Services())
@@ -2819,13 +2820,17 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.NoError(runControllerSync())
 				r.Len(kubeAPIClient.Actions(), 5) // one more item to update the loadbalancer
 				lbService = requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[4])
-				require.Equal(t, map[string]string{
+				wantLabels := maps.Clone(labels)
+				wantLabels["my-label-key"] = "my-label-from-unrelated-controller-val"
+				r.Equal(wantLabels, lbService.Labels)
+				r.Equal(map[string]string{
 					// Now the CredentialIssuer annotations should be merged on the load balancer.
 					// In the unlikely case where keys conflict, the CredentialIssuer value overwrites the other value.
 					// Otherwise the annotations from the other actor should not be modified.
 					"annotation-from-unrelated-controller-key":      "annotation-from-unrelated-controller-val",
 					"my-annotation-key":                             "my-annotation-val",
 					"credentialissuer.pinniped.dev/annotation-keys": `["my-annotation-key"]`,
+					"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
 				}, lbService.Annotations)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
 				requireCredentialIssuer(newSuccessStrategy(localhostIP, ca))
@@ -2833,7 +2838,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			})
 		})
 
-		when("requesting a cluster ip via CredentialIssuer, then updating the annotations", func() {
+		when("requesting a cluster ip via CredentialIssuer, then updating the annotations and labels", func() {
 			it.Before(func() {
 				addSecretToTrackers(mTLSClientCertCASecret, kubeInformerClient)
 				addCredentialIssuerToTrackers(conciergeconfigv1alpha1.CredentialIssuer{
@@ -2859,7 +2864,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				clusterIPService := requireClusterIPWasCreated(kubeAPIClient.Actions()[1])
-				require.Equal(t, map[string]string(nil), clusterIPService.Annotations) // there should be no annotations at first
+				r.Equal(map[string]string{"credentialissuer.pinniped.dev/label-keys": `["app","other-key"]`}, clusterIPService.Annotations)
 				ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 				requireTLSSecretWasCreated(kubeAPIClient.Actions()[3], ca)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
@@ -2867,11 +2872,10 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				requireMTLSClientCertProviderHasLoadedCerts(mTLSClientCertCACertPEM, mTLSClientCertCAPrivateKeyPEM)
 
 				// Simulate another actor in the system, like a human user or a non-Pinniped controller,
-				// updating the new Service's annotations.
-				clusterIPService.Annotations = map[string]string{
-					"annotation-from-unrelated-controller-key": "annotation-from-unrelated-controller-val",
-					"my-annotation-key":                        "my-annotation-from-unrelated-controller-val",
-				}
+				// updating the new Service's annotations and labels to add some more.
+				clusterIPService.Annotations["annotation-from-unrelated-controller-key"] = "annotation-from-unrelated-controller-val"
+				clusterIPService.Annotations["my-annotation-key"] = "my-annotation-from-unrelated-controller-val"
+				clusterIPService.Labels["my-label-key"] = "my-label-from-unrelated-controller-val"
 
 				// Simulate the informer cache's background update from its watch.
 				addObjectToKubeInformerAndWait(clusterIPService, kubeInformers.Core().V1().Services())
@@ -2897,13 +2901,17 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.NoError(runControllerSync())
 				r.Len(kubeAPIClient.Actions(), 5) // one more item to update the loadbalancer
 				clusterIPService = requireClusterIPWasUpdated(kubeAPIClient.Actions()[4])
-				require.Equal(t, map[string]string{
+				wantLabels := maps.Clone(labels)
+				wantLabels["my-label-key"] = "my-label-from-unrelated-controller-val"
+				r.Equal(wantLabels, clusterIPService.Labels)
+				r.Equal(map[string]string{
 					// Now the CredentialIssuer annotations should be merged on the load balancer.
 					// In the unlikely case where keys conflict, the CredentialIssuer value overwrites the other value.
 					// Otherwise the annotations from the other actor should not be modified.
 					"annotation-from-unrelated-controller-key":      "annotation-from-unrelated-controller-val",
 					"my-annotation-key":                             "my-annotation-val",
 					"credentialissuer.pinniped.dev/annotation-keys": `["my-annotation-key"]`,
+					"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
 				}, clusterIPService.Annotations)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
 				requireCredentialIssuer(newSuccessStrategy(localhostIP, ca))
@@ -2942,11 +2950,12 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
-				require.Equal(t, map[string]string{
+				r.Equal(map[string]string{
 					"my-initial-annotation1-key":                    "my-initial-annotation1-val",
 					"my-initial-annotation2-key":                    "my-initial-annotation2-val",
 					"my-initial-annotation3-key":                    "my-initial-annotation3-val",
 					"credentialissuer.pinniped.dev/annotation-keys": `["my-initial-annotation1-key","my-initial-annotation2-key","my-initial-annotation3-key"]`,
+					"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
 				}, lbService.Annotations) // there should be some annotations at first
 				ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 				requireTLSSecretWasCreated(kubeAPIClient.Actions()[3], ca)
@@ -2984,7 +2993,8 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.NoError(runControllerSync())
 				r.Len(kubeAPIClient.Actions(), 5) // one more item to update the loadbalancer
 				lbService = requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[4])
-				require.Equal(t, map[string]string{
+				r.Equal(labels, lbService.Labels)
+				r.Equal(map[string]string{
 					// Now the CredentialIssuer annotations should be merged on the load balancer.
 					// Since the user removed the "my-initial-annotation2-key" key from the CredentialIssuer spec,
 					// it should be removed from the Service.
@@ -2993,6 +3003,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 					"my-initial-annotation1-key":                    "my-initial-annotation1-val",
 					"my-initial-annotation3-key":                    "my-initial-annotation3-val",
 					"credentialissuer.pinniped.dev/annotation-keys": `["my-initial-annotation1-key","my-initial-annotation3-key"]`,
+					"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
 				}, lbService.Annotations)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
 				requireCredentialIssuer(newSuccessStrategy(localhostIP, ca))
@@ -3013,11 +3024,14 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.NoError(runControllerSync())
 				r.Len(kubeAPIClient.Actions(), 6) // one more item to update the loadbalancer
 				lbService = requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[5])
-				require.Equal(t, map[string]string{
+				r.Equal(labels, lbService.Labels)
+				r.Equal(map[string]string{
 					// Since the user removed all annotations from the CredentialIssuer spec,
 					// they should all be removed from the Service, along with the special bookkeeping annotation too.
 					// The annotations from the other actor should not be modified.
 					"annotation-from-unrelated-controller-key": "annotation-from-unrelated-controller-val",
+					// The special bookkeeping annotation for labels should not be modified.
+					"credentialissuer.pinniped.dev/label-keys": `["app","other-key"]`,
 				}, lbService.Annotations)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
 				requireCredentialIssuer(newSuccessStrategy(localhostIP, ca))
@@ -3047,6 +3061,9 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				loadBalancerService.Annotations = map[string]string{
 					annotationKeysKey: `["this is not valid json`,
 				}
+				loadBalancerService.Annotations = map[string]string{
+					labelKeysKey: `["this is not valid json`,
+				}
 				addServiceToTrackers(loadBalancerService, kubeInformerClient, kubeAPIClient)
 			})
 
@@ -3058,9 +3075,11 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				lbService := requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[1])
-				require.Equal(t, map[string]string{
+				r.Equal(labels, lbService.Labels)
+				r.Equal(map[string]string{
 					"some-annotation": "annotation-value",
 					"credentialissuer.pinniped.dev/annotation-keys": `["some-annotation"]`,
+					"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
 				}, lbService.Annotations)
 				ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 				requireTLSSecretWasCreated(kubeAPIClient.Actions()[3], ca)
@@ -3096,8 +3115,8 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
-				require.Equal(t, map[string]string(nil), lbService.Annotations) // there should be no annotations at first
-				require.Equal(t, "", lbService.Spec.LoadBalancerIP)
+				r.Equal(map[string]string{"credentialissuer.pinniped.dev/label-keys": `["app","other-key"]`}, lbService.Annotations)
+				r.Equal("", lbService.Spec.LoadBalancerIP)
 				ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 				requireTLSSecretWasCreated(kubeAPIClient.Actions()[3], ca)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
@@ -3109,7 +3128,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				addObjectFromCreateActionToInformerAndWait(kubeAPIClient.Actions()[2], kubeInformers.Core().V1().Secrets())
 				addObjectFromCreateActionToInformerAndWait(kubeAPIClient.Actions()[3], kubeInformers.Core().V1().Secrets())
 
-				// Add annotations to the spec.
+				// Add IP to the spec.
 				loadBalancerIP := "1.2.3.4"
 				updateCredentialIssuerInInformerAndWait(credentialIssuerResourceName, conciergeconfigv1alpha1.CredentialIssuerSpec{
 					ImpersonationProxy: &conciergeconfigv1alpha1.ImpersonationProxySpec{
@@ -3125,7 +3144,8 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.NoError(runControllerSync())
 				r.Len(kubeAPIClient.Actions(), 5) // one more item to update the loadbalancer
 				lbService = requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[4])
-				require.Equal(t, loadBalancerIP, lbService.Spec.LoadBalancerIP)
+				r.Equal(labels, lbService.Labels)
+				r.Equal(loadBalancerIP, lbService.Spec.LoadBalancerIP)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
 				requireCredentialIssuer(newSuccessStrategy(localhostIP, ca))
 				requireMTLSClientCertProviderHasLoadedCerts(mTLSClientCertCACertPEM, mTLSClientCertCAPrivateKeyPEM)
