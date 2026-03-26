@@ -18,6 +18,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
@@ -1626,13 +1627,13 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 
 		// Use this string in all annotation keys added by this test, so the assertions can ignore annotation keys
 		// which might exist on the Service which are not related to this test.
-		recognizableAnnotationKeyString := "pinniped.dev"
+		recognizableKeyString := "pinniped.dev"
 
 		// Grab the state of the CredentialIssuer prior to this test, so we can restore things back afterwards.
 		previous, err := adminConciergeClient.ConfigV1alpha1().CredentialIssuers().Get(ctx, credentialIssuerName(env), metav1.GetOptions{})
 		require.NoError(t, err)
 
-		updateServiceAnnotations := func(annotations map[string]string) {
+		updateServiceAnnotationsAndLabels := func(annotations map[string]string, labels map[string]string) {
 			require.NoError(t, retry.RetryOnConflict(retry.DefaultRetry, func() error {
 				service, err := adminClient.CoreV1().Services(env.ConciergeNamespace).Get(ctx, impersonationProxyLoadBalancerName(env), metav1.GetOptions{})
 				if err != nil {
@@ -1642,21 +1643,28 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 				if updated.Annotations == nil {
 					updated.Annotations = map[string]string{}
 				}
+				if updated.Labels == nil {
+					updated.Labels = map[string]string{}
+				}
 				// Add/update each requested annotation, without overwriting others that are already there.
 				for k, v := range annotations {
 					updated.Annotations[k] = v
+				}
+				// Add/update each requested label, without overwriting others that are already there.
+				for k, v := range labels {
+					updated.Labels[k] = v
 				}
 				if equality.Semantic.DeepEqual(service, updated) {
 					return nil
 				}
 
-				t.Logf("updating Service with annotations: %v", annotations)
+				t.Logf("updating Service with annotations %v and labels %v", annotations, labels)
 				_, err = adminClient.CoreV1().Services(env.ConciergeNamespace).Update(ctx, updated, metav1.UpdateOptions{})
 				return err
 			}))
 		}
 
-		deleteServiceAnnotations := func(annotations map[string]string) {
+		deleteServiceAnnotationsAndLabels := func(annotations map[string]string, labels map[string]string) {
 			require.NoError(t, retry.RetryOnConflict(retry.DefaultRetry, func() error {
 				service, err := adminClient.CoreV1().Services(env.ConciergeNamespace).Get(ctx, impersonationProxyLoadBalancerName(env), metav1.GetOptions{})
 				if err != nil {
@@ -1668,11 +1676,16 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 						delete(updated.Annotations, k)
 					}
 				}
+				if updated.Labels != nil {
+					for k := range labels {
+						delete(updated.Labels, k)
+					}
+				}
 				if equality.Semantic.DeepEqual(service, updated) {
 					return nil
 				}
 
-				t.Logf("updating Service to remove annotations: %v", annotations)
+				t.Logf("updating Service to remove annotations %v and labels %v", annotations, labels)
 				_, err = adminClient.CoreV1().Services(env.ConciergeNamespace).Update(ctx, updated, metav1.UpdateOptions{})
 				return err
 			}))
@@ -1722,6 +1735,29 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 			}, 1*time.Minute, 1*time.Second)
 		}
 
+		waitForServiceLabels := func(wantLabels map[string]string, labelKeyFilter string) {
+			testlib.RequireEventuallyWithoutError(t, func() (bool, error) {
+				service, err := adminClient.CoreV1().Services(env.ConciergeNamespace).Get(ctx, impersonationProxyLoadBalancerName(env), metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				filteredActualLabels := map[string]string{}
+				for k, v := range service.Labels {
+					// We do want to pay attention to any label for which we intend to make an explicit assertion.
+					_, wantToMakeAssertionOnThisLabel := wantLabels[k]
+					// We do not want to pay attention to Service labels added by other controllers.
+					// These can come and go in time intervals outside of our control.
+					labelContainsFilterString := strings.Contains(k, labelKeyFilter)
+					if wantToMakeAssertionOnThisLabel || labelContainsFilterString {
+						filteredActualLabels[k] = v
+					}
+				}
+				t.Logf("found Service %s of type %s with actual labels %q; filtered by interesting keys results in %q; expected labels %q",
+					service.Name, service.Spec.Type, service.Labels, filteredActualLabels, wantLabels)
+				return equality.Semantic.DeepEqual(filteredActualLabels, wantLabels), nil
+			}, 1*time.Minute, 1*time.Second)
+		}
+
 		expectedAnnotations := func(credentialIssuerSpecAnnotations map[string]string, otherAnnotations map[string]string) map[string]string {
 			credentialIssuerSpecAnnotationKeys := make([]string, 0, len(credentialIssuerSpecAnnotations))
 			expectedAnnotations := map[string]string{}
@@ -1737,44 +1773,61 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 			// Also expect the internal bookkeeping annotation to be present. It tracks the requested keys from the spec.
 			// Our controller sorts these keys to make the order in the annotation's value predictable.
 			sort.Strings(credentialIssuerSpecAnnotationKeys)
-			credentialIssuerSpecAnnotationKeysJSON, err := json.Marshal(credentialIssuerSpecAnnotationKeys)
+			if len(credentialIssuerSpecAnnotationKeys) > 0 {
+				credentialIssuerSpecAnnotationKeysJSON, err := json.Marshal(credentialIssuerSpecAnnotationKeys)
+				require.NoError(t, err)
+				// The name of this annotation key is decided by our controller.
+				expectedAnnotations["credentialissuer."+recognizableKeyString+"/annotation-keys"] = string(credentialIssuerSpecAnnotationKeysJSON)
+			}
+			// There should also be a bookkeeping annotation for labels. Our ytt templates always add the "app" label.
+			wantKeys := slices.AppendSeq([]string{"app"}, maps.Keys(env.ConciergeCustomLabels))
+			slices.Sort(wantKeys)
+			conciergeCustomLabelKeysJSON, err := json.Marshal(wantKeys)
 			require.NoError(t, err)
 			// The name of this annotation key is decided by our controller.
-			expectedAnnotations["credentialissuer."+recognizableAnnotationKeyString+"/annotation-keys"] = string(credentialIssuerSpecAnnotationKeysJSON)
+			expectedAnnotations["credentialissuer."+recognizableKeyString+"/label-keys"] = string(conciergeCustomLabelKeysJSON)
 			return expectedAnnotations
 		}
 
 		otherActorAnnotations := map[string]string{
-			recognizableAnnotationKeyString + "/test-other-actor-" + testlib.RandHex(t, 8): "test-other-actor-" + testlib.RandHex(t, 8),
+			recognizableKeyString + "/test-other-actor-" + testlib.RandHex(t, 8): "test-other-actor-" + testlib.RandHex(t, 8),
+		}
+		otherActorLabels := map[string]string{
+			recognizableKeyString + "/test-other-actor-" + testlib.RandHex(t, 8): "test-other-actor-" + testlib.RandHex(t, 8),
 		}
 
 		// Whatever happens, set the annotations back to the original value and expect the Service to be updated.
 		t.Cleanup(func() {
 			t.Log("reverting CredentialIssuer back to previous configuration")
-			deleteServiceAnnotations(otherActorAnnotations)
+			deleteServiceAnnotationsAndLabels(otherActorAnnotations, otherActorLabels)
 			applyCredentialIssuerAnnotations(previous.Spec.ImpersonationProxy.Service.DeepCopy().Annotations)
 			waitForServiceAnnotations(
 				expectedAnnotations(previous.Spec.ImpersonationProxy.Service.DeepCopy().Annotations, map[string]string{}),
-				recognizableAnnotationKeyString,
+				recognizableKeyString,
 			)
+			waitForServiceLabels(map[string]string{}, recognizableKeyString)
 		})
 
-		// Having another actor, like a human or a non-Pinniped controller, add unrelated annotations to the Service
-		// should not cause the Pinniped controllers to overwrite those annotations.
-		updateServiceAnnotations(otherActorAnnotations)
+		// Having another actor, like a human or a non-Pinniped controller, add unrelated annotations and labels
+		// to the Service should not cause the Pinniped controllers to overwrite those annotations.
+		updateServiceAnnotationsAndLabels(otherActorAnnotations, otherActorLabels)
 
 		// Set a new annotation in the CredentialIssuer spec.impersonationProxy.service.annotations field.
-		newAnnotationKey := recognizableAnnotationKeyString + "/test-" + testlib.RandHex(t, 8)
+		newAnnotationKey := recognizableKeyString + "/test-" + testlib.RandHex(t, 8)
 		newAnnotationValue := "test-" + testlib.RandHex(t, 8)
 		updatedAnnotations := previous.Spec.ImpersonationProxy.Service.DeepCopy().Annotations
+		if updatedAnnotations == nil {
+			updatedAnnotations = map[string]string{}
+		}
 		updatedAnnotations[newAnnotationKey] = newAnnotationValue
 		applyCredentialIssuerAnnotations(updatedAnnotations)
 
 		// Expect them to be applied to the Service.
 		waitForServiceAnnotations(
 			expectedAnnotations(updatedAnnotations, otherActorAnnotations),
-			recognizableAnnotationKeyString,
+			recognizableKeyString,
 		)
+		waitForServiceLabels(otherActorLabels, recognizableKeyString)
 	})
 
 	t.Run("running impersonation proxy with ClusterIP service", func(t *testing.T) {
