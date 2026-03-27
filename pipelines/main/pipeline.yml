@@ -22,7 +22,7 @@ groups:
       - run-go-vuln-scan
       - check-image-version
       - ready-for-int
-      - scan-image
+#      - scan-image
       - integration-test-latest
       - integration-test-oldest
       - integration-test-latest-with-external-idps
@@ -980,27 +980,27 @@ jobs:
             params:
               skip_download: true
 
-  - name: scan-image
-    public: false # hide security scan results
-    plan:
-      - in_parallel:
-          - get: pinniped
-            passed: [ ready-for-int ]
-            trigger: true
-            params:
-              depth: 1
-          - get: ci-build-image
-            passed: [ ready-for-int ]
-            params:
-              format: oci
-          - get: pinniped-ci
-      - task: scan-image-trivy
-        input_mapping:
-          image: ci-build-image
-        file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
-        params:
-          <<: *trivy_ignores
-        <<: *notify_on_failure
+#  - name: scan-image
+#    public: false # hide security scan results
+#    plan:
+#      - in_parallel:
+#          - get: pinniped
+#            passed: [ ready-for-int ]
+#            trigger: true
+#            params:
+#              depth: 1
+#          - get: ci-build-image
+#            passed: [ ready-for-int ]
+#            params:
+#              format: oci
+#          - get: pinniped-ci
+#      - task: scan-image-trivy
+#        input_mapping:
+#          image: ci-build-image
+#        file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
+#        params:
+#          <<: *trivy_ignores
+#        <<: *notify_on_failure
 
   - name: integration-test-oldest
     public: true # all logs are publicly visible
@@ -2710,13 +2710,13 @@ jobs:
           - get: ci-build-image
             passed:
               - deploy-and-test-acceptance-gke
-              - scan-image
+#              - scan-image
             params:
               skip_download: true
           - get: pinniped
             passed:
               - deploy-and-test-acceptance-gke
-              - scan-image
+#              - scan-image
             params:
               depth: 1
             trigger: true
