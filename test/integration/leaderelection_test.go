@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -213,7 +213,7 @@ func waitForIdentity(ctx context.Context, t *testing.T, namespace *corev1.Namesp
 
 func runWriteRequest(ctx context.Context, client *kubeclient.Client) error {
 	_, err := client.Kubernetes.AuthenticationV1().TokenReviews().Create(ctx, &authenticationv1.TokenReview{
-		Spec: authenticationv1.TokenReviewSpec{Token: "any-non-empty-value"},
+		Spec: authenticationv1.TokenReviewSpec{Token: "any-non-empty-value"}, //nolint:gosec // not a real credential
 	}, metav1.CreateOptions{})
 	return err
 }

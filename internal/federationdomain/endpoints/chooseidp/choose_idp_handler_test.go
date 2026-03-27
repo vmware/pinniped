@@ -1,4 +1,4 @@
-// Copyright 2023-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package chooseidp
@@ -137,7 +137,7 @@ func TestChooseIDPHandler(t *testing.T) {
 
 			handler := NewHandler(testIssuer, test.idps)
 
-			req := httptest.NewRequest(test.method, test.reqTarget, nil)
+			req := httptest.NewRequestWithContext(t.Context(), test.method, test.reqTarget, nil)
 			rsp := httptest.NewRecorder()
 			handler.ServeHTTP(rsp, req)
 

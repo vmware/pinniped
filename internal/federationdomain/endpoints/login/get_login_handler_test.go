@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package login
@@ -103,7 +103,7 @@ func TestGetLogin(t *testing.T) {
 			if tt.errParam != "" {
 				target += "&err=" + tt.errParam
 			}
-			req := httptest.NewRequest(http.MethodGet, target, nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
 			rsp := httptest.NewRecorder()
 			err := handler(rsp, req, tt.encodedState, tt.decodedState)
 			require.NoError(t, err)

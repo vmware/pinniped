@@ -146,6 +146,7 @@ func TestAPIServiceUpdaterControllerSync(t *testing.T) {
 		it.Before(func() {
 			r = require.New(t)
 
+			//nolint:gosec // cancelContextCancelFunc is called in the After()
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
 			kubeInformerClient = kubefake.NewClientset()

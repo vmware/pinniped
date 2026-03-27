@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package concierge
@@ -103,6 +103,7 @@ func TestFromPath(t *testing.T) {
 					"ValidatingAdmissionWebhook",
 				},
 				ImpersonationProxyServerPort: ptr.To[int64](4242),
+				//nolint:gosec // no credentials here
 				NamesConfig: NamesConfigSpec{
 					ServingCertificateSecret:          "pinniped-concierge-api-tls-serving-certificate",
 					CredentialIssuer:                  "pinniped-config",
@@ -215,6 +216,7 @@ func TestFromPath(t *testing.T) {
 					"ValidatingAdmissionWebhook",
 				},
 				ImpersonationProxyServerPort: ptr.To[int64](4242),
+				//nolint:gosec // no credentials here
 				NamesConfig: NamesConfigSpec{
 					ServingCertificateSecret:          "pinniped-concierge-api-tls-serving-certificate",
 					CredentialIssuer:                  "pinniped-config",
@@ -322,6 +324,7 @@ func TestFromPath(t *testing.T) {
 						RenewBeforeSeconds: ptr.To[int64](60 * 60 * 24 * 30 * 9), // about 9 months
 					},
 				},
+				//nolint:gosec // no credentials here
 				NamesConfig: NamesConfigSpec{
 					ServingCertificateSecret:          "pinniped-concierge-api-tls-serving-certificate",
 					CredentialIssuer:                  "pinniped-config",

@@ -1626,6 +1626,7 @@ func TestImpersonatorHTTPHandler(t *testing.T) {
 			wantHTTPBody:                      `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Internal error occurred: unimplemented functionality - unable to act as current user","reason":"InternalError","details":{"causes":[{"message":"unimplemented functionality - unable to act as current user"}]},"code":500}` + "\n",
 			wantHTTPStatus:                    http.StatusInternalServerError,
 		},
+		//nolint:gosec // no real credentials here
 		{
 			name: "authenticated user with UID and bearer token results in error",
 			requestHeaders: map[string][]string{

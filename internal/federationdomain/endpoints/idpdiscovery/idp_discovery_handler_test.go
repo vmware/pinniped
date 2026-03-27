@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package idpdiscovery
@@ -134,7 +134,7 @@ func TestIDPDiscovery(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			require.NotNil(t, test.idpLister)
 			handler := NewHandler(test.idpLister)
-			req := httptest.NewRequest(test.method, test.path, nil)
+			req := httptest.NewRequestWithContext(t.Context(), test.method, test.path, nil)
 			rsp := httptest.NewRecorder()
 			handler.ServeHTTP(rsp, req)
 

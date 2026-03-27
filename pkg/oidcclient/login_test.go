@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidcclient
@@ -148,6 +148,7 @@ func TestLogin(t *testing.T) { //nolint:gocyclo
 			TokenURL string `json:"token_endpoint"`
 			JWKSURL  string `json:"jwks_uri"`
 		}
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:   insecureTokenURLServer.URL,
 			AuthURL:  insecureTokenURLServer.URL + "/authorize",
@@ -324,6 +325,7 @@ func TestLogin(t *testing.T) { //nolint:gocyclo
 			http.Error(w, "unexpected method", http.StatusMethodNotAllowed)
 			return
 		}
+		//nolint:gosec // this is a test, so we don't care about limiting request body size
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

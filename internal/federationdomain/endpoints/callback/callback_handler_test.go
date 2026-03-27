@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package callback
@@ -2202,7 +2202,7 @@ func TestCallbackEndpoint(t *testing.T) {
 			if test.body != "" {
 				bodyReader = strings.NewReader(test.body)
 			}
-			req := httptest.NewRequest(test.method, test.path, bodyReader).WithContext(reqContext)
+			req := httptest.NewRequestWithContext(reqContext, test.method, test.path, bodyReader)
 			if test.csrfCookie != "" {
 				req.Header.Set("Cookie", test.csrfCookie)
 			}

@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package resolvedgithub
@@ -37,10 +37,12 @@ func TestFederationDomainResolvedGitHubIdentityProvider(t *testing.T) {
 		GroupNameAttribute:   idpv1alpha1.GitHubUseTeamSlugForGroupName,
 		AllowedOrganizations: setutil.NewCaseInsensitiveSet("org1", "org2"),
 		HttpClient:           nil, // not needed yet for this test
+		//nolint:gosec // not a real credential
 		OAuth2Config: &oauth2.Config{
 			ClientID:     "fake-client-id",
 			ClientSecret: "fake-client-secret",
 			Scopes:       []string{"read:user", "read:org"},
+			//nolint:gosec // no credentials here
 			Endpoint: oauth2.Endpoint{
 				AuthURL:       "https://fake-authorization-url",
 				DeviceAuthURL: "",
@@ -67,11 +69,11 @@ func TestFederationDomainResolvedGitHubIdentityProvider(t *testing.T) {
 	originalCustomSession := &psession.CustomSessionData{
 		Username:         "fake-username",
 		UpstreamUsername: "fake-upstream-username",
-		GitHub:           &psession.GitHubSessionData{UpstreamAccessToken: "fake-upstream-access-token"},
+		GitHub:           &psession.GitHubSessionData{UpstreamAccessToken: "fake-upstream-access-token"}, //nolint:gosec // not a real credential
 	}
 	clonedCustomSession := subject.CloneIDPSpecificSessionDataFromSession(originalCustomSession)
 	require.Equal(t,
-		&psession.GitHubSessionData{UpstreamAccessToken: "fake-upstream-access-token"},
+		&psession.GitHubSessionData{UpstreamAccessToken: "fake-upstream-access-token"}, //nolint:gosec // not a real credential
 		clonedCustomSession,
 	)
 	require.NotSame(t, originalCustomSession, clonedCustomSession)
@@ -379,7 +381,7 @@ func TestUpstreamRefresh(t *testing.T) {
 				UpstreamUsername:       "initial-username",
 				UpstreamGroups:         []string{"initial-group1", "initial-group2"},
 				DownstreamSubject:      "https://fake-downstream-subject",
-				IDPSpecificSessionData: &psession.GitHubSessionData{UpstreamAccessToken: ""}, // missing token
+				IDPSpecificSessionData: &psession.GitHubSessionData{UpstreamAccessToken: ""}, // missing token //nolint:gosec // not a real credential
 			},
 			idpDisplayName:        "fake-display-name",
 			wantGetUserCall:       false,

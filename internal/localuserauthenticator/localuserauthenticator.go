@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package localuserauthenticator provides a authentication webhook program.
@@ -91,6 +91,7 @@ func (w *webhook) start(ctx context.Context, l net.Listener) error {
 		errCh <- server.ServeTLS(l, "", "")
 	}()
 
+	//nolint:gosec // using background context because we can't use ctx here since it is already done
 	go func() {
 		select {
 		case err := <-errCh:

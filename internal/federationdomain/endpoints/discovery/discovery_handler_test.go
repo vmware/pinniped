@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package discovery
@@ -67,7 +67,7 @@ func TestDiscovery(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			handler := NewHandler(test.issuer)
-			req := httptest.NewRequest(test.method, test.path, nil)
+			req := httptest.NewRequestWithContext(t.Context(), test.method, test.path, nil)
 			rsp := httptest.NewRecorder()
 			handler.ServeHTTP(rsp, req)
 

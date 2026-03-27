@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package supervisorstorage
@@ -177,6 +177,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 		it.Before(func() {
 			r = require.New(t)
 
+			//nolint:gosec // cancelContextCancelFunc is called in the After()
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
 			kubeInformerClient = kubefake.NewClientset()
@@ -287,6 +288,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "fake-upstream-refresh-token",
 								},
@@ -332,6 +334,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "other-fake-upstream-refresh-token",
 								},
@@ -379,6 +382,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// The upstream refresh token is only revoked for the active authcode session.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-refresh-token",
@@ -432,6 +436,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamAccessToken: "fake-upstream-access-token",
 								},
@@ -477,6 +482,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamAccessToken: "other-fake-upstream-access-token",
 								},
@@ -524,6 +530,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// The upstream refresh token is only revoked for the active authcode session.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-access-token",
@@ -577,6 +584,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "fake-upstream-refresh-token",
 								},
@@ -646,6 +654,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name-will-not-match",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "fake-upstream-refresh-token",
 								},
@@ -726,6 +735,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid-will-not-match",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "fake-upstream-refresh-token",
 								},
@@ -806,6 +816,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "fake-upstream-refresh-token",
 								},
@@ -855,6 +866,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// Tried to revoke it, although this revocation will fail.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-refresh-token",
@@ -880,6 +892,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// Tried to revoke it, although this revocation will fail.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-refresh-token",
@@ -920,6 +933,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "fake-upstream-refresh-token",
 								},
@@ -968,6 +982,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// Tried to revoke it, although this revocation will fail.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-refresh-token",
@@ -1053,6 +1068,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "fake-upstream-refresh-token",
 								},
@@ -1100,6 +1116,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// The upstream refresh token is only revoked for the downstream session which had offline_access granted.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-refresh-token",
@@ -1198,6 +1215,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamAccessToken: "fake-upstream-access-token",
 								},
@@ -1245,6 +1263,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// The upstream refresh token is only revoked for the downstream session which had offline_access granted.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-access-token",
@@ -1297,6 +1316,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamRefreshToken: "fake-upstream-refresh-token",
 								},
@@ -1344,6 +1364,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// The upstream refresh token is revoked.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-refresh-token",
@@ -1389,6 +1410,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 								ProviderUID:  "upstream-oidc-provider-uid",
 								ProviderName: "upstream-oidc-provider-name",
 								ProviderType: psession.ProviderTypeOIDC,
+								//nolint:gosec // not a real credential
 								OIDC: &psession.OIDCSessionData{
 									UpstreamAccessToken: "fake-upstream-access-token",
 								},
@@ -1436,6 +1458,7 @@ func TestGarbageCollectorControllerSync(t *testing.T) {
 				// The upstream refresh token is revoked.
 				idpListerBuilder.RequireExactlyOneCallToRevokeToken(t,
 					"upstream-oidc-provider-name",
+					//nolint:gosec // not a real credential
 					&oidctestutil.RevokeTokenArgs{
 						Ctx:       syncContext.Context,
 						Token:     "fake-upstream-access-token",

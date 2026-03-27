@@ -1,4 +1,4 @@
-// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -121,11 +121,13 @@ func formpostCallbackServer(t *testing.T) (string, func(*testing.T, url.Values))
 		// Allow CORS requests.
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
+		//nolint:gosec // this is a test, so we don't care about limiting request body size
 		assert.NoError(t, r.ParseForm())
 
 		// Extract only the POST parameters (r.Form also contains URL query parameters).
 		postParams := url.Values{}
 		for k := range r.Form {
+			//nolint:gosec // this is a test, so we don't care about limiting request body size
 			if v := r.PostFormValue(k); v != "" {
 				postParams.Set(k, v)
 			}

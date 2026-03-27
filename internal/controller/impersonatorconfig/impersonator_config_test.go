@@ -342,6 +342,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 					return nil, nil // no cached TLS certs
 				},
 				ClientAuth: tls.RequestClientCert,
+				//nolint:gosec // not worried about session resumption in this test
 				VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
 					// Docs say that this will always be called in tls.RequestClientCert mode
 					// and that the second parameter will always be nil in that case.
@@ -486,7 +487,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				rootCAs := x509.NewCertPool()
 				rootCAs.AppendCertsFromPEM(caCrt)
 				tr = &http.Transport{
-					TLSClientConfig: &tls.Config{ //nolint:gosec // not concerned with TLS MinVersion here
+					TLSClientConfig: &tls.Config{
 						// Server's TLS serving cert CA
 						RootCAs: rootCAs,
 						// Client cert which is supposed to work against the server's dynamic CAContentProvider
@@ -1127,6 +1128,8 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 		it.Before(func() {
 			r = require.New(t)
 			queue = &testQueue{}
+
+			//nolint:gosec // cancelContextCancelFunc is called in the After()
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
 			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
@@ -1986,6 +1989,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 					r.Len(kubeAPIClient.Actions(), 3)
 					requireNodesListed(kubeAPIClient.Actions()[0])
 					lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
+					//nolint:gosec // no credentials here
 					r.Equal(lbService.Annotations, map[string]string{
 						"some-annotation-key":                           "some-annotation-value",
 						"credentialissuer.pinniped.dev/annotation-keys": `["some-annotation-key"]`,
@@ -2783,6 +2787,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{"credentialissuer.pinniped.dev/label-keys": `["app","other-key"]`}, lbService.Annotations)
 				ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 				requireTLSSecretWasCreated(kubeAPIClient.Actions()[3], ca)
@@ -2823,6 +2828,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				wantLabels := maps.Clone(labels)
 				wantLabels["my-label-key"] = "my-label-from-unrelated-controller-val"
 				r.Equal(wantLabels, lbService.Labels)
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{
 					// Now the CredentialIssuer annotations should be merged on the load balancer.
 					// In the unlikely case where keys conflict, the CredentialIssuer value overwrites the other value.
@@ -2864,6 +2870,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				clusterIPService := requireClusterIPWasCreated(kubeAPIClient.Actions()[1])
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{"credentialissuer.pinniped.dev/label-keys": `["app","other-key"]`}, clusterIPService.Annotations)
 				ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 				requireTLSSecretWasCreated(kubeAPIClient.Actions()[3], ca)
@@ -2904,6 +2911,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				wantLabels := maps.Clone(labels)
 				wantLabels["my-label-key"] = "my-label-from-unrelated-controller-val"
 				r.Equal(wantLabels, clusterIPService.Labels)
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{
 					// Now the CredentialIssuer annotations should be merged on the load balancer.
 					// In the unlikely case where keys conflict, the CredentialIssuer value overwrites the other value.
@@ -2950,6 +2958,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{
 					"my-initial-annotation1-key":                    "my-initial-annotation1-val",
 					"my-initial-annotation2-key":                    "my-initial-annotation2-val",
@@ -2994,6 +3003,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 5) // one more item to update the loadbalancer
 				lbService = requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[4])
 				r.Equal(labels, lbService.Labels)
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{
 					// Now the CredentialIssuer annotations should be merged on the load balancer.
 					// Since the user removed the "my-initial-annotation2-key" key from the CredentialIssuer spec,
@@ -3025,6 +3035,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 6) // one more item to update the loadbalancer
 				lbService = requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[5])
 				r.Equal(labels, lbService.Labels)
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{
 					// Since the user removed all annotations from the CredentialIssuer spec,
 					// they should all be removed from the Service, along with the special bookkeeping annotation too.
@@ -3076,6 +3087,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				lbService := requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[1])
 				r.Equal(labels, lbService.Labels)
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{
 					"some-annotation": "annotation-value",
 					"credentialissuer.pinniped.dev/annotation-keys": `["some-annotation"]`,
@@ -3115,6 +3127,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 4)
 				requireNodesListed(kubeAPIClient.Actions()[0])
 				lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
+				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{"credentialissuer.pinniped.dev/label-keys": `["app","other-key"]`}, lbService.Annotations)
 				r.Equal("", lbService.Spec.LoadBalancerIP)
 				ca := requireCASecretWasCreated(kubeAPIClient.Actions()[2])

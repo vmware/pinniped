@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package githubupstreamwatcher
@@ -592,6 +592,7 @@ func TestController(t *testing.T) {
 					OAuth2Config: &oauth2.Config{
 						ClientID:     "some-client-id",
 						ClientSecret: "some-client-secret",
+						//nolint:gosec // no credentials here
 						Endpoint: oauth2.Endpoint{
 							AuthURL:       "https://github.com/login/oauth/authorize",
 							DeviceAuthURL: "", // not used
@@ -667,6 +668,7 @@ func TestController(t *testing.T) {
 					OAuth2Config: &oauth2.Config{
 						ClientID:     "some-client-id",
 						ClientSecret: "some-client-secret",
+						//nolint:gosec // no credentials here
 						Endpoint: oauth2.Endpoint{
 							AuthURL:       "https://github.com/login/oauth/authorize",
 							DeviceAuthURL: "", // not used
@@ -742,6 +744,7 @@ func TestController(t *testing.T) {
 					OAuth2Config: &oauth2.Config{
 						ClientID:     "some-client-id",
 						ClientSecret: "some-client-secret",
+						//nolint:gosec // no credentials here
 						Endpoint: oauth2.Endpoint{
 							AuthURL:       "https://github.com/login/oauth/authorize",
 							DeviceAuthURL: "", // not used
@@ -817,6 +820,7 @@ func TestController(t *testing.T) {
 					OAuth2Config: &oauth2.Config{
 						ClientID:     "some-client-id",
 						ClientSecret: "some-client-secret",
+						//nolint:gosec // no credentials here
 						Endpoint: oauth2.Endpoint{
 							AuthURL:       "https://github.com/login/oauth/authorize",
 							DeviceAuthURL: "", // not used
@@ -892,6 +896,7 @@ func TestController(t *testing.T) {
 					OAuth2Config: &oauth2.Config{
 						ClientID:     "some-client-id",
 						ClientSecret: "some-client-secret",
+						//nolint:gosec // no credentials here
 						Endpoint: oauth2.Endpoint{
 							AuthURL:       "https://github.com/login/oauth/authorize",
 							DeviceAuthURL: "", // not used

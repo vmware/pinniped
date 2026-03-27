@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package totp
@@ -18,6 +18,7 @@ func TestGenerateOTPCode(t *testing.T) {
 		wantCode                     string
 		wantRemainingLifetimeSeconds int64
 	}{
+		//nolint:gosec // not a real credential
 		{
 			name:                         "Use a token from online example",
 			token:                        "JBSWY3DPEHPK3PXP", // https://github.com/pquerna/otp/blob/3357de7c04813a328d6a1e4a514854213e0f8ce8/totp/totp.go#L180
@@ -25,6 +26,7 @@ func TestGenerateOTPCode(t *testing.T) {
 			wantCode:                     "780919",
 			wantRemainingLifetimeSeconds: 11,
 		},
+		//nolint:gosec // not a real credential
 		{
 			name:                         "Use a token that was randomly generated",
 			token:                        "EDAYKXL3TEYZNQ3O4N5KPSUAQQLZYUJG",

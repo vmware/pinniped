@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package upstreamoidc
@@ -284,6 +284,7 @@ func TestProviderConfig(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					require.Equal(t, http.MethodPost, r.Method)
+					//nolint:gosec // this is a test, so we don't care about limiting request body size
 					require.NoError(t, r.ParseForm())
 					require.Equal(t, 6, len(r.Form))
 					require.Equal(t, "password", r.Form.Get("grant_type"))
@@ -456,6 +457,7 @@ func TestProviderConfig(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					require.Equal(t, http.MethodPost, r.Method)
+					//nolint:gosec // this is a test, so we don't care about limiting request body size
 					require.NoError(t, r.ParseForm())
 					require.Equal(t, 4, len(r.Form))
 					require.Equal(t, "test-client-id", r.Form.Get("client_id"))
@@ -694,6 +696,7 @@ func TestProviderConfig(t *testing.T) {
 					numRequests++
 					require.LessOrEqual(t, numRequests, 2)
 					require.Equal(t, http.MethodPost, r.Method)
+					//nolint:gosec // this is a test, so we don't care about limiting request body size
 					require.NoError(t, r.ParseForm())
 					if numRequests == 1 {
 						// First request should use client_id/client_secret params.
@@ -929,7 +932,8 @@ func TestProviderConfig(t *testing.T) {
 				},
 			},
 			{
-				name:           "claims from userinfo override id token claims",
+				name: "claims from userinfo override id token claims",
+				//nolint:gosec // not a real credential
 				tok:            testTokenWithoutIDToken.WithExtra(map[string]any{"id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzb21lLXN1YmplY3QiLCJuYW1lIjoiSm9obiBEb2UiLCJpc3MiOiJzb21lLWlzc3VlciIsIm5vbmNlIjoic29tZS1ub25jZSJ9.sBWi3_4cfGwrmMFZWkCghw4uvCnHN35h9xNX1gkwOtj6Oz_yKqpj7wfO4AqeWsRyrDGnkmIZbVuhAAJqPSi4GlNzN4NU8zh53PGDUpFlpDI1dvqDjIRb9iIEJpRIj34--Sz41H0ooxviIzvUdZFvQlaSzLOqgjR3ddHe2urhbtUuz_DsabP84AWo2DSg0y3ull6DRvk_DvzC6HNN8JwVi08fFvvV9BVq8kjdVeob7gajJkuGSTjsxNZGs5rbBuxBx0MZTQ8boR1fDNdG70GoIb4SsCoBSs7pZxtmGZPHInteY1SilHDDDmpQuE-LvSmvvPN_Cyk1d3eS-IR7hBbCAA"}),
 				nonce:          "some-nonce",
 				requireIDToken: true,
@@ -944,6 +948,7 @@ func TestProviderConfig(t *testing.T) {
 					RefreshToken: &oidctypes.RefreshToken{
 						Token: "test-initial-refresh-token",
 					},
+					//nolint:gosec // not a real credential
 					IDToken: &oidctypes.IDToken{
 						Token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzb21lLXN1YmplY3QiLCJuYW1lIjoiSm9obiBEb2UiLCJpc3MiOiJzb21lLWlzc3VlciIsIm5vbmNlIjoic29tZS1ub25jZSJ9.sBWi3_4cfGwrmMFZWkCghw4uvCnHN35h9xNX1gkwOtj6Oz_yKqpj7wfO4AqeWsRyrDGnkmIZbVuhAAJqPSi4GlNzN4NU8zh53PGDUpFlpDI1dvqDjIRb9iIEJpRIj34--Sz41H0ooxviIzvUdZFvQlaSzLOqgjR3ddHe2urhbtUuz_DsabP84AWo2DSg0y3ull6DRvk_DvzC6HNN8JwVi08fFvvV9BVq8kjdVeob7gajJkuGSTjsxNZGs5rbBuxBx0MZTQ8boR1fDNdG70GoIb4SsCoBSs7pZxtmGZPHInteY1SilHDDDmpQuE-LvSmvvPN_Cyk1d3eS-IR7hBbCAA",
 						Claims: map[string]any{
@@ -1071,6 +1076,7 @@ func TestProviderConfig(t *testing.T) {
 				userInfo:       forceUserInfoWithClaims("some-other-subject", `{"name": "Pinny TheSeal", "sub": "some-other-subject"}`),
 				wantErr:        "could not fetch user info claims: userinfo 'sub' claim (some-other-subject) did not match id_token 'sub' claim (some-subject)",
 			},
+			//nolint:gosec // not a real credential
 			{
 				name:           "invalid id token",
 				tok:            testTokenWithoutIDToken.WithExtra(map[string]any{"id_token": "not-an-id-token"}),
@@ -1133,6 +1139,7 @@ func TestProviderConfig(t *testing.T) {
 				userInfo:       forceUserInfoWithClaims("some-subject", `{"name": "Pinny TheSeal", "sub": "some-subject"}`),
 				wantErr:        "received response missing ID token",
 			},
+			//nolint:gosec // not a real credential
 			{
 				name:           "id token missing subject, skip userinfo check",
 				tok:            testTokenWithoutIDToken.WithExtra(map[string]any{"id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJpc3MiOiJzb21lLWlzc3VlciIsIm5vbmNlIjoic29tZS1ub25jZSJ9.aIhrhikAnQ4Mb1g6RAT08qqflT2LLLi2yj4F2S4zud8nYad4tfEd2ITVJ4Njdjf70ubqyzZ6XxojtC4OqaWbDaQOcd95sd3PW58SYrf4NMvEStFkcMG0HMhJEZLVGnuJQstuq3G9h5Z5bFCkx4mFNo5ho_isBWyHpk-uF14duXXlIDB10SnyZ9dRbcmu-3mMOq0g4oCUPEDiHWkv-Rf70Mk0harL2xvcpxlSMLK4glDfiiki5gl6IReIo4rTVosXAqv3JmjLDeVLtJQRG6F8YcIlDCIfUEUfk0GeYacBVjoDIO570ywVJy1LGvyUuvgXNQUjq2JgzCfb8HWGp7iJdQ"}),
@@ -1149,6 +1156,7 @@ func TestProviderConfig(t *testing.T) {
 					RefreshToken: &oidctypes.RefreshToken{
 						Token: "test-initial-refresh-token",
 					},
+					//nolint:gosec // not a real credential
 					IDToken: &oidctypes.IDToken{
 						Token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJpc3MiOiJzb21lLWlzc3VlciIsIm5vbmNlIjoic29tZS1ub25jZSJ9.aIhrhikAnQ4Mb1g6RAT08qqflT2LLLi2yj4F2S4zud8nYad4tfEd2ITVJ4Njdjf70ubqyzZ6XxojtC4OqaWbDaQOcd95sd3PW58SYrf4NMvEStFkcMG0HMhJEZLVGnuJQstuq3G9h5Z5bFCkx4mFNo5ho_isBWyHpk-uF14duXXlIDB10SnyZ9dRbcmu-3mMOq0g4oCUPEDiHWkv-Rf70Mk0harL2xvcpxlSMLK4glDfiiki5gl6IReIo4rTVosXAqv3JmjLDeVLtJQRG6F8YcIlDCIfUEUfk0GeYacBVjoDIO570ywVJy1LGvyUuvgXNQUjq2JgzCfb8HWGp7iJdQ",
 						Claims: map[string]any{
@@ -1170,6 +1178,7 @@ func TestProviderConfig(t *testing.T) {
 					Config: &oauth2.Config{
 						ClientID:     "test-client-id",
 						ClientSecret: "test-client-secret",
+						//nolint:gosec // no credential here
 						Endpoint: oauth2.Endpoint{
 							AuthURL:   "https://example.com",
 							TokenURL:  "https://example.com",
@@ -1446,6 +1455,7 @@ func TestProviderConfig(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					require.Equal(t, http.MethodPost, r.Method)
+					//nolint:gosec // this is a test, so we don't care about limiting request body size
 					require.NoError(t, r.ParseForm())
 					require.Len(t, r.Form, 6)
 					require.Equal(t, "test-client-id", r.Form.Get("client_id"))

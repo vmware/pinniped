@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package federationdomainproviders
@@ -58,6 +58,7 @@ func TestFederationDomainIssuerValidations(t *testing.T) {
 			issuer:    "https://username@tuna.com",
 			wantError: `issuer must not have username or password`,
 		},
+		//nolint:gosec // not a real credential
 		{
 			name:      "password",
 			issuer:    "https://username:password@tuna.com",

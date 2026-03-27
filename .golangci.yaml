@@ -1,6 +1,9 @@
 # https://golangci-lint.run/usage/configuration/
 
 version: "2"
+issues:
+  max-issues-per-linter: 200
+  max-same-issues: 200
 linters:
   default: none
   enable:

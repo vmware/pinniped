@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package kubeclient
@@ -221,7 +221,6 @@ func assertTransport(rt http.RoundTripper, tlsConfigFunc ptls.ConfigFunc) error 
 	tlsConfigCopy := tlsConfig.Clone()
 	ptls.Merge(tlsConfigFunc, tlsConfigCopy) // only mutate the copy
 
-	//nolint:gosec // the empty TLS config here is not used
 	if diff := cmp.Diff(tlsConfigCopy, tlsConfig,
 		cmpopts.IgnoreUnexported(tls.Config{}, x509.CertPool{}),
 		cmpopts.IgnoreFields(tls.Config{}, "GetClientCertificate"),

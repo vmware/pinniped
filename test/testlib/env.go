@@ -226,6 +226,7 @@ func IntegrationEnv(t *testing.T, opts ...TestEnvOption) *TestEnv {
 		"must specify either PINNIPED_TEST_CLUSTER_CAPABILITY_YAML or PINNIPED_TEST_CLUSTER_CAPABILITY_FILE env var for integration tests",
 	)
 	if capabilitiesDescriptionYAML == "" {
+		//nolint:gosec // not concerned with tainted file path input for this test helper
 		bytes, err := os.ReadFile(capabilitiesDescriptionFile)
 		capabilitiesDescriptionYAML = string(bytes)
 		require.NoError(t, err)
