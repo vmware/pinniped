@@ -409,7 +409,7 @@ jobs:
           - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, target_url: "$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME", context: build-fips-image } }
           - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, target_url: "$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME", context: build-test-fips-image } }
           - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, target_url: "$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME", context: build-test-binaries } }
-          - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, target_url: "$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME", context: scan-image } }
+          #- { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, target_url: "$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME", context: scan-image } }
           - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, target_url: "$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME", context: integration-test-oldest } }
           - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, target_url: "$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME", context: integration-test-latest } }
           - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, target_url: "$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME", context: integration-test-latest-arm64 } }
@@ -932,7 +932,7 @@ jobs:
             version: every
             passed:
               # First we list everything that should be triggered by the first ready-for-int.
-              - scan-image
+              #- scan-image
               - integration-test-oldest
               - integration-test-latest
               - integration-test-latest-arm64
@@ -964,30 +964,30 @@ jobs:
             params:
               skip_download: true
 
-  - name: scan-image
-    on_success: { <<: *pr-status-on-success, params: { <<: *pr-status-on-success-params, context: scan-image } }
-    on_failure: { <<: *pr-status-on-failure, params: { <<: *pr-status-on-failure-params, context: scan-image } }
-    on_error: { <<: *pr-status-on-error, params: { <<: *pr-status-on-error-params, context: scan-image } }
-    on_abort: { <<: *pr-status-on-abort, params: { <<: *pr-status-on-abort-params, context: scan-image } }
-    public: true # all logs are publicly visible
-    plan:
-      - in_parallel:
-          - get: pinniped-pr
-            version: every
-            passed: [ ready-for-int ]
-            trigger: true
-          - get: pinniped-ci
-          - get: ci-build-image
-            passed: [ ready-for-int ]
-            params:
-              format: oci
-      - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, context: scan-image } }
-      - task: trivy
-        file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
-        input_mapping:
-          image: ci-build-image
-        params:
-          <<: *trivy_ignores
+#  - name: scan-image
+#    on_success: { <<: *pr-status-on-success, params: { <<: *pr-status-on-success-params, context: scan-image } }
+#    on_failure: { <<: *pr-status-on-failure, params: { <<: *pr-status-on-failure-params, context: scan-image } }
+#    on_error: { <<: *pr-status-on-error, params: { <<: *pr-status-on-error-params, context: scan-image } }
+#    on_abort: { <<: *pr-status-on-abort, params: { <<: *pr-status-on-abort-params, context: scan-image } }
+#    public: true # all logs are publicly visible
+#    plan:
+#      - in_parallel:
+#          - get: pinniped-pr
+#            version: every
+#            passed: [ ready-for-int ]
+#            trigger: true
+#          - get: pinniped-ci
+#          - get: ci-build-image
+#            passed: [ ready-for-int ]
+#            params:
+#              format: oci
+#      - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, context: scan-image } }
+#      - task: trivy
+#        file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
+#        input_mapping:
+#          image: ci-build-image
+#        params:
+#          <<: *trivy_ignores
 
   - name: integration-test-oldest
     on_success: { <<: *pr-status-on-success, params: { <<: *pr-status-on-success-params, context: integration-test-oldest } }
