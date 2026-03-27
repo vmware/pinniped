@@ -1132,7 +1132,6 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			//nolint:gosec // cancelContextCancelFunc is called in the After()
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedInformerClient = conciergefake.NewSimpleClientset()
 			pinnipedInformers = conciergeinformers.NewSharedInformerFactoryWithOptions(pinnipedInformerClient, 0)
 
@@ -1141,7 +1140,6 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				k8sinformers.WithNamespace(installedInNamespace),
 			)
 			kubeAPIClient = kubefake.NewClientset()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient = conciergefake.NewSimpleClientset()
 			frozenNow = time.Date(2021, time.March, 2, 7, 42, 0, 0, time.Local)
 			mTLSClientCertProvider = dynamiccert.NewCA(name)

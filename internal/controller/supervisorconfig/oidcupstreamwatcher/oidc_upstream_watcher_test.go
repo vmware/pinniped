@@ -101,7 +101,6 @@ func TestOIDCUpstreamWatcherControllerFilterSecret(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			fakeKubeClient := kubefake.NewClientset()
@@ -162,7 +161,6 @@ func TestOIDCUpstreamWatcherControllerFilterConfigMaps(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			fakeKubeClient := kubefake.NewClientset()
@@ -1762,7 +1760,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
+
 			fakePinnipedClient := supervisorfake.NewSimpleClientset(tt.inputUpstreams...)
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			fakeKubeClient := kubefake.NewClientset(tt.inputResources...)

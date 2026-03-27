@@ -4233,7 +4233,6 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			kubeClient := kubefake.NewClientset()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
 			oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")
@@ -4270,7 +4269,6 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 		require.Equal(t, "OIDC upstream browser flow happy path using GET without a CSRF cookie", test.name)
 
 		kubeClient := kubefake.NewClientset()
-		//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 		supervisorClient := supervisorfake.NewSimpleClientset()
 		secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
 		oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")

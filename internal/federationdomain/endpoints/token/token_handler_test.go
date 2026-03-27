@@ -5220,7 +5220,6 @@ func exchangeAuthcodeForTokens(
 	}
 
 	kubeClient := kubefake.NewClientset()
-	//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 	supervisorClient := supervisorfake.NewSimpleClientset()
 	secrets = kubeClient.CoreV1().Secrets("some-namespace")
 	oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")

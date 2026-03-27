@@ -1,4 +1,4 @@
-// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package clientsecretrequest
@@ -1644,7 +1644,6 @@ func TestCreate(t *testing.T) {
 				tt.seedHashes(oidcClientSecretStore)
 			}
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			if tt.seedOIDCClients != nil {
 				for _, client := range tt.seedOIDCClients {

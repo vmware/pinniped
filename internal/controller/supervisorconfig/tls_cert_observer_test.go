@@ -183,7 +183,6 @@ func TestTLSCertObserverControllerSync(t *testing.T) {
 
 			kubeInformerClient = kubefake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedInformerClient = supervisorfake.NewSimpleClientset()
 			pinnipedInformers = supervisorinformers.NewSharedInformerFactory(pinnipedInformerClient, 0)
 			issuerTLSCertSetter = &fakeIssuerTLSCertSetter{}

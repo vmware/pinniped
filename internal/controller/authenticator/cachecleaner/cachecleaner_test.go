@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package cachecleaner
@@ -136,8 +136,6 @@ func TestController(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// When we have t.Parallel() here, this test blocks pretty consistently...y tho?
-
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakeClient := conciergefake.NewSimpleClientset(tt.objects...)
 			informers := conciergeinformers.NewSharedInformerFactory(fakeClient, 0)
 			cache := authncache.New()

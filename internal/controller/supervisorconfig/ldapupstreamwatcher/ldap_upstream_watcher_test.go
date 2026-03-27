@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package ldapupstreamwatcher
@@ -94,7 +94,6 @@ func TestLDAPUpstreamWatcherControllerFilterSecrets(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			ldapIDPInformer := pinnipedInformers.IDP().V1alpha1().LDAPIdentityProviders()
@@ -140,7 +139,6 @@ func TestLDAPUpstreamWatcherControllerFilterConfigMaps(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			ldapIDPInformer := pinnipedInformers.IDP().V1alpha1().LDAPIdentityProviders()
@@ -186,7 +184,6 @@ func TestLDAPUpstreamWatcherControllerFilterLDAPIdentityProviders(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			ldapIDPInformer := pinnipedInformers.IDP().V1alpha1().LDAPIdentityProviders()
@@ -1408,7 +1405,6 @@ func TestLDAPUpstreamWatcherControllerSync(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset(tt.inputUpstreams...)
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			fakeKubeClient := kubefake.NewClientset(tt.inputSecrets...)
