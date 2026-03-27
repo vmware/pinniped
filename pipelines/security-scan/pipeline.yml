@@ -67,23 +67,23 @@ resources:
       branch: ci
       username: ((ci-bot-access-token-with-read-only-public-repos))
 
-  - name: pinniped-latest-release-image
-    type: registry-image
-    icon: docker
-    check_every: 10m
-    source:
-      repository: ghcr.io/vmware/pinniped/pinniped-server
-      tag: latest
-
-  - name: pinniped-latest-main-image
-    type: registry-image
-    icon: docker
-    check_every: 10m
-    source:
-      repository: ((ci-ghcr-registry))/ci-build
-      username: ((ci-ghcr-puller-username))
-      password: ((ci-ghcr-puller-token))
-      tag: latest
+#  - name: pinniped-latest-release-image
+#    type: registry-image
+#    icon: docker
+#    check_every: 10m
+#    source:
+#      repository: ghcr.io/vmware/pinniped/pinniped-server
+#      tag: latest
+#
+#  - name: pinniped-latest-main-image
+#    type: registry-image
+#    icon: docker
+#    check_every: 10m
+#    source:
+#      repository: ((ci-ghcr-registry))/ci-build
+#      username: ((ci-ghcr-puller-username))
+#      password: ((ci-ghcr-puller-token))
+#      tag: latest
 
   - name: gh-cli-image
     type: registry-image
@@ -203,41 +203,41 @@ jobs:
                   --token ${SONATYPE_API_KEY} \
                   --username ${SONATYPE_USERNAME}
 
-  - name: trivy-release
-    public: true # all logs are publicly visible
-    serial: true
-    plan:
-      - in_parallel:
-          - get: weekdays
-            trigger: true
-          - get: pinniped-latest-release-image
-            params:
-              format: oci
-          - get: pinniped-ci
-      - task: scan
-        file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
-        params:
-          <<: *trivy_ignores
-        input_mapping:
-          image: pinniped-latest-release-image
-
-  - name: trivy-main
-    public: true # all logs are publicly visible
-    serial: true
-    plan:
-      - in_parallel:
-          - get: weekdays
-            trigger: true
-          - get: pinniped-latest-main-image
-            params:
-              format: oci
-          - get: pinniped-ci
-      - task: scan
-        file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
-        params:
-          <<: *trivy_ignores
-        input_mapping:
-          image: pinniped-latest-main-image
+#  - name: trivy-release
+#    public: true # all logs are publicly visible
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: weekdays
+#            trigger: true
+#          - get: pinniped-latest-release-image
+#            params:
+#              format: oci
+#          - get: pinniped-ci
+#      - task: scan
+#        file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
+#        params:
+#          <<: *trivy_ignores
+#        input_mapping:
+#          image: pinniped-latest-release-image
+#
+#  - name: trivy-main
+#    public: true # all logs are publicly visible
+#    serial: true
+#    plan:
+#      - in_parallel:
+#          - get: weekdays
+#            trigger: true
+#          - get: pinniped-latest-main-image
+#            params:
+#              format: oci
+#          - get: pinniped-ci
+#      - task: scan
+#        file: pinniped-ci/pipelines/shared-tasks/scan-image-trivy/task.yml
+#        params:
+#          <<: *trivy_ignores
+#        input_mapping:
+#          image: pinniped-latest-main-image
 
   - name: all-golang-deps-updated
     public: true # all logs are publicly visible
