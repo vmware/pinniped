@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package supervisorconfig
@@ -175,7 +175,6 @@ func TestJWKSWriterControllerFilterSecret(t *testing.T) {
 				0,
 			).Core().V1().Secrets()
 			federationDomainInformer := supervisorinformers.NewSharedInformerFactory(
-				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorfake.NewSimpleClientset(),
 				0,
 			).Config().V1alpha1().FederationDomains()
@@ -229,7 +228,6 @@ func TestJWKSWriterControllerFilterFederationDomain(t *testing.T) {
 				0,
 			).Core().V1().Secrets()
 			federationDomainInformer := supervisorinformers.NewSharedInformerFactory(
-				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorfake.NewSimpleClientset(),
 				0,
 			).Config().V1alpha1().FederationDomains()
@@ -685,9 +683,7 @@ func TestJWKSWriterControllerSync(t *testing.T) {
 				test.configKubeClient(kubeAPIClient)
 			}
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := supervisorfake.NewSimpleClientset()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedInformerClient := supervisorfake.NewSimpleClientset()
 			for _, federationDomain := range test.federationDomains {
 				require.NoError(t, pinnipedAPIClient.Tracker().Add(federationDomain))

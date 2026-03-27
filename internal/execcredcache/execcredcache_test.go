@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package execcredcache
@@ -368,6 +368,7 @@ func (e *errorCollector) require(want []string, subs ...string) {
 	require.Len(e.t, e.saw, len(want))
 	for i, w := range want {
 		for i := 0; i < len(subs); i += 2 {
+			//nolint:gosec // these indices will not be out of bounds as long as callers pass the expected number of arguments
 			w = strings.ReplaceAll(w, subs[i], subs[i+1])
 		}
 		require.EqualError(e.t, e.saw[i], w)

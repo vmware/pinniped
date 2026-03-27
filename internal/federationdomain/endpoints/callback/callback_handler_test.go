@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package callback
@@ -2167,7 +2167,6 @@ func TestCallbackEndpoint(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			kubeClient := kubefake.NewClientset()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			secrets := kubeClient.CoreV1().Secrets("some-namespace")
 			oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")
@@ -2202,7 +2201,7 @@ func TestCallbackEndpoint(t *testing.T) {
 			if test.body != "" {
 				bodyReader = strings.NewReader(test.body)
 			}
-			req := httptest.NewRequest(test.method, test.path, bodyReader).WithContext(reqContext)
+			req := httptest.NewRequestWithContext(reqContext, test.method, test.path, bodyReader)
 			if test.csrfCookie != "" {
 				req.Header.Set("Cookie", test.csrfCookie)
 			}

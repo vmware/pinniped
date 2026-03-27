@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package supervisorconfig
@@ -178,11 +178,11 @@ func TestTLSCertObserverControllerSync(t *testing.T) {
 		it.Before(func() {
 			r = require.New(t)
 
+			//nolint:gosec // cancelContextCancelFunc is called in the After()
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
 			kubeInformerClient = kubefake.NewClientset()
 			kubeInformers = k8sinformers.NewSharedInformerFactory(kubeInformerClient, 0)
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedInformerClient = supervisorfake.NewSimpleClientset()
 			pinnipedInformers = supervisorinformers.NewSharedInformerFactory(pinnipedInformerClient, 0)
 			issuerTLSCertSetter = &fakeIssuerTLSCertSetter{}
@@ -244,7 +244,8 @@ func TestTLSCertObserverControllerSync(t *testing.T) {
 					},
 					Spec: supervisorconfigv1alpha1.FederationDomainSpec{
 						Issuer: "https://bad-secret-issuer.com",
-						TLS:    &supervisorconfigv1alpha1.FederationDomainTLSSpec{SecretName: "bad-tls-secret-name"},
+						//nolint:gosec // not a real credential
+						TLS: &supervisorconfigv1alpha1.FederationDomainTLSSpec{SecretName: "bad-tls-secret-name"},
 					},
 				}
 				// Also add one with a URL that cannot be parsed to make sure that the controller is not confused by invalid URLs.

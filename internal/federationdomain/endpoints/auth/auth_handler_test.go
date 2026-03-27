@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package auth
@@ -4107,7 +4107,7 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 		}
 
 		reqContext := context.WithValue(context.Background(), struct{ name string }{name: "test"}, "request-context")
-		req := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body)).WithContext(reqContext)
+		req := httptest.NewRequestWithContext(reqContext, test.method, test.path, strings.NewReader(test.body))
 		req.Header.Set("Content-Type", test.contentType)
 		if test.csrfCookie != "" {
 			req.Header.Set("Cookie", test.csrfCookie)
@@ -4233,7 +4233,6 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			kubeClient := kubefake.NewClientset()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
 			oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")
@@ -4270,7 +4269,6 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 		require.Equal(t, "OIDC upstream browser flow happy path using GET without a CSRF cookie", test.name)
 
 		kubeClient := kubefake.NewClientset()
-		//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 		supervisorClient := supervisorfake.NewSimpleClientset()
 		secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
 		oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")

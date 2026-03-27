@@ -1100,7 +1100,7 @@ func TestTokenEndpointWhenAuthcodeIsUsedTwice(t *testing.T) {
 			//
 			// Fosite will also revoke the access token as is recommended by the OIDC spec. Currently, we don't
 			// delete the OIDC storage...but we probably should.
-			req := httptest.NewRequest("POST", "/path/shouldn't/matter", happyAuthcodeRequestBody(authCode).ReadCloser())
+			req := httptest.NewRequestWithContext(t.Context(), "POST", "/path/shouldn't/matter", happyAuthcodeRequestBody(authCode).ReadCloser())
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			reusedAuthcodeResponse := httptest.NewRecorder()
 			approxRequestTime := time.Now()
@@ -1255,6 +1255,7 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 			wantAuditLogs: func(sessionID string, idToken string) []testutil.WantedAuditLog {
 				return []testutil.WantedAuditLog{
 					testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+						//nolint:gosec // no credentials here
 						"params": map[string]any{
 							"audience":             "some-workload-cluster",
 							"client_id":            "pinniped-cli",
@@ -1447,6 +1448,7 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 			wantAuditLogs: func(sessionID string, idToken string) []testutil.WantedAuditLog {
 				return []testutil.WantedAuditLog{
 					testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+						//nolint:gosec // no credentials here
 						"params": map[string]any{
 							"audience":             "some-workload-cluster",
 							"grant_type":           "urn:ietf:params:oauth:grant-type:token-exchange",
@@ -1558,6 +1560,7 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 			wantErrorDescContains: "Missing 'audience' parameter.",
 			wantAuditLogs: func(sessionID string, idToken string) []testutil.WantedAuditLog {
 				return []testutil.WantedAuditLog{
+					//nolint:gosec // no credentials here
 					testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
 						"params": map[string]any{
 							"audience":             "", // make it obvious
@@ -1848,7 +1851,7 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 				test.modifyRequestParams(t, request.Form)
 			}
 
-			req := httptest.NewRequest("POST", "/token/exchange/path/shouldn't/matter", body(request.Form).ReadCloser())
+			req := httptest.NewRequestWithContext(t.Context(), "POST", "/token/exchange/path/shouldn't/matter", body(request.Form).ReadCloser())
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			req, _ = auditid.NewRequestWithAuditID(req, func() string { return "fake-token-exchange-audit-id" })
 			rsp = httptest.NewRecorder()
@@ -5051,7 +5054,7 @@ func TestRefreshGrant(t *testing.T) {
 			}
 
 			reqContextWarningRecorder := &TestWarningRecorder{}
-			req := httptest.NewRequest("POST", "/path/shouldn't/matter",
+			req := httptest.NewRequestWithContext(t.Context(), "POST", "/path/shouldn't/matter",
 				happyRefreshRequestBody(firstRefreshToken).ReadCloser()).
 				WithContext(warning.WithWarningRecorder(
 					context.WithValue(context.Background(), struct{ name string }{name: "test"}, "request-context"),
@@ -5217,7 +5220,6 @@ func exchangeAuthcodeForTokens(
 	}
 
 	kubeClient := kubefake.NewClientset()
-	//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 	supervisorClient := supervisorfake.NewSimpleClientset()
 	secrets = kubeClient.CoreV1().Secrets("some-namespace")
 	oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")
@@ -5262,7 +5264,7 @@ func exchangeAuthcodeForTokens(
 	// Assert the number of all secrets, excluding any OIDCClient's storage secret, since those are not related to session storage.
 	testutil.RequireNumberOfSecretsExcludingLabelSelector(t, secrets, labels.Set{crud.SecretLabelKey: oidcclientsecretstorage.TypeLabelValue}, 2+expectedNumberOfIDSessionsStored)
 
-	req := httptest.NewRequest("POST", "/path/shouldn't/matter", happyAuthcodeRequestBody(authCode).ReadCloser())
+	req := httptest.NewRequestWithContext(t.Context(), "POST", "/path/shouldn't/matter", happyAuthcodeRequestBody(authCode).ReadCloser())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if test.modifyTokenRequest != nil {
 		test.modifyTokenRequest(req, authCode)

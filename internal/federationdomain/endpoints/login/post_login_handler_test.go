@@ -1,4 +1,4 @@
-// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package login
@@ -1297,7 +1297,6 @@ func TestPostLoginEndpoint(t *testing.T) {
 			t.Parallel()
 
 			kubeClient := kubefake.NewClientset()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			supervisorClient := supervisorfake.NewSimpleClientset()
 			secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
 			oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")
@@ -1316,7 +1315,7 @@ func TestPostLoginEndpoint(t *testing.T) {
 			jwksProviderIsUnused := jwks.NewDynamicJWKSProvider()
 			oauthHelper := oidc.FositeOauth2Helper(kubeOauthStore, downstreamIssuer, hmacSecretFunc, jwksProviderIsUnused, timeoutsConfiguration)
 
-			req := httptest.NewRequest(http.MethodPost, "/ignored", strings.NewReader(tt.formParams.Encode()))
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/ignored", strings.NewReader(tt.formParams.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			if tt.reqURIQuery != nil {
 				req.URL.RawQuery = tt.reqURIQuery.Encode()

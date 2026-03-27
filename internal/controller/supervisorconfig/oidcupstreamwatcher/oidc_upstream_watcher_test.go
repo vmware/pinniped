@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidcupstreamwatcher
@@ -101,7 +101,6 @@ func TestOIDCUpstreamWatcherControllerFilterSecret(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			fakeKubeClient := kubefake.NewClientset()
@@ -162,7 +161,6 @@ func TestOIDCUpstreamWatcherControllerFilterConfigMaps(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClient := supervisorfake.NewSimpleClientset()
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			fakeKubeClient := kubefake.NewClientset()
@@ -230,8 +228,8 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 		testNamespace                = "test-namespace"
 		testName                     = "test-name"
 		testSecretName               = "test-client-secret"
-		testAdditionalScopes         = []string{"scope1", "scope2", "scope3"}
-		testExpectedScopes           = []string{"openid", "scope1", "scope2", "scope3"}
+		testAdditionalScopes         = []string{"scope1", "scope2", "scope3"}           //nolint:prealloc
+		testExpectedScopes           = []string{"openid", "scope1", "scope2", "scope3"} //nolint:prealloc
 		testDefaultExpectedScopes    = []string{"openid", "offline_access", "email", "profile"}
 		testAdditionalParams         = []idpv1alpha1.Parameter{{Name: "prompt", Value: "consent"}, {Name: "foo", Value: "bar"}}
 		testExpectedAdditionalParams = map[string]string{"prompt": "consent", "foo": "bar"}
@@ -1762,7 +1760,7 @@ func TestOIDCUpstreamWatcherControllerSync(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
+
 			fakePinnipedClient := supervisorfake.NewSimpleClientset(tt.inputUpstreams...)
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClient, 0)
 			fakeKubeClient := kubefake.NewClientset(tt.inputResources...)
@@ -1919,6 +1917,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At the root of the server, serve an issuer with a valid discovery response.
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:        server.URL,
 			AuthURL:       "https://example.com/authorize",
@@ -1931,6 +1930,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At "/valid-without-revocation", serve an issuer with a valid discovery response which does not have a revocation endpoint.
 	mux.HandleFunc("/valid-without-revocation/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:        server.URL + "/valid-without-revocation",
 			AuthURL:       "https://example.com/authorize",
@@ -1943,6 +1943,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At "/valid-without-userinfo", serve an issuer with a valid discovery response which does not have a userinfo endpoint.
 	mux.HandleFunc("/valid-without-userinfo/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:        server.URL + "/valid-without-userinfo",
 			AuthURL:       "https://example.com/authorize",
@@ -1955,6 +1956,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At "/invalid", serve an issuer that returns an invalid authorization URL (not parseable).
 	mux.HandleFunc("/invalid/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:   server.URL + "/invalid",
 			AuthURL:  "%",
@@ -1965,6 +1967,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At "/invalid-revocation-url", serve an issuer that returns an invalid revocation URL (not parseable).
 	mux.HandleFunc("/invalid-revocation-url/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:        server.URL + "/invalid-revocation-url",
 			AuthURL:       "https://example.com/authorize",
@@ -1976,6 +1979,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At "/insecure", serve an issuer that returns an insecure authorization URL (not https://).
 	mux.HandleFunc("/insecure/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:   server.URL + "/insecure",
 			AuthURL:  "http://example.com/authorize",
@@ -1986,6 +1990,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At "/insecure-revocation-url", serve an issuer that returns an insecure revocation URL (not https://).
 	mux.HandleFunc("/insecure-revocation-url/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:        server.URL + "/insecure-revocation-url",
 			AuthURL:       "https://example.com/authorize",
@@ -1997,6 +2002,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At "/insecure-token-url", serve an issuer that returns an insecure token URL (not https://).
 	mux.HandleFunc("/insecure-token-url/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:        server.URL + "/insecure-token-url",
 			AuthURL:       "https://example.com/authorize",
@@ -2019,6 +2025,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// At "/missing-auth-url", serve an issuer that returns no auth URL, which is required by the spec.
 	mux.HandleFunc("/missing-auth-url/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:        server.URL + "/missing-auth-url",
 			RevocationURL: "https://example.com/revoke",
@@ -2034,6 +2041,7 @@ func newTestIssuer(t *testing.T) (string, string) {
 	// valid case in=/ out=/
 	mux.HandleFunc("/ends-with-slash/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
+		//nolint:gosec // no credentials here
 		_ = json.NewEncoder(w).Encode(&providerJSON{
 			Issuer:        server.URL + "/ends-with-slash/",
 			AuthURL:       "https://example.com/authorize",

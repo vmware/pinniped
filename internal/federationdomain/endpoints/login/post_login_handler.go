@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package login
@@ -72,6 +72,7 @@ func NewPostHandler(
 		downstreamsession.AutoApproveScopes(authorizeRequester)
 
 		// Get the username and password form params from the POST body.
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // Limit request body size to 1 MB
 		submittedUsername := r.PostFormValue(loginurl.UsernameParamName)
 		submittedPassword := r.PostFormValue(loginurl.PasswordParamName)
 

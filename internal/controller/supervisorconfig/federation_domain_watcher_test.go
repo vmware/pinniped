@@ -2087,9 +2087,7 @@ func TestTestFederationDomainWatcherControllerSync(t *testing.T) {
 			t.Parallel()
 
 			federationDomainsSetter := &fakeFederationDomainsSetter{}
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := supervisorfake.NewSimpleClientset()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedInformerClient := supervisorfake.NewSimpleClientset()
 			for _, o := range tt.inputObjects {
 				require.NoError(t, pinnipedAPIClient.Tracker().Add(o))

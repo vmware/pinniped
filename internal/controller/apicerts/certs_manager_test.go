@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package apicerts
@@ -168,6 +168,7 @@ func TestManagerControllerSync(t *testing.T) {
 		it.Before(func() {
 			r = require.New(t)
 
+			//nolint:gosec // cancelContextCancelFunc is called in the After()
 			cancelContext, cancelContextCancelFunc = context.WithCancel(context.Background())
 
 			kubeInformerClient = kubefake.NewClientset()

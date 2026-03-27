@@ -1,4 +1,4 @@
-// Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -293,7 +293,6 @@ func TestWhoami(t *testing.T) {
 				if test.gettingClientsetErr != nil {
 					return nil, nil, nil, test.gettingClientsetErr
 				}
-				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				conciergeClient := conciergefake.NewSimpleClientset()
 				conciergeClient.PrependReactor("create", "whoamirequests", func(_ kubetesting.Action) (bool, runtime.Object, error) {
 					if test.callingAPIErr != nil {

@@ -73,11 +73,11 @@ func TestManager(t *testing.T) {
 		)
 
 		newGetRequest := func(url string) *http.Request {
-			return httptest.NewRequest(http.MethodGet, url, nil)
+			return httptest.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
 		}
 
 		newPostRequest := func(url, body string) *http.Request {
-			req := httptest.NewRequest(http.MethodPost, url, strings.NewReader(body))
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, url, strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			return req
 		}
@@ -347,7 +347,6 @@ func TestManager(t *testing.T) {
 
 			kubeClient = kubefake.NewClientset()
 			secretsClient := kubeClient.CoreV1().Secrets("some-namespace")
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			oidcClientsClient := supervisorfake.NewSimpleClientset().ConfigV1alpha1().OIDCClients("some-namespace")
 
 			cache := secret.Cache{}

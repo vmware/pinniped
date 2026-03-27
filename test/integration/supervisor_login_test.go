@@ -1815,6 +1815,7 @@ func TestSupervisorLogin_Browser(t *testing.T) {
 					body)
 			},
 		},
+		//nolint:gosec // no credentials here
 		{
 			name:      "disallowed requested audience using specific reserved name of a dynamic client on token exchange results in token exchange error",
 			maybeSkip: skipNever,
@@ -1835,6 +1836,7 @@ func TestSupervisorLogin_Browser(t *testing.T) {
 					body)
 			},
 		},
+		//nolint:gosec // no credentials here
 		{
 			name:      "disallowed requested audience pinniped-cli on token exchange results in token exchange error",
 			maybeSkip: skipNever,
@@ -2977,7 +2979,7 @@ func testSupervisorLogin(
 	// Create an HTTP client that can reach the downstream discovery endpoint using the CA certs.
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: federationDomainSelfSignedCA.Pool()}, //nolint:gosec // not concerned with TLS MinVersion here
+			TLSClientConfig: &tls.Config{RootCAs: federationDomainSelfSignedCA.Pool()},
 			Proxy: func(req *http.Request) (*url.URL, error) {
 				if strings.HasPrefix(req.URL.Host, "127.0.0.1") {
 					// don't proxy requests to localhost to avoid proxying calls to our local callback listener

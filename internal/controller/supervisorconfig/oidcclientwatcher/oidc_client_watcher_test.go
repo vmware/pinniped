@@ -1,4 +1,4 @@
-// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidcclientwatcher
@@ -67,7 +67,6 @@ func TestOIDCClientWatcherControllerFilterSecret(t *testing.T) {
 				0,
 			).Core().V1().Secrets()
 			oidcClientsInformer := supervisorinformers.NewSharedInformerFactory(
-				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorfake.NewSimpleClientset(),
 				0,
 			).Config().V1alpha1().OIDCClients()
@@ -137,7 +136,6 @@ func TestOIDCClientWatcherControllerFilterOIDCClient(t *testing.T) {
 				0,
 			).Core().V1().Secrets()
 			oidcClientsInformer := supervisorinformers.NewSharedInformerFactory(
-				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				supervisorfake.NewSimpleClientset(),
 				0,
 			).Config().V1alpha1().OIDCClients()
@@ -958,9 +956,8 @@ func TestOIDCClientWatcherControllerSync(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
+
 			fakePinnipedClient := supervisorfake.NewSimpleClientset(tt.inputObjects...)
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			fakePinnipedClientForInformers := supervisorfake.NewSimpleClientset(tt.inputObjects...)
 			pinnipedInformers := supervisorinformers.NewSharedInformerFactory(fakePinnipedClientForInformers, 0)
 			fakeKubeClient := kubefake.NewClientset(tt.inputSecrets...)

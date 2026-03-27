@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package refreshtoken
@@ -401,6 +401,7 @@ func TestReadFromSecret(t *testing.T) {
 							ProviderType:     "fake-provider-type",
 							UpstreamUsername: "fake-upstream-username",
 							UpstreamGroups:   []string{"fake-upstream-group1", "fake-upstream-group2"},
+							//nolint:gosec // not a real credential
 							OIDC: &psession.OIDCSessionData{
 								UpstreamRefreshToken: "fake-upstream-refresh-token",
 							},

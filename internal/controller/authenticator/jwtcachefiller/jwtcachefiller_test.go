@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package jwtcachefiller
@@ -2987,7 +2987,6 @@ func TestController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := conciergefake.NewSimpleClientset(tt.jwtAuthenticators...)
 			if tt.configClient != nil {
 				tt.configClient(pinnipedAPIClient)
@@ -3539,7 +3538,6 @@ func TestControllerFilterSecret(t *testing.T) {
 			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := conciergefake.NewSimpleClientset()
 			pinnipedInformers := conciergeinformers.NewSharedInformerFactory(pinnipedAPIClient, 0)
 			observableInformers := testutil.NewObservableWithInformerOption()
@@ -3600,7 +3598,6 @@ func TestControllerFilterConfigMap(t *testing.T) {
 			kubeInformers := k8sinformers.NewSharedInformerFactoryWithOptions(kubefake.NewClientset(), 0)
 			secretInformer := kubeInformers.Core().V1().Secrets()
 			configMapInformer := kubeInformers.Core().V1().ConfigMaps()
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			pinnipedAPIClient := conciergefake.NewSimpleClientset()
 			pinnipedInformers := conciergeinformers.NewSharedInformerFactory(pinnipedAPIClient, 0)
 			observableInformers := testutil.NewObservableWithInformerOption()

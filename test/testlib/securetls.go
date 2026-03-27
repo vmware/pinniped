@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package testlib
@@ -83,7 +83,7 @@ func GetExpectedCiphers(config *tls.Config, preference string) string {
 			} else {
 				group = rsa2048
 			}
-			s.WriteString(fmt.Sprintf(tls12Item, name, group))
+			s.WriteString(fmt.Sprintf(tls12Item, name, group)) //nolint:staticcheck // this is better than fmt.Fprintf because this cannot error
 			if i == len(config.CipherSuites)-1 {
 				break
 			}
@@ -96,7 +96,7 @@ func GetExpectedCiphers(config *tls.Config, preference string) string {
 		var s strings.Builder
 		tls13CipherSuites := tlsserver.GetExpectedTLS13Ciphers()
 		for i, id := range tls13CipherSuites {
-			s.WriteString(fmt.Sprintf(tls13Item,
+			s.WriteString(fmt.Sprintf(tls13Item, //nolint:staticcheck // this is better than fmt.Fprintf because this cannot error
 				strings.Replace(tls.CipherSuiteName(id), "TLS_", "TLS_AKE_WITH_", 1),
 				tlsserver.GetExpectedTLS13CipherNMapKeyExchangeInfoValue(id)),
 			)

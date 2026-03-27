@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package upstreamgithub
@@ -34,6 +34,7 @@ func TestGitHubProvider(t *testing.T) {
 		APIBaseURL:         "https://fake-base-url",
 		UsernameAttribute:  "fake-username-attribute",
 		GroupNameAttribute: "fake-group-name-attribute",
+		//nolint:gosec // not a real credential
 		OAuth2Config: &oauth2.Config{
 			ClientID:     "fake-client-id",
 			ClientSecret: "fake-client-secret",
@@ -57,10 +58,12 @@ func TestGitHubProvider(t *testing.T) {
 		APIBaseURL:         "https://fake-base-url",
 		UsernameAttribute:  "fake-username-attribute",
 		GroupNameAttribute: "fake-group-name-attribute",
+		//nolint:gosec // not a real credential
 		OAuth2Config: &oauth2.Config{
 			ClientID:     "fake-client-id",
 			ClientSecret: "fake-client-secret",
 			Scopes:       []string{"scope1", "scope2"},
+			//nolint:gosec // no credentials here
 			Endpoint: oauth2.Endpoint{
 				AuthURL:       "https://fake-authorization-url",
 				DeviceAuthURL: "",
@@ -123,6 +126,7 @@ func TestExchangeAuthcode(t *testing.T) {
 				require.NotEmpty(t, r.Header.Get("Content-Length"))
 
 				// Get the params.
+				//nolint:gosec // this is a test, so we don't care about limiting request body size
 				err := r.ParseForm()
 				require.NoError(t, err)
 				params := r.PostForm
@@ -158,6 +162,7 @@ func TestExchangeAuthcode(t *testing.T) {
 			require.NoError(t, err)
 
 			subject := New(ProviderConfig{
+				//nolint:gosec // not a real credential
 				OAuth2Config: &oauth2.Config{
 					ClientID:     "fake-client-id",
 					ClientSecret: "fake-client-secret",

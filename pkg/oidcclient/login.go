@@ -76,7 +76,10 @@ const (
 )
 
 // stdin returns the file descriptor for stdin as an int.
-func stdin() int { return int(os.Stdin.Fd()) }
+func stdin() int {
+	//nolint:gosec // casting like this is the documented way to pass file descriptors to the term package
+	return int(os.Stdin.Fd())
+}
 
 type handlerState struct {
 	// Basic parameters.
@@ -1234,7 +1237,7 @@ func (h *handlerState) handleRefresh(ctx context.Context, refreshToken *oidctype
 // these messages would be the same. Note that using httperr.Wrap will cause the details of the wrapped
 // err to be printed by the CLI, but not printed in the browser due to the way that the httperr package
 // works, so avoid using httperr.Wrap in this function.
-func (h *handlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Request) (returnedErr error) {
+func (h *handlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Request) (returnedErr error) { //nolint:funlen
 	defer func() {
 		// If we returned an error, then also report it back over the channel to the main CLI goroutine.
 		// Because returnedErr is the named return value, inside this defer returnedErr will hold the value
@@ -1286,6 +1289,7 @@ func (h *handlerState) handleAuthCodeCallback(w http.ResponseWriter, r *http.Req
 		return nil // keep listening for more requests
 
 	case http.MethodPost:
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // Limit request body size to 1 MB
 		// Parse and pull the response parameters from an application/x-www-form-urlencoded request body.
 		if err = r.ParseForm(); err != nil {
 			// Avoid using httperr.Wrap because that would hide the details of err from the browser output.

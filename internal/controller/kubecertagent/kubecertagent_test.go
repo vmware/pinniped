@@ -1777,7 +1777,6 @@ func TestAgentController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 			conciergeClientset := conciergefake.NewSimpleClientset(tt.pinnipedObjects...)
 			conciergeInformers := conciergeinformers.NewSharedInformerFactory(conciergeClientset, 0)
 

@@ -3864,10 +3864,8 @@ func TestGetKubeconfig(t *testing.T) {
 					kubeObjects := tt.kubeObjects(string(testServerCA))
 					fakeKubeClient = kubefake.NewClientset(kubeObjects...)
 				}
-				//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 				fakeConciergeClient := conciergefake.NewSimpleClientset()
 				if tt.conciergeObjects != nil {
-					//nolint:staticcheck // our codegen does not yet generate a NewClientset() function
 					fakeConciergeClient = conciergefake.NewSimpleClientset(tt.conciergeObjects(string(testServerCA), testServer.URL)...)
 				}
 				if len(tt.conciergeReactions) > 0 {
