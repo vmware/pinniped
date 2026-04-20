@@ -1,11 +1,11 @@
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # For deploying an EKS cluster and setting it up to run our tests.
 
-FROM weaveworks/eksctl:v0.224.0 AS eksctl
-FROM mikefarah/yq:4.52.4 AS yq
-FROM amazon/aws-cli:2.34.16
+FROM weaveworks/eksctl:v0.225.0 AS eksctl
+FROM mikefarah/yq:4.53.2 AS yq
+FROM amazon/aws-cli:2.34.32
 RUN yum update -y && yum install -y jq perl-Digest-SHA openssl && yum clean all
 COPY --from=eksctl eksctl /usr/local/bin/eksctl
 COPY --from=yq /usr/bin/yq /usr/local/bin/yq

@@ -3,14 +3,14 @@
 
 # For running the integration tests as a client to a k8s cluster
 
-FROM mikefarah/yq:4.52.4 AS yq
+FROM mikefarah/yq:4.53.2 AS yq
 
 # We need gcloud for running integration tests against GKE
 # because the kubeconfig uses gcloud as an `auth-provider`.
 # Use FROM gcloud-sdk instead of FROM golang because its
 # a lot easier to install Go than to install gcloud in the
 # subsequent commands below.
-FROM google/cloud-sdk:562.0.0-slim
+FROM google/cloud-sdk:565.0.0-slim
 
 # Install apache2-utils (for htpasswd to bcrypt passwords for the
 # local-user-authenticator) and jq.
@@ -36,7 +36,7 @@ RUN google-chrome --version
 
 # Install Go. The download URL that can be used below for any version of Go can be found on https://go.dev/dl/
 ENV PATH /usr/local/go/bin:$PATH
-RUN curl -fsSL https://go.dev/dl/go1.26.1.linux-amd64.tar.gz -o /tmp/go.tar.gz && \
+RUN curl -fsSL https://go.dev/dl/go1.26.2.linux-amd64.tar.gz -o /tmp/go.tar.gz && \
     tar -C /usr/local -xzf /tmp/go.tar.gz && \
     rm /tmp/go.tar.gz && \
     go version

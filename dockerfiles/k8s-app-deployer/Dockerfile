@@ -1,9 +1,9 @@
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # For deploying apps onto Kubernetes clusters (including GKE)
 
-FROM google/cloud-sdk:562.0.0-slim
+FROM google/cloud-sdk:565.0.0-slim
 
 # Install apache2-utils (for htpasswd to bcrypt passwords for the
 # local-user-authenticator) and jq.
