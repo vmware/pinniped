@@ -383,6 +383,15 @@ resources:
       username: ((ci-ghcr-puller-username))
       password: ((ci-ghcr-puller-token))
 
+  - name: k8s-code-generator-1.36-image
+    type: registry-image
+    icon: docker
+    check_every: 3m
+    source:
+      repository: ((ci-ghcr-registry))/k8s-code-generator-1.36
+      username: ((ci-ghcr-puller-username))
+      password: ((ci-ghcr-puller-token))
+
 jobs:
 
   - name: start
@@ -472,6 +481,7 @@ jobs:
           - get: k8s-code-generator-1.33-image
           - get: k8s-code-generator-1.34-image
           - get: k8s-code-generator-1.35-image
+          - get: k8s-code-generator-1.36-image
       - { <<: *pr-status-on-pending, params: { <<: *pr-status-on-pending-params, context: verify-codegen } }
       - in_parallel:
           - task: verify-go-mod-tidy
@@ -524,6 +534,13 @@ jobs:
             image: k8s-code-generator-1.35-image
             params:
               KUBE_MINOR_VERSION: "1.35"
+          - task: codegen-1.36
+            timeout: 20m
+            <<: *pinniped-pr-input-mapping
+            file: pinniped-ci/pipelines/shared-tasks/run-verify-codegen/task.yml
+            image: k8s-code-generator-1.36-image
+            params:
+              KUBE_MINOR_VERSION: "1.36"
 
   - name: unit-test
     on_success: { <<: *pr-status-on-success, params: { <<: *pr-status-on-success-params, context: unit-test } }

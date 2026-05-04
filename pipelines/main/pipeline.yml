@@ -487,6 +487,15 @@ resources:
       username: ((ci-ghcr-puller-username))
       password: ((ci-ghcr-puller-token))
 
+  - name: k8s-code-generator-1.36-image
+    type: registry-image
+    icon: docker
+    check_every: 3m
+    source:
+      repository: ((ci-ghcr-registry))/k8s-code-generator-1.36
+      username: ((ci-ghcr-puller-username))
+      password: ((ci-ghcr-puller-token))
+
   - name: kind-release
     type: github-release
     check_every: 10m
@@ -595,6 +604,7 @@ jobs:
           - get: k8s-code-generator-1.33-image
           - get: k8s-code-generator-1.34-image
           - get: k8s-code-generator-1.35-image
+          - get: k8s-code-generator-1.36-image
       - in_parallel:
           - task: verify-go-mod-tidy
             timeout: 20m
@@ -638,6 +648,12 @@ jobs:
             image: k8s-code-generator-1.35-image
             params:
               KUBE_MINOR_VERSION: "1.35"
+          - task: codegen-1.36
+            timeout: 20m
+            file: pinniped-ci/pipelines/shared-tasks/run-verify-codegen/task.yml
+            image: k8s-code-generator-1.36-image
+            params:
+              KUBE_MINOR_VERSION: "1.36"
 
   - name: unit-test
     public: true # all logs are publicly visible
