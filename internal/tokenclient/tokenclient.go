@@ -1,13 +1,14 @@
-// Copyright 2023 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package tokenclient
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -122,7 +123,7 @@ func (tc TokenClient) fetchToken(ctx context.Context) (token string, ttl time.Du
 	)
 
 	if err != nil {
-		return "", 0, errors.Wrap(err, "error creating token")
+		return "", 0, fmt.Errorf("error creating token: %w", err)
 	}
 
 	if tokenResponse == nil {

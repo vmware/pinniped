@@ -4,10 +4,10 @@
 package admissionpluginconfig
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
-	"github.com/pkg/errors"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	mutatingadmissionpolicy "k8s.io/apiserver/pkg/admission/plugin/policy/mutating"

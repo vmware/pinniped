@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package tlsconfigutil
@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
@@ -201,7 +200,7 @@ func readCABundleFromK8sSecret(namespace string, name string, key string, secret
 
 	s, err := secretInformer.Lister().Secrets(namespace).Get(name)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to get secret %q", namespacedName)
+		return "", fmt.Errorf("failed to get secret %q: %w", namespacedName, err)
 	}
 
 	// For Secrets to be used as a certificate authority data source, the secret should be of type
@@ -225,7 +224,7 @@ func readCABundleFromK8sConfigMap(namespace string, name string, key string, con
 
 	c, err := configMapInformer.Lister().ConfigMaps(namespace).Get(name)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to get configmap %q", namespacedName)
+		return "", fmt.Errorf("failed to get configmap %q: %w", namespacedName, err)
 	}
 
 	val, exists := c.Data[key]
