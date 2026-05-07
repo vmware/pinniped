@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package strategy
@@ -10,7 +10,6 @@ import (
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/compose"
 	fositeoauth2 "github.com/ory/fosite/handler/oauth2"
-	errorsx "github.com/pkg/errors"
 
 	"go.pinniped.dev/internal/federationdomain/storage"
 )
@@ -72,8 +71,7 @@ func (s *DynamicOauth2HMACStrategy) GenerateAccessToken(
 	if err == nil {
 		if !strings.HasPrefix(token, oryAccessTokenPrefix) {
 			// This would only happen if fosite changed how it generates tokens. Defensive programming here.
-			return "", "", errorsx.WithStack(fosite.ErrInvalidTokenFormat.
-				WithDebugf("Generated token does not have expected prefix"))
+			return "", "", fosite.ErrInvalidTokenFormat.WithDebugf("Generated token does not have expected prefix")
 		}
 		token = replacePrefix(token, oryAccessTokenPrefix, pinAccessTokenPrefix)
 	}
@@ -86,8 +84,7 @@ func (s *DynamicOauth2HMACStrategy) ValidateAccessToken(
 	token string,
 ) error {
 	if !strings.HasPrefix(token, pinAccessTokenPrefix) {
-		return errorsx.WithStack(fosite.ErrInvalidTokenFormat.
-			WithDebugf("Access token did not have prefix %q", pinAccessTokenPrefix))
+		return fosite.ErrInvalidTokenFormat.WithDebugf("Access token did not have prefix %q", pinAccessTokenPrefix)
 	}
 	return s.delegate().ValidateAccessToken(ctx, requester, replacePrefix(token, pinAccessTokenPrefix, oryAccessTokenPrefix))
 }
@@ -104,8 +101,7 @@ func (s *DynamicOauth2HMACStrategy) GenerateRefreshToken(
 	if err == nil {
 		if !strings.HasPrefix(token, oryRefreshTokenPrefix) {
 			// This would only happen if fosite changed how it generates tokens. Defensive programming here.
-			return "", "", errorsx.WithStack(fosite.ErrInvalidTokenFormat.
-				WithDebugf("Generated token does not have expected prefix"))
+			return "", "", fosite.ErrInvalidTokenFormat.WithDebugf("Generated token does not have expected prefix")
 		}
 		token = replacePrefix(token, oryRefreshTokenPrefix, pinRefreshTokenPrefix)
 	}
@@ -118,8 +114,7 @@ func (s *DynamicOauth2HMACStrategy) ValidateRefreshToken(
 	token string,
 ) error {
 	if !strings.HasPrefix(token, pinRefreshTokenPrefix) {
-		return errorsx.WithStack(fosite.ErrInvalidTokenFormat.
-			WithDebugf("Refresh token did not have prefix %q", pinRefreshTokenPrefix))
+		return fosite.ErrInvalidTokenFormat.WithDebugf("Refresh token did not have prefix %q", pinRefreshTokenPrefix)
 	}
 	return s.delegate().ValidateRefreshToken(ctx, requester, replacePrefix(token, pinRefreshTokenPrefix, oryRefreshTokenPrefix))
 }
@@ -136,8 +131,7 @@ func (s *DynamicOauth2HMACStrategy) GenerateAuthorizeCode(
 	if err == nil {
 		if !strings.HasPrefix(authcode, oryAuthcodePrefix) {
 			// This would only happen if fosite changed how it generates tokens. Defensive programming here.
-			return "", "", errorsx.WithStack(fosite.ErrInvalidTokenFormat.
-				WithDebugf("Generated token does not have expected prefix"))
+			return "", "", fosite.ErrInvalidTokenFormat.WithDebugf("Generated token does not have expected prefix")
 		}
 		authcode = replacePrefix(authcode, oryAuthcodePrefix, pinAuthcodePrefix)
 	}
@@ -150,8 +144,7 @@ func (s *DynamicOauth2HMACStrategy) ValidateAuthorizeCode(
 	token string,
 ) error {
 	if !strings.HasPrefix(token, pinAuthcodePrefix) {
-		return errorsx.WithStack(fosite.ErrInvalidTokenFormat.
-			WithDebugf("Authorization code did not have prefix %q", pinAuthcodePrefix))
+		return fosite.ErrInvalidTokenFormat.WithDebugf("Authorization code did not have prefix %q", pinAuthcodePrefix)
 	}
 	return s.delegate().ValidateAuthorizeCode(ctx, requester, replacePrefix(token, pinAuthcodePrefix, oryAuthcodePrefix))
 }

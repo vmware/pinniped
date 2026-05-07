@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package token provides a handler for the OIDC token endpoint.
@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/ory/fosite"
-	errorsx "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/warning"
@@ -165,19 +164,19 @@ func upstreamRefresh(
 
 	customSessionData := session.Custom
 	if customSessionData == nil {
-		return errorsx.WithStack(errMissingUpstreamSessionInternalError())
+		return errMissingUpstreamSessionInternalError()
 	}
 	providerName := customSessionData.ProviderName
 	providerType := customSessionData.ProviderType
 	providerUID := customSessionData.ProviderUID
 	if providerUID == "" || providerName == "" {
-		return errorsx.WithStack(errMissingUpstreamSessionInternalError())
+		return errMissingUpstreamSessionInternalError()
 	}
 
 	skipGroups := !slices.Contains(accessRequest.GetGrantedScopes(), oidcapi.ScopeGroups)
 
 	if session.IDTokenClaims().AuthTime.IsZero() {
-		return errorsx.WithStack(resolvedprovider.ErrMissingUpstreamSessionInternalError())
+		return resolvedprovider.ErrMissingUpstreamSessionInternalError()
 	}
 
 	err := validateSessionHasUsername(session)
@@ -201,7 +200,7 @@ func upstreamRefresh(
 
 	cloneOfIDPSpecificSessionData := idp.CloneIDPSpecificSessionDataFromSession(session.Custom)
 	if cloneOfIDPSpecificSessionData == nil {
-		return errorsx.WithStack(resolvedprovider.ErrMissingUpstreamSessionInternalError())
+		return resolvedprovider.ErrMissingUpstreamSessionInternalError()
 	}
 
 	oldUntransformedUsername := session.Custom.UpstreamUsername
@@ -299,21 +298,21 @@ func findProviderByNameAndType(
 	for _, p := range idpLister.GetIdentityProviders() {
 		if p.GetSessionProviderType() == providerType && p.GetProvider().GetResourceName() == providerResourceName {
 			if p.GetProvider().GetResourceUID() != mustHaveResourceUID {
-				return nil, errorsx.WithStack(errUpstreamRefreshError().WithHint(
-					"Provider from upstream session data has changed its resource UID since authentication."))
+				return nil, errUpstreamRefreshError().WithHint(
+					"Provider from upstream session data has changed its resource UID since authentication.")
 			}
 			return p, nil
 		}
 	}
-	return nil, errorsx.WithStack(errUpstreamRefreshError().
+	return nil, errUpstreamRefreshError().
 		WithHint("Provider from upstream session data was not found.").
-		WithDebugf("provider name: %q, provider type: %q", providerResourceName, providerType))
+		WithDebugf("provider name: %q, provider type: %q", providerResourceName, providerType)
 }
 
 func validateSessionHasUsername(session *psession.PinnipedSession) error {
 	downstreamUsername := session.Custom.Username
 	if len(downstreamUsername) == 0 {
-		return errorsx.WithStack(errMissingUpstreamSessionInternalError())
+		return errMissingUpstreamSessionInternalError()
 	}
 	return nil
 }
@@ -348,22 +347,22 @@ func applyIdentityTransformationsDuringRefresh(
 func validateAndGetDownstreamGroupsFromSession(session *psession.PinnipedSession) ([]string, error) {
 	extra := session.Fosite.Claims.Extra
 	if extra == nil {
-		return nil, errorsx.WithStack(errMissingUpstreamSessionInternalError())
+		return nil, errMissingUpstreamSessionInternalError()
 	}
 	downstreamGroupsInterface := extra[oidcapi.IDTokenClaimGroups]
 	if downstreamGroupsInterface == nil {
-		return nil, errorsx.WithStack(errMissingUpstreamSessionInternalError())
+		return nil, errMissingUpstreamSessionInternalError()
 	}
 	downstreamGroupsInterfaceList, ok := downstreamGroupsInterface.([]any)
 	if !ok {
-		return nil, errorsx.WithStack(errMissingUpstreamSessionInternalError())
+		return nil, errMissingUpstreamSessionInternalError()
 	}
 
 	downstreamGroups := make([]string, 0, len(downstreamGroupsInterfaceList))
 	for _, downstreamGroupInterface := range downstreamGroupsInterfaceList {
 		downstreamGroup, ok := downstreamGroupInterface.(string)
 		if !ok || len(downstreamGroup) == 0 {
-			return nil, errorsx.WithStack(errMissingUpstreamSessionInternalError())
+			return nil, errMissingUpstreamSessionInternalError()
 		}
 		downstreamGroups = append(downstreamGroups, downstreamGroup)
 	}

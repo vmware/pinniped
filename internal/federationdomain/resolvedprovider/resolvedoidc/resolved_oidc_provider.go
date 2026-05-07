@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/ory/fosite"
-	errorsx "github.com/pkg/errors"
 	"golang.org/x/oauth2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -228,7 +227,7 @@ func (p *FederationDomainResolvedOIDCIdentityProvider) UpstreamRefresh(
 	sessionData, ok := identity.IDPSpecificSessionData.(*psession.OIDCSessionData)
 	if !ok {
 		// This shouldn't really happen.
-		return nil, errorsx.WithStack(resolvedprovider.ErrMissingUpstreamSessionInternalError())
+		return nil, resolvedprovider.ErrMissingUpstreamSessionInternalError()
 	}
 
 	accessTokenStored := sessionData.UpstreamAccessToken != ""
@@ -237,7 +236,7 @@ func (p *FederationDomainResolvedOIDCIdentityProvider) UpstreamRefresh(
 	//nolint:staticcheck // De Morgan's doesn't make this more readable
 	exactlyOneTokenStored := (accessTokenStored || refreshTokenStored) && !(accessTokenStored && refreshTokenStored)
 	if !exactlyOneTokenStored {
-		return nil, errorsx.WithStack(resolvedprovider.ErrMissingUpstreamSessionInternalError())
+		return nil, resolvedprovider.ErrMissingUpstreamSessionInternalError()
 	}
 
 	plog.Debug("attempting upstream refresh request",

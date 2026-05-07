@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package tokenexchange
@@ -11,7 +11,6 @@ import (
 	"github.com/ory/fosite"
 	fositeoauth2 "github.com/ory/fosite/handler/oauth2"
 	"github.com/ory/fosite/handler/openid"
-	"github.com/pkg/errors"
 
 	oidcapi "go.pinniped.dev/generated/latest/apis/supervisor/oidc"
 	"go.pinniped.dev/internal/psession"
@@ -48,44 +47,44 @@ var _ fosite.TokenEndpointHandler = (*tokenExchangeHandler)(nil)
 func (t *tokenExchangeHandler) HandleTokenEndpointRequest(ctx context.Context, requester fosite.AccessRequester) error {
 	// Skip this request if it's for a different grant type.
 	if !t.CanHandleTokenEndpointRequest(ctx, requester) {
-		return errors.WithStack(fosite.ErrUnknownRequest)
+		return fosite.ErrUnknownRequest
 	}
 
 	// Validate the basic RFC8693 parameters we support.
 	params, err := t.validateParams(requester.GetRequestForm())
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	// Validate the incoming access token and lookup the information about the original authorize request from storage.
 	originalRequester, err := t.validateAccessToken(ctx, requester, params.subjectAccessToken)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	// Check that the currently authenticated client and the client which was originally used to get the access token are the same.
 	if originalRequester.GetClient().GetID() != requester.GetClient().GetID() {
 		// This error message is copied from the similar check in fosite's flow_authorize_code_token.go.
-		return errors.WithStack(fosite.ErrInvalidGrant.WithHint("The OAuth 2.0 Client ID from this request does not match the one from the authorize request."))
+		return fosite.ErrInvalidGrant.WithHint("The OAuth 2.0 Client ID from this request does not match the one from the authorize request.")
 	}
 
 	// Check that the client is allowed to perform this grant type.
 	if !requester.GetClient().GetGrantTypes().Has(oidcapi.GrantTypeTokenExchange) {
 		// This error message is trying to be similar to the analogous one in fosite's flow_authorize_code_token.go.
-		return errors.WithStack(fosite.ErrUnauthorizedClient.WithHintf(`The OAuth 2.0 Client is not allowed to use token exchange grant "%s".`, oidcapi.GrantTypeTokenExchange))
+		return fosite.ErrUnauthorizedClient.WithHintf(`The OAuth 2.0 Client is not allowed to use token exchange grant "%s".`, oidcapi.GrantTypeTokenExchange)
 	}
 
 	// Require that the incoming access token has the pinniped:request-audience and OpenID scopes.
 	if !originalRequester.GetGrantedScopes().Has(oidcapi.ScopeRequestAudience) {
-		return errors.WithStack(fosite.ErrAccessDenied.WithHintf("Missing the %q scope.", oidcapi.ScopeRequestAudience))
+		return fosite.ErrAccessDenied.WithHintf("Missing the %q scope.", oidcapi.ScopeRequestAudience)
 	}
 	if !originalRequester.GetGrantedScopes().Has(oidcapi.ScopeOpenID) {
-		return errors.WithStack(fosite.ErrAccessDenied.WithHintf("Missing the %q scope.", oidcapi.ScopeOpenID))
+		return fosite.ErrAccessDenied.WithHintf("Missing the %q scope.", oidcapi.ScopeOpenID)
 	}
 
 	// Check that the stored session meets the minimum requirements for token exchange.
 	if err := t.validateSession(originalRequester); err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	// Copy the original session ID from storage.
@@ -102,7 +101,7 @@ func (t *tokenExchangeHandler) HandleTokenEndpointRequest(ctx context.Context, r
 func (t *tokenExchangeHandler) PopulateTokenEndpointResponse(ctx context.Context, requester fosite.AccessRequester, responder fosite.AccessResponder) error {
 	// Skip this request if it's for a different grant type.
 	if !t.CanHandleTokenEndpointRequest(ctx, requester) {
-		return errors.WithStack(fosite.ErrUnknownRequest)
+		return fosite.ErrUnknownRequest
 	}
 
 	// Get the requested audience parameter again, which was already validated by HandleTokenEndpointRequest() above.
@@ -111,7 +110,7 @@ func (t *tokenExchangeHandler) PopulateTokenEndpointResponse(ctx context.Context
 	// Use the original authorize request information, along with the requested audience, to mint a new JWT.
 	responseToken, err := t.mintJWT(ctx, requester, requestedNewAudience)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	// Format the response parameters according to RFC8693.
@@ -212,7 +211,7 @@ func (t *tokenExchangeHandler) validateAccessToken(ctx context.Context, requeste
 	}
 	// Validate the access token using its stored session data, which includes its expiration time.
 	if err := t.accessTokenStrategy.ValidateAccessToken(ctx, originalRequester, accessToken); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	return originalRequester, nil
 }
