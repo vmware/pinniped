@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -15,6 +15,17 @@ digest=$(cat ci-build-image/digest)
 
 pinniped_ci="$PWD/pinniped-ci"
 pinniped_cluster_capability_file="$PWD/pinniped/test/cluster_capabilities/gke.yaml"
+
+# Because our GKE cluster was created before 1.35 and since auto-upgraded to 1.35+,
+# the default behavior of GKE's anonymous access does not apply.
+# If we delete and recreate this cluster, then it would apply.
+# Until then, temporarily override that line of cluster_capabilities/gke.yaml.
+pinniped_cluster_capability_file_tmp="/tmp/cluster_capabilities-gke.yaml"
+cp "$pinniped_cluster_capability_file" "$pinniped_cluster_capability_file_tmp"
+sed -i 's/allowedIfK8sMinorVersionLessThan: 35/allowed: true/g' "$pinniped_cluster_capability_file_tmp"
+echo "Edited test/cluster_capabilities/gke.yaml ..."
+cat "$pinniped_cluster_capability_file_tmp"
+pinniped_cluster_capability_file="$pinniped_cluster_capability_file_tmp"
 
 gcloud auth activate-service-account "$GKE_USERNAME" --key-file <(echo "$GKE_JSON_KEY") --project "$PINNIPED_GCP_PROJECT"
 
