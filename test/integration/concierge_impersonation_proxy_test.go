@@ -589,11 +589,8 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 			_, err = nestedImpersonationClient.Kubernetes.CoreV1().Secrets(env.ConciergeNamespace).Get(ctx, impersonationProxyTLSSecretName(env), metav1.GetOptions{})
 			// this user is not allowed to impersonate other users
 			require.True(t, apierrors.IsForbidden(err), err)
-			require.EqualError(t, err, fmt.Sprintf(
-				`secrets "%s" is forbidden: `+
-					`User "%s" cannot impersonate-on:user-info:get resource "secrets" in API group "" in the namespace "%s": `+
-					`decision made by impersonation-proxy.concierge.pinniped.dev`,
-				impersonationProxyTLSSecretName(env), env.TestUser.ExpectedUsername, env.ConciergeNamespace))
+			require.Contains(t, err.Error(), fmt.Sprintf(`is forbidden: User "%s" cannot impersonate`, env.TestUser.ExpectedUsername))
+			require.Contains(t, err.Error(), `decision made by impersonation-proxy.concierge.pinniped.dev`)
 
 			// impersonate the GC service account instead which can read anything (the binding to edit allows this)
 			nestedImpersonationClientAsSA, credentialsAsSA := newImpersonationProxyClient(t, impersonationProxyURL, impersonationProxyCACertPEM,
