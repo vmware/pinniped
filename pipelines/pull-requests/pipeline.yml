@@ -329,15 +329,6 @@ resources:
       username: ((ci-ghcr-puller-username))
       password: ((ci-ghcr-puller-token))
 
-  - name: k8s-code-generator-1.30-image
-    type: registry-image
-    icon: docker
-    check_every: 3m
-    source:
-      repository: ((ci-ghcr-registry))/k8s-code-generator-1.30
-      username: ((ci-ghcr-puller-username))
-      password: ((ci-ghcr-puller-token))
-
   - name: k8s-code-generator-1.31-image
     type: registry-image
     icon: docker
@@ -475,7 +466,6 @@ jobs:
             version: every
             passed: [ start ]
           - get: pinniped-ci
-          - get: k8s-code-generator-1.30-image
           - get: k8s-code-generator-1.31-image
           - get: k8s-code-generator-1.32-image
           - get: k8s-code-generator-1.33-image
@@ -492,13 +482,6 @@ jobs:
             timeout: 20m
             <<: *pinniped-pr-input-mapping
             file: pinniped-ci/pipelines/shared-tasks/run-verify-go-generate/task.yml
-          - task: codegen-1.30
-            timeout: 20m
-            <<: *pinniped-pr-input-mapping
-            file: pinniped-ci/pipelines/shared-tasks/run-verify-codegen/task.yml
-            image: k8s-code-generator-1.30-image
-            params:
-              KUBE_MINOR_VERSION: "1.30"
           - task: codegen-1.31
             timeout: 20m
             <<: *pinniped-pr-input-mapping
