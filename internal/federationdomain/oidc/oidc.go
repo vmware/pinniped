@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package oidc contains common OIDC functionality needed by FederationDomains to implement
@@ -8,7 +8,6 @@ package oidc
 import (
 	"crypto/subtle"
 	"errors"
-	"fmt"
 	"net/http"
 	"reflect"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/felixge/httpsnoop"
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/compose"
-	errorsx "github.com/pkg/errors"
 
 	oidcapi "go.pinniped.dev/generated/latest/apis/supervisor/oidc"
 	"go.pinniped.dev/internal/federationdomain/clientregistry"
@@ -402,18 +400,7 @@ func validateCSRFValue(state *UpstreamStateParamData, csrfCookieValue csrftoken.
 // WriteAuthorizeError writes an authorization error as it should be returned by the authorization endpoint and other
 // similar endpoints that are the end of the downstream authcode flow. Errors responses are written in the usual fosite style.
 func WriteAuthorizeError(r *http.Request, w http.ResponseWriter, oauthHelper fosite.OAuth2Provider, authorizeRequester fosite.AuthorizeRequester, err error, isBrowserless bool) {
-	if plog.Enabled(plog.LevelTrace) {
-		// When trace level logging is enabled, include the stack trace in the log message.
-		keysAndValues := FositeErrorForLog(err)
-		errWithStack := errorsx.WithStack(err)
-		keysAndValues = append(keysAndValues, "errWithStack")
-		// klog always prints error values using %s, which does not include stack traces,
-		// so convert the error to a string which includes the stack trace here.
-		keysAndValues = append(keysAndValues, fmt.Sprintf("%+v", errWithStack))
-		plog.Trace("authorize response error", keysAndValues...)
-	} else {
-		plog.Info("authorize response error", FositeErrorForLog(err)...)
-	}
+	plog.Info("authorize response error", FositeErrorForLog(err)...)
 	if isBrowserless {
 		w = rewriteStatusSeeOtherToStatusFoundForBrowserless(w)
 	}

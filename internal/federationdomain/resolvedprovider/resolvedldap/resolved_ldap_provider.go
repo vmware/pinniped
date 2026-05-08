@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package resolvedldap
@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/ory/fosite"
-	errorsx "github.com/pkg/errors"
 
 	"go.pinniped.dev/generated/latest/apis/supervisor/idpdiscovery/v1alpha1"
 	"go.pinniped.dev/internal/authenticators"
@@ -193,7 +192,7 @@ func (p *FederationDomainResolvedLDAPIdentityProvider) UpstreamRefresh(
 		sessionData, ok := identity.IDPSpecificSessionData.(*psession.LDAPSessionData)
 		if !ok {
 			// This shouldn't really happen.
-			return nil, errorsx.WithStack(resolvedprovider.ErrMissingUpstreamSessionInternalError())
+			return nil, resolvedprovider.ErrMissingUpstreamSessionInternalError()
 		}
 		dn = sessionData.UserDN
 		additionalAttributes = sessionData.ExtraRefreshAttributes
@@ -201,7 +200,7 @@ func (p *FederationDomainResolvedLDAPIdentityProvider) UpstreamRefresh(
 		sessionData, ok := identity.IDPSpecificSessionData.(*psession.ActiveDirectorySessionData)
 		if !ok {
 			// This shouldn't really happen.
-			return nil, errorsx.WithStack(resolvedprovider.ErrMissingUpstreamSessionInternalError())
+			return nil, resolvedprovider.ErrMissingUpstreamSessionInternalError()
 		}
 		dn = sessionData.UserDN
 		additionalAttributes = sessionData.ExtraRefreshAttributes
@@ -215,7 +214,7 @@ func (p *FederationDomainResolvedLDAPIdentityProvider) UpstreamRefresh(
 	}
 
 	if dn == "" {
-		return nil, errorsx.WithStack(resolvedprovider.ErrMissingUpstreamSessionInternalError())
+		return nil, resolvedprovider.ErrMissingUpstreamSessionInternalError()
 	}
 
 	plog.Debug("attempting upstream refresh request",

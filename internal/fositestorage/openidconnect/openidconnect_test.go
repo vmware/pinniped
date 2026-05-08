@@ -1,17 +1,17 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package openidconnect
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/handler/openid"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

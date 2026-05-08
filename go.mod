@@ -30,7 +30,6 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/ory/fosite v0.49.1-0.20250703093431-a5f0b09bf31c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -55,13 +54,13 @@ require (
 	k8s.io/kube-aggregator v0.36.0
 	k8s.io/kube-openapi v0.0.0-20260505163821-33341827b392
 	k8s.io/streaming v0.36.0
-	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
+	k8s.io/utils v0.0.0-20260507154919-ff6756f316d2
 	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
 	cel.dev/expr v0.25.1 // indirect
-	github.com/Azure/go-ntlmssp v0.1.0 // indirect
+	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
@@ -127,6 +126,7 @@ require (
 	github.com/ory/go-convenience v0.1.0 // indirect
 	github.com/ory/x v0.0.677 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.9 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
