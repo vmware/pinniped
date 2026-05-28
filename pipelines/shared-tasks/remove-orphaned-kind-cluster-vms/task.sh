@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # Sometimes something goes wrong with the Kind pool CI jobs and a Kind
@@ -36,9 +36,11 @@ if [[ -d pinniped-ci-pool ]]; then
   popd >/dev/null
 fi
 
+# Search for old kind-worker VMs which are currently running.
+# Also look for kind-node-builder VMs, because those could also get orphaned by mistake.
 all_cloud=($(gcloud compute instances list \
   --zones "$INSTANCE_ZONE" --project "$GCP_PROJECT" \
-  --filter 'name~kind-worker-[a-f0-9]+' --format 'table[no-heading](name)' | sort))
+  --filter 'name~kind-worker-[a-f0-9]+|kind-node-builder-[a-f0-9]+' --format 'table[no-heading](name)' | sort))
 
 exists_in_local_but_not_cloud=()
 for i in "${all_local[@]}"; do
