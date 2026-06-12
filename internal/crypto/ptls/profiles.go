@@ -1,12 +1,13 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// Note that everything in this file is overridden by profiles_fips_strict.go when Pinniped is built in FIPS-only mode.
+// Note that everything in this file is overridden by profiles_fips_strict.go when Pinniped is built in legacy boring crypto FIPS-only mode.
 //go:build !fips_strict
 
 package ptls
 
 import (
+	"crypto/fips140"
 	"crypto/tls"
 	"crypto/x509"
 	"os"
@@ -18,8 +19,25 @@ import (
 	"go.pinniped.dev/internal/plog"
 )
 
-var (
-	// secureCipherSuiteIDs is the list of TLS ciphers to use for both clients and servers when using TLS 1.2.
+// secureCipherSuiteIDs is the list of TLS ciphers to use for both clients and servers when using TLS 1.2.
+func secureCipherSuiteIDs() []uint16 {
+	if fips140.Enabled() {
+		// FIPS allows the use of these ciphers which golang considers secure.
+		// For GOFIPS140, you can find Go's supported list in the Go source code at src/crypto/tls/defaults_fips140.go.
+		return []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+
+			// These are considered "insecure" by Go because they are returned by tls.InsecureCipherSuites().
+			// So although they are included in Go's src/crypto/tls/defaults_fips140.go, they will not actually be used.
+			//tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+			//tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+		}
+	}
+
+	// The list for non-FIPS builds.
 	//
 	// The order does not matter in go 1.17+ https://go.dev/blog/tls-cipher-suites.
 	// We match crypto/tls.cipherSuitesPreferenceOrder because it makes unit tests easier to write.
@@ -41,7 +59,7 @@ var (
 	//
 	// These are all AEADs with ECDHE, some use ChaCha20Poly1305 while others use AES-GCM,
 	// which provides forward secrecy, confidentiality and authenticity of data.
-	secureCipherSuiteIDs = []uint16{ //nolint:gochecknoglobals // please treat this as a const
+	return []uint16{
 		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
@@ -49,16 +67,27 @@ var (
 		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
 		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
 	}
+}
 
-	// insecureCipherSuiteIDs is a list of additional ciphers that should be allowed for both clients
-	// and servers when using TLS 1.2.
-	//
-	// This list is empty when compiled in non-FIPS mode, so we will not use any insecure ciphers in non-FIPS mode.
-	insecureCipherSuiteIDs []uint16 //nolint:gochecknoglobals // please treat this as a const
+// insecureCipherSuiteIDs is a list of additional ciphers that should be allowed for both clients
+// and servers when using TLS 1.2.
+//
+// This list is empty when compiled in non-FIPS mode, so we will not use any insecure ciphers in non-FIPS mode.
+// It should also be empty for GOFIPS140, because it does not use any ciphers considered insecure by Go.
+func insecureCipherSuiteIDs() []uint16 {
+	return nil
+}
 
-	// additionalSecureCipherSuiteIDsOnlyForLDAPClients are additional ciphers to use only for LDAP clients
-	// when using TLS 1.2. These can be used when the Pinniped Supervisor is making calls to an LDAP server
-	// configured by an LDAPIdentityProvider or ActiveDirectoryIdentityProvider.
+// additionalSecureCipherSuiteIDsOnlyForLDAPClients are additional ciphers to use only for LDAP clients
+// when using TLS 1.2. These can be used when the Pinniped Supervisor is making calls to an LDAP server
+// configured by an LDAPIdentityProvider or ActiveDirectoryIdentityProvider.
+func additionalSecureCipherSuiteIDsOnlyForLDAPClients() []uint16 {
+	if fips140.Enabled() {
+		// For GOFIPS140, we do not want to add any less secure ciphers to the list.
+		return nil
+	}
+
+	// The list for non-FIPS builds.
 	//
 	// Adds less secure ciphers to support the default AWS Active Directory config.
 	//
@@ -66,13 +95,13 @@ var (
 	// these provide forward secrecy and confidentiality of data, but not authenticity.
 	// MAC-then-Encrypt CBC ciphers are susceptible to padding oracle attacks.
 	// See https://crypto.stackexchange.com/a/205 and https://crypto.stackexchange.com/a/224
-	additionalSecureCipherSuiteIDsOnlyForLDAPClients = []uint16{ //nolint:gochecknoglobals // please treat this as a const
+	return []uint16{
 		tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
 		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
 		tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
 		tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
 	}
-)
+}
 
 // init prints a log message to tell the operator how Pinniped was compiled. This makes it obvious
 // that they are using Pinniped in FIPS-mode or not, which is otherwise hard to observe.
@@ -85,35 +114,59 @@ func init() { //nolint:gochecknoinits
 
 	// this init runs before we have parsed our config to determine our log level
 	// thus we must use a log statement that will always print instead of conditionally print
-	plog.Always("this server was not compiled in FIPS-only mode",
+	plog.Always("this server was not compiled in legacy boring crypto FIPS-only mode",
 		"go version", runtime.Version(),
-		"SecureProfileMinTLSVersionForNonFIPS", tls.VersionName(SecureProfileMinTLSVersionForNonFIPS))
+		"SecureProfileMinTLSVersionForNonFIPS", tls.VersionName(SecureProfileMinTLSVersionForNonFIPS),
+		"Go native GOFIPS140 enabled", fips140.Enabled(),
+		"Go native GOFIPS140 version", fips140.Version(),
+	)
 }
 
 // Default TLS profile should be used by:
 // A. servers whose clients are outside our control and who may reasonably wish to use TLS 1.2, and
 // B. clients who need to interact with servers that might not support TLS 1.3.
-// Note that this will behave differently when compiled in FIPS mode (see profiles_fips_strict.go).
+// Note that this will behave differently when compiled in legacy boring crypto FIPS mode (see profiles_fips_strict.go).
 // Default returns a tls.Config with a minimum of TLS1.2+ and a few ciphers that can be further constrained by configuration.
 func Default(rootCAs *x509.CertPool) *tls.Config {
-	ciphers := translateIDIntoSecureCipherSuites(secureCipherSuiteIDs)
+	if fips140.Enabled() {
+		config := buildTLSConfig(rootCAs, allHardcodedAllowedCipherSuites(), getUserConfiguredAllowedCipherSuitesForTLSOneDotTwo())
+		// GOFIPS140 supports both TLS v1.2 and v1.3.
+		// You can find Go's supported list in the Go source code at src/crypto/tls/defaults_fips140.go.
+		config.MaxVersion = tls.VersionTLS13
+		return config
+	}
+
+	ciphers := translateIDIntoSecureCipherSuites(secureCipherSuiteIDs())
 	return buildTLSConfig(rootCAs, ciphers, getUserConfiguredAllowedCipherSuitesForTLSOneDotTwo())
 }
 
 // DefaultLDAP TLS profile should be used by clients who need to interact with potentially old LDAP servers
 // that might not support TLS 1.3 and that might use older ciphers.
-// Note that this will behave differently when compiled in FIPS mode (see profiles_fips_strict.go).
+// Note that this will behave differently when compiled in legacy boring crypto FIPS mode (see profiles_fips_strict.go).
 func DefaultLDAP(rootCAs *x509.CertPool) *tls.Config {
-	ciphers := translateIDIntoSecureCipherSuites(secureCipherSuiteIDs)
-	ciphers = append(ciphers, translateIDIntoSecureCipherSuites(additionalSecureCipherSuiteIDsOnlyForLDAPClients)...)
+	if fips140.Enabled() {
+		// This chooses different cipher suites and/or TLS versions compared to non-FIPS mode.
+		// In FIPS mode, this is not any different from the Default profile.
+		return Default(rootCAs)
+	}
+
+	ciphers := translateIDIntoSecureCipherSuites(secureCipherSuiteIDs())
+	ciphers = append(ciphers, translateIDIntoSecureCipherSuites(additionalSecureCipherSuiteIDsOnlyForLDAPClients())...)
 	return buildTLSConfig(rootCAs, ciphers, getUserConfiguredAllowedCipherSuitesForTLSOneDotTwo())
 }
 
 // Secure TLS profile should be used by:
 // A. servers whose clients are entirely known by us and who may reasonably be told that they must use TLS 1.3, and
 // B. clients who only need to interact with servers that are known by us to support TLS 1.3 (e.g. the Kubernetes API).
-// Note that this will behave differently when compiled in FIPS mode (see profiles_fips_strict.go).
+// Note that this will behave differently when compiled in legacy boring crypto FIPS mode (see profiles_fips_strict.go).
 func Secure(rootCAs *x509.CertPool) *tls.Config {
+	if fips140.Enabled() {
+		// This chooses different cipher suites and/or TLS versions compared to non-FIPS mode.
+		// Until it is safe to assume that a FIPS-compiled k8s server supports TLS 1.3, continue to
+		// make the Secure profile the same as the Default profile in FIPS mode, to allow both TLS 1.2 and 1.3.
+		return Default(rootCAs)
+	}
+
 	// as of 2021-10-19, Mozilla Guideline v5.6, Go 1.17.2, modern configuration, supports:
 	// - Firefox 63
 	// - Android 10.0
@@ -141,6 +194,14 @@ func Secure(rootCAs *x509.CertPool) *tls.Config {
 // This function is only public so we can integration test it in ptls_fips_test.go.
 // Note that this will behave differently when compiled in FIPS mode (see profiles_fips_strict.go).
 func SecureServing(opts *options.SecureServingOptionsWithLoopback) {
+	if fips140.Enabled() {
+		// This chooses different cipher suites and/or TLS versions compared to non-FIPS mode.
+		// Until it is safe to assume that a FIPS-compiled k8s server supports TLS 1.3, continue to
+		// make SecureServing use the same as the defaultServing profile in FIPS mode, to allow both TLS 1.2 and 1.3.
+		defaultServing(opts)
+		return
+	}
+
 	// secureServingOptionsMinTLSVersion is the minimum tls version in the format
 	// expected by SecureServingOptions.MinTLSVersion from
 	// k8s.io/apiserver/pkg/server/options.

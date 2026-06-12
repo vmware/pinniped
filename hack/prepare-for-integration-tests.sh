@@ -233,6 +233,7 @@ if [[ "$do_build" == "yes" ]]; then
   else
     log_note "Docker building the app with KUBE_GIT_VERSION='$testing_version'"
     # DOCKER_BUILDKIT=1 is optional on MacOS but required on linux.
+    # To build the server with GOFIPS140, add a build arg here, e.g.: --build-arg "GOFIPS140=certified"
     DOCKER_BUILDKIT=1 docker build . --tag "$registry_repo_tag" --build-arg "KUBE_GIT_VERSION=$testing_version"
   fi
 fi

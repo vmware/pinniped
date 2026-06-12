@@ -1,8 +1,7 @@
-// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
+// Copyright 2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// This file overrides ptls_gofips140_test.go when Pinniped is built in FIPS-only mode using the legacy boring crypto compiler.
-//go:build fips_strict
+//go:build !fips_strict
 
 package integration
 
@@ -29,6 +28,7 @@ import (
 // the ptls package in FIPS mode.
 func TestFIPSCipherSuites_Parallel(t *testing.T) {
 	_ = testlib.IntegrationEnv(t) // this function call is required for integration tests
+	testlib.SkipTestUnlessUsingGOFIPS140(t)
 
 	server, ca := tlsserver.TestServerIPv4(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// use the default fips config which contains a hard coded list of cipher suites
@@ -40,7 +40,7 @@ func TestFIPSCipherSuites_Parallel(t *testing.T) {
 	pool, err := cert.NewPoolFromBytes(ca)
 	require.NoError(t, err)
 	// create a tls config that does not explicitly set cipher suites,
-	// and therefore uses goboring's default fips ciphers.
+	// and therefore uses goboring or native fips's default fips ciphers.
 	defaultConfig := &tls.Config{
 		RootCAs:    pool,
 		NextProtos: ptls.Default(nil).NextProtos, // we do not care about field for this test, so just make it match
@@ -61,7 +61,7 @@ func TestFIPSCipherSuites_Parallel(t *testing.T) {
 
 // Every profile should use the same cipher suites in FIPS mode, because FIPS requires these ciphers.
 func expectedFIPSCipherSuites() []uint16 {
-	// These are the expected values for boring crypto.
+	// These are the expected values for Go's "native" GOFIPS140.
 	return []uint16{
 		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -72,6 +72,7 @@ func expectedFIPSCipherSuites() []uint16 {
 
 func TestFIPSDefault_Parallel(t *testing.T) {
 	_ = testlib.IntegrationEnv(t) // this function call is required for integration tests
+	testlib.SkipTestUnlessUsingGOFIPS140(t)
 
 	aCertPool := x509.NewCertPool()
 
@@ -89,6 +90,7 @@ func TestFIPSDefault_Parallel(t *testing.T) {
 
 func TestFIPSDefaultLDAP_Parallel(t *testing.T) {
 	_ = testlib.IntegrationEnv(t) // this function call is required for integration tests
+	testlib.SkipTestUnlessUsingGOFIPS140(t)
 
 	aCertPool := x509.NewCertPool()
 
@@ -106,6 +108,7 @@ func TestFIPSDefaultLDAP_Parallel(t *testing.T) {
 
 func TestFIPSSecure_Parallel(t *testing.T) {
 	_ = testlib.IntegrationEnv(t) // this function call is required for integration tests
+	testlib.SkipTestUnlessUsingGOFIPS140(t)
 
 	aCertPool := x509.NewCertPool()
 
@@ -123,6 +126,7 @@ func TestFIPSSecure_Parallel(t *testing.T) {
 
 func TestFIPSSecureServing_Parallel(t *testing.T) {
 	_ = testlib.IntegrationEnv(t) // this function call is required for integration tests
+	testlib.SkipTestUnlessUsingGOFIPS140(t)
 
 	opts := &options.SecureServingOptionsWithLoopback{SecureServingOptions: &options.SecureServingOptions{}}
 	ptls.SecureServing(opts)

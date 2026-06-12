@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package ptls
@@ -209,7 +209,7 @@ func validateAllowedCiphers(
 // Note that it will return different values depending on if the code was compiled in FIPS or non-FIPS mode.
 func allHardcodedAllowedCipherSuites() []*tls.CipherSuite {
 	// First append all secure and LDAP cipher suites.
-	result := translateIDIntoSecureCipherSuites(append(secureCipherSuiteIDs, additionalSecureCipherSuiteIDsOnlyForLDAPClients...))
+	result := translateIDIntoSecureCipherSuites(append(secureCipherSuiteIDs(), additionalSecureCipherSuiteIDsOnlyForLDAPClients()...))
 
 	// Then append any insecure cipher suites that might be allowed.
 	// insecureCipherSuiteIDs is empty except when compiled in FIPS mode.
@@ -218,7 +218,7 @@ func allHardcodedAllowedCipherSuites() []*tls.CipherSuite {
 			continue
 		}
 
-		if slices.Contains(insecureCipherSuiteIDs, golangInsecureCipherSuite.ID) {
+		if slices.Contains(insecureCipherSuiteIDs(), golangInsecureCipherSuite.ID) {
 			result = append(result, golangInsecureCipherSuite)
 		}
 	}

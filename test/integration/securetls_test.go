@@ -1,4 +1,4 @@
-// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -94,7 +94,9 @@ func TestSecureTLSConciergeAggregatedAPI_Parallel(t *testing.T) {
 	stdout, stderr := testlib.RunNmapSSLEnum(t, "127.0.0.1", 10446)
 
 	require.Empty(t, stderr)
-	require.Contains(t, stdout, testlib.GetExpectedCiphers(ptls.Secure(nil), testlib.DefaultCipherSuitePreference), "stdout:\n%s", stdout)
+	expectedCiphers := testlib.GetExpectedCiphers(ptls.Secure(nil), testlib.DefaultCipherSuitePreference())
+	require.Contains(t, stdout, expectedCiphers,
+		"wantedToContain:\n%s\nactual stdout:\n%s", expectedCiphers, stdout)
 }
 
 // TLS checks safe to run in parallel with serial tests, see main_test.go.
@@ -109,7 +111,9 @@ func TestSecureTLSSupervisorAggregatedAPI_Parallel(t *testing.T) {
 	stdout, stderr := testlib.RunNmapSSLEnum(t, "127.0.0.1", 10447)
 
 	require.Empty(t, stderr)
-	require.Contains(t, stdout, testlib.GetExpectedCiphers(ptls.Secure(nil), testlib.DefaultCipherSuitePreference), "stdout:\n%s", stdout)
+	expectedCiphers := testlib.GetExpectedCiphers(ptls.Secure(nil), testlib.DefaultCipherSuitePreference())
+	require.Contains(t, stdout, expectedCiphers,
+		"wantedToContain:\n%s\nactual stdout:\n%s", expectedCiphers, stdout)
 }
 
 func TestSecureTLSSupervisor(t *testing.T) {
@@ -151,7 +155,9 @@ func TestSecureTLSSupervisor(t *testing.T) {
 	defaultECDSAOnly.CipherSuites = ciphers
 
 	require.Empty(t, stderr)
-	require.Contains(t, stdout, testlib.GetExpectedCiphers(defaultECDSAOnly, testlib.DefaultCipherSuitePreference), "stdout:\n%s", stdout)
+	expectedCiphers := testlib.GetExpectedCiphers(defaultECDSAOnly, testlib.DefaultCipherSuitePreference())
+	require.Contains(t, stdout, expectedCiphers,
+		"wantedToContain:\n%s\nactual stdout:\n%s", expectedCiphers, stdout)
 }
 
 type fakeT struct {
