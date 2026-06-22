@@ -6,7 +6,10 @@
 set -euo pipefail
 
 go version
-go install golang.org/x/vuln/cmd/govulncheck@latest
+
+# TODO: Locking this to v1.3.0 temporarily because v1.4.0 crashes.
+# TODO: In the future, put this back to @latest
+go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
 
 cd pinniped
 
