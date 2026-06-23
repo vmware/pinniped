@@ -71,8 +71,18 @@ func NewGitHubClient(httpClient *http.Client, apiBaseURL, token string) (GitHubI
 		return nil, fmt.Errorf("%s: token cannot be empty string", errorPrefix)
 	}
 
-	client := github.NewClient(httpClient).WithAuthToken(token)
-	client.BaseURL = parsedURL
+	// go-github's WithEnterpriseURLs requires a non-empty upload URL even though
+	// Pinniped only calls read endpoints (Users.Get, Organizations.List,
+	// Teams.ListUserTeams), all of which use the base URL. The upload URL is never
+	// exercised today. It should be updated if an upload-style call is ever used.
+	client, err := github.NewClient(
+		github.WithHTTPClient(httpClient),
+		github.WithAuthToken(token),
+		github.WithEnterpriseURLs(parsedURL.String(), parsedURL.String()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", errorPrefix, err)
+	}
 
 	return &githubClient{
 		client: client,

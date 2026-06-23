@@ -106,8 +106,8 @@ func TestNewGitHubClient(t *testing.T) {
 				require.NotNil(t, actualI)
 				actual, ok := actualI.(*githubClient)
 				require.True(t, ok)
-				require.NotNil(t, actual.client.BaseURL)
-				require.Equal(t, test.wantBaseURL, actual.client.BaseURL.String())
+				require.NotNil(t, actual.client)
+				require.Equal(t, test.wantBaseURL, actual.client.BaseURL())
 
 				// Force the githubClient's httpClient roundTrippers to run and add the Authorization header
 
@@ -227,9 +227,9 @@ func TestGetUser(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			githubClient := &githubClient{
-				client: github.NewClient(test.httpClient).WithAuthToken(test.token),
-			}
+			c, err := github.NewClient(github.WithHTTPClient(test.httpClient), github.WithAuthToken(test.token))
+			require.NoError(t, err)
+			githubClient := &githubClient{client: c}
 
 			ctx := context.Background()
 			if test.ctx != nil {
@@ -361,9 +361,9 @@ func TestGetOrgMembership(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			githubClient := &githubClient{
-				client: github.NewClient(test.httpClient).WithAuthToken(test.token),
-			}
+			c, err := github.NewClient(github.WithHTTPClient(test.httpClient), github.WithAuthToken(test.token))
+			require.NoError(t, err)
+			githubClient := &githubClient{client: c}
 
 			ctx := context.Background()
 			if test.ctx != nil {
@@ -700,6 +700,7 @@ func TestGetTeamMembership(t *testing.T) {
 					},
 				),
 			),
+			token:   "fake-token",
 			wantErr: `error fetching team membership for authenticated user: missing the "organization" attribute for a team`,
 		},
 		{
@@ -716,6 +717,7 @@ func TestGetTeamMembership(t *testing.T) {
 					},
 				),
 			),
+			token:   "fake-token",
 			wantErr: `error fetching team membership for authenticated user: missing the organization's "login" attribute for a team`,
 		},
 		{
@@ -733,6 +735,7 @@ func TestGetTeamMembership(t *testing.T) {
 					},
 				),
 			),
+			token:   "fake-token",
 			wantErr: `error fetching team membership for authenticated user: the "name" attribute is missing for a team`,
 		},
 		{
@@ -750,6 +753,7 @@ func TestGetTeamMembership(t *testing.T) {
 					},
 				),
 			),
+			token:   "fake-token",
 			wantErr: `error fetching team membership for authenticated user: the "slug" attribute is missing for a team`,
 		},
 		{
@@ -808,9 +812,9 @@ func TestGetTeamMembership(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			githubClient := &githubClient{
-				client: github.NewClient(test.httpClient).WithAuthToken(test.token),
-			}
+			c, err := github.NewClient(github.WithHTTPClient(test.httpClient), github.WithAuthToken(test.token))
+			require.NoError(t, err)
+			githubClient := &githubClient{client: c}
 
 			ctx := context.Background()
 			if test.ctx != nil {
