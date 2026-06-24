@@ -102,6 +102,7 @@ type handlerState struct {
 	skipPrintLoginURL            bool
 	requestedAudience            string
 	httpClient                   *http.Client
+	requireIDTokenOnRefresh      bool
 
 	// Parameters of the localhost listener.
 	listenAddr   string
@@ -291,6 +292,16 @@ func WithRequestAudience(audience string) Option {
 	}
 }
 
+// WithRequireIDTokenOnRefresh controls whether the refresh token flow requires the provider to return an id_token.
+// Set to false for providers that omit id_token in their refresh response.
+// Defaults to true for backward compatibility.
+func WithRequireIDTokenOnRefresh(require bool) Option {
+	return func(h *handlerState) error {
+		h.requireIDTokenOnRefresh = require
+		return nil
+	}
+}
+
 // WithCLISendingCredentials causes the login flow to use CLI-based prompts for username and password and causes the
 // call to the Issuer's authorize endpoint to be made directly (no web browser) with the username and password on custom
 // HTTP headers. This is only intended to be used when the issuer is a Pinniped Supervisor and the upstream identity
@@ -421,7 +432,8 @@ func Login(issuer string, clientID string, opts ...Option) (*oidctypes.Token, er
 		ctx:          context.Background(),
 		logger:       &emptyLogger{},
 		callbacks:    make(chan callbackResult, 2),
-		httpClient:   phttp.Default(nil),
+		httpClient:              phttp.Default(nil),
+		requireIDTokenOnRefresh: true,
 
 		// Default implementations of external dependencies (to be mocked in tests).
 		generateState: state.Generate,
@@ -1224,7 +1236,7 @@ func (h *handlerState) handleRefresh(ctx context.Context, refreshToken *oidctype
 
 	// The spec is not 100% clear about whether an ID token from the refresh flow should include a nonce, and at least
 	// some providers do not include one, so we skip the nonce validation here (but not other validations).
-	return upstreamOIDCIdentityProvider.ValidateTokenAndMergeWithUserInfo(ctx, refreshed, "", true, false)
+	return upstreamOIDCIdentityProvider.ValidateTokenAndMergeWithUserInfo(ctx, refreshed, "", h.requireIDTokenOnRefresh, false)
 }
 
 // handleAuthCodeCallback is used as an http handler, so it does not run in the CLI's main goroutine.
