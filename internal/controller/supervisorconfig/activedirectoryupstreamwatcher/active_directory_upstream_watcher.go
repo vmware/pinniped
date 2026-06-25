@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package activedirectoryupstreamwatcher implements a controller which watches ActiveDirectoryIdentityProviders.
@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -454,14 +453,29 @@ func groupSAMAccountNameWithDomainSuffix(entry *ldap.Entry) (string, error) {
 	return sAMAccountName + "@" + domain, nil
 }
 
-var domainComponentsRegexp = regexp.MustCompile(",DC=|,dc=")
-
 func getDomainFromDistinguishedName(distinguishedName string) (string, error) {
-	domainComponents := domainComponentsRegexp.Split(distinguishedName, -1)
-	if len(domainComponents) == 1 {
-		return "", fmt.Errorf("did not find domain components in group dn: %s", distinguishedName)
+	parsedDN, err := ldap.ParseDN(distinguishedName)
+	if err != nil {
+		return "", fmt.Errorf("could not parse DN %q: %w", distinguishedName, err)
 	}
-	return strings.Join(domainComponents[1:], "."), nil
+
+	var dcValues []string
+	// Iterate through the Relative Distinguished Names (RDNs)
+	for _, rdn := range parsedDN.RDNs {
+		// Each RDN can contain multiple attribute-value pairs (usually just one)
+		for _, attr := range rdn.Attributes {
+			// Compare case-insensitively since LDAP attributes are case-insensitive
+			if strings.EqualFold(attr.Type, "dc") {
+				dcValues = append(dcValues, attr.Value)
+			}
+		}
+	}
+
+	if len(dcValues) == 0 {
+		return "", fmt.Errorf("did not find domain components in group DN %q", distinguishedName)
+	}
+
+	return strings.Join(dcValues, "."), nil
 }
 
 //nolint:gochecknoglobals // this needs to be a global variable so that tests can check pointer equality
