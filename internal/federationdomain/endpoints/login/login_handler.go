@@ -1,4 +1,4 @@
-// Copyright 2022-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package login
@@ -52,6 +52,8 @@ func NewHandler(
 	auditLogger plog.AuditLogger,
 ) http.Handler {
 	loginHandler := httperr.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
+
 		if err := auditLogger.AuditRequestParams(r, paramsSafeToLog()); err != nil {
 			plog.DebugErr("error parsing callback request params", err)
 			return httperr.New(http.StatusBadRequest, "error parsing request params")
