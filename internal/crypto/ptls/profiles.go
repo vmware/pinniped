@@ -116,9 +116,10 @@ func init() { //nolint:gochecknoinits
 	// thus we must use a log statement that will always print instead of conditionally print
 	plog.Always("this server was not compiled in legacy boring crypto FIPS-only mode",
 		"go version", runtime.Version(),
-		"SecureProfileMinTLSVersionForNonFIPS", tls.VersionName(SecureProfileMinTLSVersionForNonFIPS),
-		"Go native GOFIPS140 enabled", fips140.Enabled(),
-		"Go native GOFIPS140 version", fips140.Version(),
+		"GOFIPS140 enabled", fips140.Enabled(),
+		"GOFIPS140 version", fips140.Version(),
+		"GOFIPS140 enforced (typically for testing only)", fips140.Enforced(),
+		"SecureProfileMinTLSVersionForNonFIPS (only applies when FIPS is disabled)", tls.VersionName(SecureProfileMinTLSVersionForNonFIPS),
 	)
 }
 
