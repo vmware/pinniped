@@ -4,6 +4,7 @@
 package login
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -116,6 +117,8 @@ func TestLoginEndpoint(t *testing.T) {
 		method         string
 		path           string
 		csrfCookie     string
+		contentType    string
+		formParams     url.Values
 		getHandlerErr  error
 		postHandlerErr error
 
@@ -351,6 +354,17 @@ func TestLoginEndpoint(t *testing.T) {
 			wantDecodedState: expectedHappyDecodedUpstreamStateParam(),
 		},
 		{
+			name:            "POST with body too large",
+			method:          http.MethodPost,
+			path:            happyPathWithState,
+			csrfCookie:      happyCSRFCookie,
+			contentType:     "application/x-www-form-urlencoded",
+			formParams:      map[string][]string{"k": {strings.Repeat("v", 1_048_576)}},
+			wantStatus:      http.StatusBadRequest,
+			wantContentType: htmlContentType,
+			wantBody:        "Bad Request: error parsing request params\n",
+		},
+		{
 			name:             "happy GET request with err param which can be set by the real POST handler on redirects back to the GET handler",
 			method:           http.MethodGet,
 			path:             happyPathWithState + "&" + loginurl.ErrParamName + "=" + string(loginurl.ShowBadUserPassErr),
@@ -461,9 +475,18 @@ func TestLoginEndpoint(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			req := httptest.NewRequestWithContext(t.Context(), test.method, test.path, nil)
+			var body io.Reader
+			if test.method == http.MethodPost && len(test.formParams) > 0 {
+				body = strings.NewReader(test.formParams.Encode())
+			}
+
+			req := httptest.NewRequestWithContext(t.Context(), test.method, test.path, body)
+
 			if test.csrfCookie != "" {
 				req.Header.Set("Cookie", test.csrfCookie)
+			}
+			if test.contentType != "" {
+				req.Header.Set("Content-Type", test.contentType)
 			}
 			req, _ = auditid.NewRequestWithAuditID(req, func() string { return "fake-audit-id" })
 			rsp := httptest.NewRecorder()
