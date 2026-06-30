@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # This is the script that runs at startup to launch Kind on GCE.
@@ -45,8 +45,12 @@ K8S_MAJOR_VERSION=$(echo "$K8S_VERSION" | cut -c2- | cut -d"." -f1) # also cuts 
 K8S_MINOR_VERSION=$(echo "$K8S_VERSION" | cut -d"." -f2)
 KUBE_ADM_VERSION="kubeadm.k8s.io/v1beta2"
 if [[ "$KIND_MAJOR_VERSION" -gt "0" || ( "$KIND_MAJOR_VERSION" == "0" && "$KIND_MINOR_VERSION" -ge "12" ) ]]; then
-  if [[ "$K8S_VERSION" == "k8s-main" || "$K8S_MAJOR_VERSION" -gt "1" || ( "$K8S_MAJOR_VERSION" == "1" && "$K8S_MINOR_VERSION" -ge "23" ) ]]; then
+  if [[ "$K8S_MAJOR_VERSION" == "1" && "$K8S_MINOR_VERSION" -ge "23" ]]; then
     KUBE_ADM_VERSION="kubeadm.k8s.io/v1beta3"
+  fi
+  # See https://github.com/kubernetes-sigs/kind/releases/tag/v0.32.0
+  if [[ "$K8S_VERSION" == "k8s-main" || "$K8S_MAJOR_VERSION" -gt "1" || ( "$K8S_MAJOR_VERSION" == "1" && "$K8S_MINOR_VERSION" -ge "36" ) ]]; then
+    KUBE_ADM_VERSION="kubeadm.k8s.io/v1beta4"
   fi
 fi
 echo "Selected kubeadm config version $KUBE_ADM_VERSION based on Kind version $KIND_VERSION and K8s version $K8S_VERSION"
