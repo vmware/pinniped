@@ -49,6 +49,7 @@ groups:
       - integration-test-1.32
       - integration-test-1.33
       - integration-test-1.34
+      - integration-test-1.35
   - name: int-misc
     jobs:
       - ready-for-int # this job is auto-triggered, but show it again here to make it easy to see in the UI which versions are ready to go
@@ -179,11 +180,13 @@ meta:
   kube_version_v1-32-x: &kube_version_v1-32-x
     KUBE_VERSION: v1.32.11
   kube_version_v1-33-x: &kube_version_v1-33-x
-    KUBE_VERSION: v1.33.7
+    KUBE_VERSION: v1.33.12
   kube_version_v1-34-x: &kube_version_v1-34-x
-    KUBE_VERSION: v1.34.3
+    KUBE_VERSION: v1.34.8
   kube_version_v1-35-x: &kube_version_v1-35-x
-    KUBE_VERSION: v1.35.0
+    KUBE_VERSION: v1.35.5
+  kube_version_v1-36-x: &kube_version_v1-36-x
+    KUBE_VERSION: v1.36.1
   kube_version_k8s-main: &kube_version_k8s-main
     KUBE_VERSION: "k8s-main"
     KIND_NODE_IMAGE: "ghcr.io/pinniped-ci-bot/kind-node-image:latest"
@@ -193,7 +196,7 @@ meta:
   oldest_kind_kube_version: &oldest_kind_kube_version
     <<: *kube_version_v1-21-x
   latest_kind_kube_version: &latest_kind_kube_version
-    <<: *kube_version_v1-35-x
+    <<: *kube_version_v1-36-x
 
   okta_integration_env_vars: &okta_integration_env_vars
     OKTA_CLI_CALLBACK: ((okta-cli-callback))
@@ -1755,6 +1758,62 @@ jobs:
         image: gcloud-image
         params:
           <<: *kube_version_v1-34-x
+          <<: *gcp_account_params
+      - task: deploy
+        input_mapping:
+          cluster-pool: deploy-kind-cluster-vm-output
+        params:
+          CLUSTER_CAPABILITIES_PATH: pinniped/test/cluster_capabilities/kind.yaml
+        file: pinniped-ci/pipelines/shared-tasks/deploy-to-integration/task.yml
+        image: integration-test-runner-image
+      - task: run-integration-tests
+        timeout: 75m
+        file: pinniped-ci/pipelines/shared-tasks/run-integration-tests/task.yml
+        image: integration-test-runner-image
+        params:
+          START_GCLOUD_PROXY: "yes"
+          <<: *gcp_account_params
+    ensure:
+      task: export-cluster-diagnostics
+      <<: *cluster_diagnostics_task
+      input_mapping:
+        cluster-pool: deploy-kind-cluster-vm-output
+      ensure:
+        task: remove-kind-instance
+        attempts: 2
+        timeout: 20m
+        file: pinniped-ci/pipelines/shared-tasks/remove-kind-cluster-vm/task.yml
+        image: gcloud-image
+        input_mapping:
+          kind-cluster-pool: deploy-kind-cluster-vm-output
+        params:
+          <<: *gcp_account_params
+
+  - name: integration-test-1.35
+    public: true # all logs are publicly visible
+    plan:
+      - in_parallel:
+          - get: pinniped
+            passed: [ run-int-k8s-versions ]
+            trigger: true
+          - get: pinniped-ci
+          - get: kind-release
+          - get: gcloud-image
+          - get: k8s-app-deployer-image
+          - get: ci-build-image
+            passed: [ run-int-k8s-versions ]
+            params:
+              skip_download: true
+          - get: ci-test-image
+            passed: [ run-int-k8s-versions ]
+          - get: integration-test-runner-image
+      - task: deploy-kind-instance
+        attempts: 5
+        timeout: 30m
+        file: pinniped-ci/pipelines/shared-tasks/deploy-kind-cluster-vm/task.yml
+        image: gcloud-image
+        params:
+          <<: *kube_version_v1-35-x
           <<: *gcp_account_params
       - task: deploy
         input_mapping:
