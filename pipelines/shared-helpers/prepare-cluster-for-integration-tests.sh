@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -989,6 +989,10 @@ spec:
       podSelector:
         matchLabels:
           app: proxy
+  # Allowed to talk to the API Server (and other kube-system pods) which Kind puts in this IP range.
+  - to:
+    - ipBlock:
+        cidr: 172.18.0.0/16 # Default internal KIND Docker bridge network
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -1015,6 +1019,10 @@ spec:
       podSelector:
         matchLabels:
           app: proxy
+  # Allowed to talk to the API Server (and other kube-system pods) which Kind puts in this IP range.
+  - to:
+    - ipBlock:
+        cidr: 172.18.0.0/16 # Default internal KIND Docker bridge network
 EOF
 fi
 
