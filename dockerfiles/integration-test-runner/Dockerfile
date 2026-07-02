@@ -23,11 +23,12 @@ RUN gke-gcloud-auth-plugin --version
 RUN useradd --create-home testrunner
 
 # Install latest stable chrome.
+# See https://www.google.com/linuxrepositories/
 RUN \
     chown root:root /tmp && \
     chmod 1777 /tmp && \
-    curl -fsSL -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add && \
-    echo "deb https://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list  && \
+    curl -fsSL -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] https://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list  && \
     apt-get -y update && \
     apt-get -y install google-chrome-stable
 
