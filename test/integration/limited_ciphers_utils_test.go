@@ -1,4 +1,4 @@
-// Copyright 2024-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
+	apiregistrationv1helper "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1/helper"
 	"sigs.k8s.io/yaml"
 
 	"go.pinniped.dev/internal/config/concierge"
@@ -215,6 +217,23 @@ func restartAllPodsOfApp(
 			newPods = getRunningPodsByNamePrefix(t, namespace, appName+"-", ignorePodsWithNameSubstring)
 			requireEventually.Equal(len(newPods), int(originalScale), "wanted pods to return to original scale")
 			requireEventually.True(allPodsReady(newPods), "wanted all new pods to be ready")
+		}, 2*time.Minute, 200*time.Millisecond)
+
+		// Wait for all the APIServices belonging to this app to become available again.
+		aggregatedClient := testlib.NewAggregatedClientset(t)
+		testlib.RequireEventually(t, func(requireEventually *require.Assertions) {
+			listCtx, listCancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			defer listCancel()
+			apiServices, err := aggregatedClient.ApiregistrationV1().APIServices().List(listCtx, metav1.ListOptions{
+				LabelSelector: "app=" + appName,
+			})
+			requireEventually.NoError(err)
+			for _, apiService := range apiServices.Items {
+				requireEventually.True(
+					apiregistrationv1helper.IsAPIServiceConditionTrue(&apiService, apiregistrationv1.Available),
+					"wanted APIService %q to have condition Available=True", apiService.Name,
+				)
+			}
 		}, 2*time.Minute, 200*time.Millisecond)
 	}
 
