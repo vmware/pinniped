@@ -2481,14 +2481,35 @@ func TestGroupSAMAccountNameWithDomainSuffix(t *testing.T) {
 			wantResult: "Mammals@mycompany.example.com",
 		},
 		{
-			name: "no domain components in DN",
+			name: "unusual CN with DN and valid sAMAccountName",
 			entry: &ldap.Entry{
-				DN: "no-domain-components",
+				// A backslash within a CN escapes the next character, so we want to ignore the letters "DC=" there.
+				DN: `CN=animals\,DC=should-be-ignored-because-it-is-part-of-cn,OU=Users,OU=pinniped-ad,DC=mycompany,DC=example,DC=com`,
 				Attributes: []*ldap.EntryAttribute{
 					ldap.NewEntryAttribute("sAMAccountName", []string{"Mammals"}),
 				},
 			},
-			wantErr: "did not find domain components in group dn: no-domain-components",
+			wantResult: "Mammals@mycompany.example.com",
+		},
+		{
+			name: "invalid DN",
+			entry: &ldap.Entry{
+				DN: "invalid-dn",
+				Attributes: []*ldap.EntryAttribute{
+					ldap.NewEntryAttribute("sAMAccountName", []string{"Mammals"}),
+				},
+			},
+			wantErr: `could not parse DN "invalid-dn": DN ended with incomplete type, value pair`,
+		},
+		{
+			name: "no domain components in DN",
+			entry: &ldap.Entry{
+				DN: "CN=foo",
+				Attributes: []*ldap.EntryAttribute{
+					ldap.NewEntryAttribute("sAMAccountName", []string{"Mammals"}),
+				},
+			},
+			wantErr: `did not find domain components in group DN "CN=foo"`,
 		},
 		{
 			name: "multiple values for sAMAccountName attribute",
@@ -2576,9 +2597,19 @@ func TestGetDomainFromDistinguishedName(t *testing.T) {
 			wantDomain:        "activedirectory.mycompany.example.com",
 		},
 		{
-			name:              "no domain components",
+			name:              "unusual CN",
+			distinguishedName: `CN=animals\,DC=should-be-ignored-because-it-is-part-of-cn,OU=Users,OU=pinniped-ad,dc=activedirectory,DC=mycompany,DC=example,DC=com`,
+			wantDomain:        "activedirectory.mycompany.example.com",
+		},
+		{
+			name:              "invalid DN",
 			distinguishedName: "not-a-dn",
-			wantErr:           "did not find domain components in group dn: not-a-dn",
+			wantErr:           `could not parse DN "not-a-dn": DN ended with incomplete type, value pair`,
+		},
+		{
+			name:              "no domain components",
+			distinguishedName: "CN=foo",
+			wantErr:           `did not find domain components in group DN "CN=foo"`,
 		},
 	}
 

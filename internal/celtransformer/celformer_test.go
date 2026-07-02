@@ -596,7 +596,7 @@ func TestTransformer(t *testing.T) {
 				&UsernameTransformation{Expression: `groups.filter(x, groups.all(x, true))[0]`},
 			},
 			ctx:               alreadyCancelledContext,
-			wantEvaluationErr: `identity transformation at index 0: context canceled`,
+			wantEvaluationErr: `identity transformation at index 0: operation interrupted: context canceled`,
 		},
 		{
 			name:     "slow groups transformation expressions are canceled by the cancel context after partial evaluation",
@@ -606,7 +606,7 @@ func TestTransformer(t *testing.T) {
 				&GroupsTransformation{Expression: `groups.filter(x, groups.all(x, true))`},
 			},
 			ctx:               alreadyCancelledContext,
-			wantEvaluationErr: `identity transformation at index 0: context canceled`,
+			wantEvaluationErr: `identity transformation at index 0: operation interrupted: context canceled`,
 		},
 		{
 			name:     "slow policy expressions are canceled by the cancel context after partial evaluation",
@@ -617,7 +617,7 @@ func TestTransformer(t *testing.T) {
 				&AllowAuthenticationPolicy{Expression: `groups.all(x, groups.all(x, true))`}, // this is the slow one
 			},
 			ctx:               alreadyCancelledContext,
-			wantEvaluationErr: `identity transformation at index 1: context canceled`,
+			wantEvaluationErr: `identity transformation at index 1: operation interrupted: context canceled`,
 		},
 		{
 			name:     "slow transformation expressions are canceled and the rest of the expressions do not run",
@@ -630,7 +630,7 @@ func TestTransformer(t *testing.T) {
 				&UsernameTransformation{Expression: `groups.filter(x, groups.all(x, true))[0]`},
 			},
 			ctx:               alreadyCancelledContext,
-			wantEvaluationErr: `identity transformation at index 1: context canceled`,
+			wantEvaluationErr: `identity transformation at index 1: operation interrupted: context canceled`,
 		},
 		{
 			name:     "slow username transformation expressions are canceled after a maximum allowed duration",
@@ -640,7 +640,7 @@ func TestTransformer(t *testing.T) {
 				// On my laptop, evaluating this expression would take ~20 seconds if we allowed it to evaluate to completion.
 				&UsernameTransformation{Expression: `groups.filter(x, groups.all(x, true))[0]`},
 			},
-			wantEvaluationErr: `identity transformation at index 0: context deadline exceeded`,
+			wantEvaluationErr: `identity transformation at index 0: operation interrupted: context deadline exceeded`,
 		},
 		{
 			name:     "slow groups transformation expressions are canceled after a maximum allowed duration",
@@ -650,7 +650,7 @@ func TestTransformer(t *testing.T) {
 				// On my laptop, evaluating this expression would take ~20 seconds if we allowed it to evaluate to completion.
 				&GroupsTransformation{Expression: `groups.filter(x, groups.all(x, true))`},
 			},
-			wantEvaluationErr: `identity transformation at index 0: context deadline exceeded`,
+			wantEvaluationErr: `identity transformation at index 0: operation interrupted: context deadline exceeded`,
 		},
 		{
 			name:     "slow policy transformation expressions are canceled after a maximum allowed duration",
@@ -660,7 +660,7 @@ func TestTransformer(t *testing.T) {
 				// On my laptop, evaluating this expression would take ~20 seconds if we allowed it to evaluate to completion.
 				&AllowAuthenticationPolicy{Expression: `groups.all(x, groups.all(x, true))`},
 			},
-			wantEvaluationErr: `identity transformation at index 0: context deadline exceeded`,
+			wantEvaluationErr: `identity transformation at index 0: operation interrupted: context deadline exceeded`,
 		},
 		{
 			name: "compile errors are returned by the compile step for a username transform",

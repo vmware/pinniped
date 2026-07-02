@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidctestutil
@@ -25,9 +25,10 @@ type ExchangeAuthcodeArgs struct {
 // GetUserArgs is used to spy on calls to
 // TestUpstreamGitHubIdentityProvider.GetUserFunc().
 type GetUserArgs struct {
-	Ctx            context.Context
-	AccessToken    string
-	IDPDisplayName string
+	Ctx                 context.Context
+	AccessToken         string
+	IDPDisplayName      string
+	RetryOnUnauthorized upstreamprovider.UnauthorizedRetryBehavior
 }
 
 type TestUpstreamGitHubIdentityProviderBuilder struct {
@@ -239,15 +240,16 @@ func (u *TestUpstreamGitHubIdentityProvider) ExchangeAuthcodeArgs(call int) *Exc
 	return u.exchangeAuthcodeArgs[call]
 }
 
-func (u *TestUpstreamGitHubIdentityProvider) GetUser(ctx context.Context, accessToken string, idpDisplayName string) (*upstreamprovider.GitHubUser, error) {
+func (u *TestUpstreamGitHubIdentityProvider) GetUser(ctx context.Context, accessToken string, idpDisplayName string, retryOnUnauthorized upstreamprovider.UnauthorizedRetryBehavior) (*upstreamprovider.GitHubUser, error) {
 	if u.getUserArgs == nil {
 		u.getUserArgs = make([]*GetUserArgs, 0)
 	}
 	u.getUserCallCount++
 	u.getUserArgs = append(u.getUserArgs, &GetUserArgs{
-		Ctx:            ctx,
-		AccessToken:    accessToken,
-		IDPDisplayName: idpDisplayName,
+		Ctx:                 ctx,
+		AccessToken:         accessToken,
+		IDPDisplayName:      idpDisplayName,
+		RetryOnUnauthorized: retryOnUnauthorized,
 	})
 	return u.GetUserFunc(ctx, accessToken)
 }

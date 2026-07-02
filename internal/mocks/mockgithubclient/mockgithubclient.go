@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -77,16 +77,16 @@ func (mr *MockGitHubInterfaceMockRecorder) GetTeamMembership(ctx, allowedOrganiz
 }
 
 // GetUserInfo mocks base method.
-func (m *MockGitHubInterface) GetUserInfo(ctx context.Context) (*githubclient.UserInfo, error) {
+func (m *MockGitHubInterface) GetUserInfo(ctx context.Context, retryOnUnauthorized bool) (*githubclient.UserInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserInfo", ctx)
+	ret := m.ctrl.Call(m, "GetUserInfo", ctx, retryOnUnauthorized)
 	ret0, _ := ret[0].(*githubclient.UserInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUserInfo indicates an expected call of GetUserInfo.
-func (mr *MockGitHubInterfaceMockRecorder) GetUserInfo(ctx any) *gomock.Call {
+func (mr *MockGitHubInterfaceMockRecorder) GetUserInfo(ctx, retryOnUnauthorized any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserInfo", reflect.TypeOf((*MockGitHubInterface)(nil).GetUserInfo), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserInfo", reflect.TypeOf((*MockGitHubInterface)(nil).GetUserInfo), ctx, retryOnUnauthorized)
 }

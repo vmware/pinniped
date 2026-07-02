@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package resolvedgithub
@@ -108,7 +108,7 @@ func (p *FederationDomainResolvedGitHubIdentityProvider) LoginFromCallback(
 		)
 	}
 
-	user, err := p.Provider.GetUser(ctx, accessToken, p.GetDisplayName())
+	user, err := p.Provider.GetUser(ctx, accessToken, p.GetDisplayName(), upstreamprovider.RetryOnUnauthorized)
 
 	if errors.As(err, &upstreamprovider.GitHubLoginDeniedError{}) {
 		// We specifically want errors of type GitHubLoginDeniedError to have a user-displayed message.
@@ -153,7 +153,11 @@ func (p *FederationDomainResolvedGitHubIdentityProvider) UpstreamRefresh(
 	}
 
 	// Get the user's GitHub identity and groups again using the cached access token.
-	refreshedUserInfo, err := p.Provider.GetUser(ctx, githubSessionData.UpstreamAccessToken, p.GetDisplayName())
+	refreshedUserInfo, err := p.Provider.GetUser(ctx,
+		githubSessionData.UpstreamAccessToken,
+		p.GetDisplayName(),
+		upstreamprovider.DoNotRetryOnUnauthorized,
+	)
 	if err != nil {
 		return nil, p.refreshErr(err)
 	}

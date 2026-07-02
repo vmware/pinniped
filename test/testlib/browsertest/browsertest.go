@@ -271,6 +271,11 @@ func (b *Browser) SendKeysToFirstMatch(t *testing.T, cssSelector string, runesTo
 	b.runWithTimeout(t, b.timeout(), chromedp.SendKeys(cssSelector, runesToType, chromedp.NodeVisible, chromedp.NodeEnabled, chromedp.ByQuery))
 }
 
+func (b *Browser) ClearFirstMatch(t *testing.T, cssSelector string) {
+	t.Helper()
+	b.runWithTimeout(t, b.timeout(), chromedp.Clear(cssSelector, chromedp.NodeVisible, chromedp.NodeEnabled, chromedp.ByQuery))
+}
+
 func (b *Browser) ClickFirstMatch(t *testing.T, cssSelector string) string {
 	t.Helper()
 	var text string
@@ -448,6 +453,10 @@ func handleGithubOTPLoginPage(t *testing.T, b *Browser, upstream testlib.TestGit
 	// Wait for the MFA page to be rendered.
 	t.Logf("waiting for GitHub MFA page")
 	b.WaitForVisibleElements(t, otpSelector)
+
+	// We may be in a loop where we are going to re-try entering the OTP code again on the same page,
+	// so first clear out any old OTP code that might be there from a previous attempt.
+	b.ClearFirstMatch(t, otpSelector)
 
 	// Sleep for a bit to make it less likely that we use the same OTP code twice when multiple tests are run in serial.
 	// GitHub gets upset when the same OTP code gets reused.

@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package upstreamprovider
@@ -24,6 +24,18 @@ type RevocableTokenType string
 const (
 	RefreshTokenType RevocableTokenType = "refresh_token"
 	AccessTokenType  RevocableTokenType = "access_token"
+)
+
+// UnauthorizedRetryBehavior controls whether GetUser retries after a 401 from the GitHub user API.
+type UnauthorizedRetryBehavior bool
+
+const (
+	// RetryOnUnauthorized retries a bounded number of times after a short delay, since GitHub
+	// occasionally returns a transient 401 for a token that was just issued.
+	RetryOnUnauthorized UnauthorizedRetryBehavior = true
+	// DoNotRetryOnUnauthorized fails immediately on a 401 (e.g. during a refresh, where a 401
+	// indicates a genuinely revoked or invalid token).
+	DoNotRetryOnUnauthorized UnauthorizedRetryBehavior = false
 )
 
 // LDAPRefreshAttributes contains information about the user from the original login request
@@ -189,5 +201,8 @@ type UpstreamGithubIdentityProviderI interface {
 	// GetUser calls the user, orgs, and teams APIs of GitHub using the accessToken.
 	// It validates any required org memberships. It returns a User or an error.
 	// The IDP display name is passed to aid in building a suitable downstream subject string.
-	GetUser(ctx context.Context, accessToken string, idpDisplayName string) (*GitHubUser, error)
+	// If retryOnUnauthorized is true, a 401 from the user API will be retried a bounded number of
+	// times after a short delay, to work around GitHub occasionally returning a transient 401 for a
+	// token that was just issued.
+	GetUser(ctx context.Context, accessToken string, idpDisplayName string, retryOnUnauthorized UnauthorizedRetryBehavior) (*GitHubUser, error)
 }
