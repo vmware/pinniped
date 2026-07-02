@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package upstreamgithub implements an abstraction of upstream GitHub provider interactions.
@@ -115,7 +115,7 @@ func (p *Provider) ExchangeAuthcode(ctx context.Context, authcode string, redire
 // If the user's information meets the AllowedOrganization criteria specified on the GitHubIdentityProvider,
 // they will be allowed to log in.
 // Note that errors from the githubclient package already have helpful error prefixes, so there is no need for additional prefixes here.
-func (p *Provider) GetUser(ctx context.Context, accessToken string, idpDisplayName string) (*upstreamprovider.GitHubUser, error) {
+func (p *Provider) GetUser(ctx context.Context, accessToken string, idpDisplayName string, retryOnUnauthorized upstreamprovider.UnauthorizedRetryBehavior) (*upstreamprovider.GitHubUser, error) {
 	githubClient, err := p.buildGitHubClient(p.c.HttpClient, p.c.APIBaseURL, accessToken)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (p *Provider) GetUser(ctx context.Context, accessToken string, idpDisplayNa
 
 	githubUser := upstreamprovider.GitHubUser{}
 
-	userInfo, err := githubClient.GetUserInfo(ctx)
+	userInfo, err := githubClient.GetUserInfo(ctx, bool(retryOnUnauthorized))
 	if err != nil {
 		return nil, err
 	}

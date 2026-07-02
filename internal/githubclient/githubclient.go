@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v87/github"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -22,6 +23,13 @@ import (
 const (
 	emptyUserMeansTheAuthenticatedUser = ""
 	pageSize                           = 100
+
+	// defaultUnauthorizedRetryDelay and defaultUnauthorizedMaxRetries control how GetUserInfo
+	// retries when the GitHub user API returns a 401 for a token that was just issued. GitHub
+	// sometimes returns a transient 401 for a valid, freshly issued token before it has fully
+	// propagated; hopefully waiting briefly and retrying will resolve it.
+	defaultUnauthorizedRetryDelay = 1 * time.Second
+	defaultUnauthorizedMaxRetries = 2
 )
 
 type UserInfo struct {
@@ -36,13 +44,18 @@ type TeamInfo struct {
 }
 
 type GitHubInterface interface {
-	GetUserInfo(ctx context.Context) (*UserInfo, error)
+	GetUserInfo(ctx context.Context, retryOnUnauthorized bool) (*UserInfo, error)
 	GetOrgMembership(ctx context.Context) ([]string, error)
 	GetTeamMembership(ctx context.Context, allowedOrganizations *setutil.CaseInsensitiveSet) ([]TeamInfo, error)
 }
 
 type githubClient struct {
 	client *github.Client
+
+	// unauthorizedRetryDelay and unauthorizedMaxRetries configure GetUserInfo's retry-on-401
+	// behavior. They are fields so that unit tests can adjust them.
+	unauthorizedRetryDelay time.Duration
+	unauthorizedMaxRetries int
 }
 
 var _ GitHubInterface = (*githubClient)(nil)
@@ -85,15 +98,43 @@ func NewGitHubClient(httpClient *http.Client, apiBaseURL, token string) (GitHubI
 	}
 
 	return &githubClient{
-		client: client,
+		client:                 client,
+		unauthorizedRetryDelay: defaultUnauthorizedRetryDelay,
+		unauthorizedMaxRetries: defaultUnauthorizedMaxRetries,
 	}, nil
 }
 
-// GetUserInfo returns the "Login" and "ID" attributes of the logged-in user.
-func (g *githubClient) GetUserInfo(ctx context.Context) (*UserInfo, error) {
+// isUnauthorized returns true only when err is a *github.ErrorResponse for an HTTP 401. GitHub's
+// rate-limiting conditions are surfaced by go-github as the distinct *github.RateLimitError and
+// *github.AbuseRateLimitError types (HTTP 403/429), so this check can never match those and cannot
+// interfere with go-github's rate-limit handling.
+func isUnauthorized(err error) bool {
+	var errResp *github.ErrorResponse
+	return errors.As(err, &errResp) &&
+		errResp.Response != nil &&
+		errResp.Response.StatusCode == http.StatusUnauthorized
+}
+
+// GetUserInfo returns the "Login" and "ID" attributes of the logged-in user. If retryOnUnauthorized
+// is true and GitHub responds with a 401, the request is retried a bounded number of times after a
+// short delay, since GitHub sometimes returns a transient 401 for a token that was just issued.
+func (g *githubClient) GetUserInfo(ctx context.Context, retryOnUnauthorized bool) (*UserInfo, error) {
 	const errorPrefix = "error fetching authenticated user"
 
-	user, _, err := g.client.Users.Get(ctx, emptyUserMeansTheAuthenticatedUser)
+	var user *github.User
+	var err error
+	for attempt := 0; ; attempt++ {
+		user, _, err = g.client.Users.Get(ctx, emptyUserMeansTheAuthenticatedUser)
+		if err == nil || !retryOnUnauthorized || !isUnauthorized(err) || attempt >= g.unauthorizedMaxRetries {
+			break
+		}
+		plog.Debug("got 401 from GitHub user endpoint", "attempt", attempt+1)
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("%s: %w", errorPrefix, ctx.Err())
+		case <-time.After(g.unauthorizedRetryDelay):
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", errorPrefix, err)
 	}

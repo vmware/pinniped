@@ -207,6 +207,7 @@ func TestGetUser(t *testing.T) {
 	tests := []struct {
 		name                   string
 		providerConfig         ProviderConfig
+		retryOnUnauthorized    upstreamprovider.UnauthorizedRetryBehavior
 		buildGitHubClientError error
 		buildMockResponses     func(hubInterface *mockgithubclient.MockGitHubInterface)
 		wantUser               *upstreamprovider.GitHubUser
@@ -221,7 +222,28 @@ func TestGetUser(t *testing.T) {
 				UsernameAttribute: idpv1alpha1.GitHubUsernameLoginAndID,
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
+					Login: "some-github-login",
+					ID:    "some-github-id",
+				}, nil)
+				mockGitHubInterface.EXPECT().GetOrgMembership(someContext).Return(nil, nil)
+				mockGitHubInterface.EXPECT().GetTeamMembership(someContext, gomock.Any()).Return(nil, nil)
+			},
+			wantUser: &upstreamprovider.GitHubUser{
+				Username:          "some-github-login:some-github-id",
+				DownstreamSubject: fmt.Sprintf("https://some-url?idpName=%s&login=some-github-login&id=some-github-id", encodedIDPDisplayName),
+			},
+		},
+		{
+			name: "happy path with retryOnUnauthorized",
+			providerConfig: ProviderConfig{
+				APIBaseURL:        "https://some-url",
+				HttpClient:        someHttpClient,
+				UsernameAttribute: idpv1alpha1.GitHubUsernameLoginAndID,
+			},
+			retryOnUnauthorized: upstreamprovider.RetryOnUnauthorized,
+			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, true).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -241,7 +263,7 @@ func TestGetUser(t *testing.T) {
 				UsernameAttribute: idpv1alpha1.GitHubUsernameLogin,
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -261,7 +283,7 @@ func TestGetUser(t *testing.T) {
 				UsernameAttribute: idpv1alpha1.GitHubUsernameID,
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -282,7 +304,7 @@ func TestGetUser(t *testing.T) {
 				AllowedOrganizations: setutil.NewCaseInsensitiveSet("ALLOWED-ORG1", "ALLOWED-ORG2"),
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -303,7 +325,7 @@ func TestGetUser(t *testing.T) {
 				AllowedOrganizations: setutil.NewCaseInsensitiveSet("allowed-org"),
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -321,7 +343,7 @@ func TestGetUser(t *testing.T) {
 				GroupNameAttribute:   idpv1alpha1.GitHubUseTeamNameForGroupName,
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -360,7 +382,7 @@ func TestGetUser(t *testing.T) {
 				GroupNameAttribute:   idpv1alpha1.GitHubUseTeamSlugForGroupName,
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -405,7 +427,7 @@ func TestGetUser(t *testing.T) {
 				HttpClient: someHttpClient,
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(nil, errors.New("error from githubClient.GetUserInfo"))
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(nil, errors.New("error from githubClient.GetUserInfo"))
 			},
 			wantErrMsg: "error from githubClient.GetUserInfo",
 		},
@@ -417,7 +439,7 @@ func TestGetUser(t *testing.T) {
 				UsernameAttribute: idpv1alpha1.GitHubUsernameLoginAndID,
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{}, nil)
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{}, nil)
 				mockGitHubInterface.EXPECT().GetOrgMembership(someContext).Return(nil, errors.New("error from githubClient.GetOrgMembership"))
 			},
 			wantErrMsg: "error from githubClient.GetOrgMembership",
@@ -430,7 +452,7 @@ func TestGetUser(t *testing.T) {
 				UsernameAttribute: idpv1alpha1.GitHubUsernameLoginAndID,
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{}, nil)
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{}, nil)
 				mockGitHubInterface.EXPECT().GetOrgMembership(someContext).Return(nil, nil)
 				mockGitHubInterface.EXPECT().GetTeamMembership(someContext, gomock.Any()).Return(nil, errors.New("error from githubClient.GetTeamMembership"))
 			},
@@ -444,7 +466,7 @@ func TestGetUser(t *testing.T) {
 				UsernameAttribute: "this-is-not-legal-value-from-the-enum",
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -460,7 +482,7 @@ func TestGetUser(t *testing.T) {
 				GroupNameAttribute: "this-is-not-legal-value-from-the-enum",
 			},
 			buildMockResponses: func(mockGitHubInterface *mockgithubclient.MockGitHubInterface) {
-				mockGitHubInterface.EXPECT().GetUserInfo(someContext).Return(&githubclient.UserInfo{
+				mockGitHubInterface.EXPECT().GetUserInfo(someContext, false).Return(&githubclient.UserInfo{
 					Login: "some-github-login",
 					ID:    "some-github-id",
 				}, nil)
@@ -498,7 +520,7 @@ func TestGetUser(t *testing.T) {
 				return mockGitHubInterface, test.buildGitHubClientError
 			}
 
-			actualUser, actualErr := p.GetUser(context.Background(), accessToken, idpDisplayName)
+			actualUser, actualErr := p.GetUser(context.Background(), accessToken, idpDisplayName, test.retryOnUnauthorized)
 
 			switch {
 			case test.wantErrMsg != "":

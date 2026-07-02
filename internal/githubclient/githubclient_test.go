@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-github/v87/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
@@ -125,12 +126,13 @@ func TestGetUser(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		httpClient   *http.Client
-		token        string
-		ctx          context.Context
-		wantErr      string
-		wantUserInfo UserInfo
+		name                string
+		httpClient          *http.Client
+		token               string
+		ctx                 context.Context
+		retryOnUnauthorized bool
+		wantErr             string
+		wantUserInfo        UserInfo
 	}{
 		{
 			name: "happy path",
@@ -236,7 +238,7 @@ func TestGetUser(t *testing.T) {
 				ctx = test.ctx
 			}
 
-			actual, err := githubClient.GetUserInfo(ctx)
+			actual, err := githubClient.GetUserInfo(ctx, test.retryOnUnauthorized)
 			if test.wantErr != "" {
 				rt, ok := test.httpClient.Transport.(*mock.EnforceHostRoundTripper)
 				require.True(t, ok)
@@ -246,6 +248,115 @@ func TestGetUser(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, actual)
 				require.Equal(t, test.wantUserInfo, *actual)
+			}
+		})
+	}
+}
+
+func TestGetUserInfoRetryOnUnauthorized(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                string
+		retryOnUnauthorized bool
+		retryDelay          time.Duration // zero means no artificial delay
+		ctxTimeout          time.Duration // zero means context.Background() with no timeout
+		handlerStatus       int
+		handlerMessage      string
+		succeedOnAttempt    int // returns success instead of handlerStatus after this many attempts; 0 means never succeed
+		wantErrContains     string
+		wantErrIs           error
+		wantUserInfo        *UserInfo
+		wantAttempts        int
+	}{
+		{
+			name:                "retries once on a 401 then succeeds, when retryOnUnauthorized is true",
+			retryOnUnauthorized: true,
+			handlerStatus:       http.StatusUnauthorized,
+			handlerMessage:      "bad credentials",
+			succeedOnAttempt:    2,
+			wantUserInfo:        &UserInfo{Login: "some-username", ID: "12345678"},
+			wantAttempts:        2,
+		},
+		{
+			name:                "exhausts retries and fails when every attempt returns a 401, when retryOnUnauthorized is true",
+			retryOnUnauthorized: true,
+			handlerStatus:       http.StatusUnauthorized,
+			handlerMessage:      "bad credentials",
+			wantErrContains:     "401 bad credentials",
+			wantAttempts:        1 + defaultUnauthorizedMaxRetries,
+		},
+		{
+			name:                "does not retry a 401 when retryOnUnauthorized is false",
+			retryOnUnauthorized: false,
+			handlerStatus:       http.StatusUnauthorized,
+			handlerMessage:      "bad credentials",
+			wantErrContains:     "401 bad credentials",
+			wantAttempts:        1,
+		},
+		{
+			name:                "does not retry a non-401 error even when retryOnUnauthorized is true",
+			retryOnUnauthorized: true,
+			handlerStatus:       http.StatusForbidden,
+			handlerMessage:      "rate limited",
+			wantErrContains:     "403 rate limited",
+			wantAttempts:        1,
+		},
+		{
+			name:                "returns promptly when the context is canceled during the retry wait",
+			retryOnUnauthorized: true,
+			retryDelay:          time.Hour, // long enough that a real wait would fail the test
+			ctxTimeout:          50 * time.Millisecond,
+			handlerStatus:       http.StatusUnauthorized,
+			handlerMessage:      "bad credentials",
+			wantErrIs:           context.DeadlineExceeded,
+			wantAttempts:        1,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			attempts := new(int)
+
+			httpClient := mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(mock.GetUser, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					*attempts++
+					if *attempts == test.succeedOnAttempt {
+						_, err := w.Write([]byte(`{"login":"some-username","id":12345678}`))
+						require.NoError(t, err)
+						return
+					}
+					mock.WriteError(w, test.handlerStatus, test.handlerMessage)
+				})),
+			)
+
+			c, err := github.NewClient(github.WithHTTPClient(httpClient), github.WithAuthToken("some-token"))
+			require.NoError(t, err)
+
+			githubClient := &githubClient{
+				client:                 c,
+				unauthorizedRetryDelay: test.retryDelay,
+				unauthorizedMaxRetries: defaultUnauthorizedMaxRetries,
+			}
+
+			ctx := context.Background()
+			if test.ctxTimeout != 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, test.ctxTimeout)
+				defer cancel()
+			}
+
+			actual, err := githubClient.GetUserInfo(ctx, test.retryOnUnauthorized)
+			require.Equal(t, test.wantAttempts, *attempts)
+			switch {
+			case test.wantErrContains != "":
+				require.ErrorContains(t, err, test.wantErrContains)
+			case test.wantErrIs != nil:
+				require.ErrorIs(t, err, test.wantErrIs)
+			default:
+				require.NoError(t, err)
+				require.Equal(t, test.wantUserInfo, actual)
 			}
 		})
 	}

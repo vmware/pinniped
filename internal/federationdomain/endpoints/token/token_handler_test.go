@@ -2149,9 +2149,10 @@ func TestRefreshGrant(t *testing.T) {
 		return &expectedGithubUpstreamRefresh{
 			performedByUpstreamName: githubUpstreamName,
 			args: &oidctestutil.GetUserArgs{
-				Ctx:            nil, // this will be filled in with the actual request context by the test below
-				AccessToken:    githubUpstreamAccessToken,
-				IDPDisplayName: githubUpstreamName,
+				Ctx:                 nil, // this will be filled in with the actual request context by the test below
+				AccessToken:         githubUpstreamAccessToken,
+				IDPDisplayName:      githubUpstreamName,
+				RetryOnUnauthorized: upstreamprovider.DoNotRetryOnUnauthorized,
 			},
 		}
 	}
