@@ -7,9 +7,9 @@ replace go.pinniped.dev/generated/1.33/apis => ../apis
 
 require (
 	go.pinniped.dev/generated/1.33/apis v0.0.0
-	k8s.io/api v0.33.10
-	k8s.io/apimachinery v0.33.10
-	k8s.io/client-go v0.33.10
+	k8s.io/api v0.33.13
+	k8s.io/apimachinery v0.33.13
+	k8s.io/client-go v0.33.13
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff
 )
 
@@ -17,7 +17,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
