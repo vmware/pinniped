@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2023-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -9,6 +9,8 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 ROOT_DIR="$SCRIPT_DIR/../.."
 
 GO_MOD="${ROOT_DIR}/go.mod"
+
+echo "Updating $GO_MOD ..."
 
 pushd "${SCRIPT_DIR}" >/dev/null
 script=$(go run . "${GO_MOD}" overrides.conf)
@@ -19,6 +21,14 @@ echo "$script"
 
 pushd "${ROOT_DIR}" >/dev/null
 eval "$script"
+popd >/dev/null
+
+# Next update the go.mod of update-go-mod itself.
+echo "Updating $SCRIPT_DIR/go.mod ..."
+
+pushd "${SCRIPT_DIR}" >/dev/null
+go get "golang.org/x/mod@latest"
+go mod tidy
 popd >/dev/null
 
 # This script assumes that you are using the latest version of Go so it can detect its
