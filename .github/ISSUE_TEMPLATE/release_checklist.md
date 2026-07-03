@@ -11,23 +11,27 @@ assignees: ''
 
 # Release checklist
 
-- [ ] Ensure that Pinniped's dependencies have been upgraded, to the extent desired by the team (refer to the diff output from the latest run of the [all-golang-deps-updated](https://ci.pinniped.broadcom.net/teams/main/pipelines/security-scan/jobs/all-golang-deps-updated/) CI job)
+- [ ] Ensure that Pinniped's dependencies have been upgraded, to the extent desired by the team (refer to PRs created by the [all-golang-deps-updated](https://ci.pinniped.broadcom.net/teams/main/pipelines/security-scan/jobs/all-golang-deps-updated/) CI job)
   - [ ] If you are updating golang in Pinniped, be sure to update golang in CI as well.  Do a search-and-replace to update the version number everywhere in the pinniped `ci` branch.
   - [ ] If the Fosite library is being updated and the format of the content of the Supervisor's storage Secrets are changed, or if any change to our own code changes the format of the content of the Supervisor's session storage Secrets, then be sure to update the `accessTokenStorageVersion`, `authorizeCodeStorageVersion`, `oidcStorageVersion`, `pkceStorageVersion`, `refreshTokenStorageVersion`, variables in files such as `internal/fositestorage/accesstoken/accesstoken.go`.  Failing tests should signal the need to update these values.
-  - [ ] For go.mod direct dependencies that are v2 or above, such as `github.com/google/go-github/vXX`, check to see if there is a new major version available. Try using `hack/update-go-mod/update-majors.sh`.
   - [ ] Evaluate all `replace` directives in the `go.mod` file. Are those versions up-to-date? Can any `replace` directives be removed?
   - [ ] Evaluate all overrides in the `hack/update-go-mod/overrides.conf` file. Are those versions up-to-date? Can those overrides be removed?
-- [ ] Ensure that Pinniped's codegen is up-to-date with the latest Kubernetes releases by making sure this [file](https://github.com/vmware/pinniped/blob/main/hack/lib/kube-versions.txt) is updated compared to the latest releases listed [here for active branches](https://kubernetes.io/releases/) and [here for non-active branches](https://kubernetes.io/releases/patch-releases/#non-active-branch-history)
-- [ ] Ensure that the `k8s-code-generator` CI job definitions are up-to-date with the latest Go, K8s, and `controller-gen` versions
-- [ ] All relevant feature and docs PRs are merged
+- [ ] Ensure that the `k8s-code-generator` CI job definitions are up-to-date with the latest Go, K8s, and `controller-gen` versions. Update the pipeline. Trigger the jobs again after updating them by running `hack/rebuild-codegen-images.sh` from the `ci` branch. After they finish, use `hack/update.sh` to update the generated source code and then make a PR.
+- [ ] Ensure that Pinniped's codegen is up-to-date with the latest Kubernetes releases by making sure this [file](https://github.com/vmware/pinniped/blob/main/hack/lib/kube-versions.txt) is updated compared to the latest releases listed [here for active branches](https://kubernetes.io/releases/) and [here for non-active branches](https://kubernetes.io/releases/patch-releases/#non-active-branch-history). Run `hack/update.sh` after changing the file to update the generated source code and then make a PR.
+- [ ] Ensure that the `pull-requests` and `main` CI pipelines are using the latest patch releases of Kind for each minor version that are available from https://hub.docker.com/r/kindest/node/tags
+- [ ] All relevant dependency bump, feature, and docs PRs are merged
+  - [ ] Waiting for any PRs? Add them here as new items. No? Just check this box.
 - [ ] The [main pipeline](https://ci.pinniped.broadcom.net/teams/main/pipelines/main) is green, up to and including the `ready-to-release` job. Check that the expected git commit has passed the `ready-to-release` job.
-- [ ] Manually trigger the jobs `run-int-misc`, `run-int-cloud-providers`, and `run-int-k8s-versions` in the main pipeline to run other pre-release tests. Depending on the number of Concourse workers, you may need to run these one at a time.
+- [ ] Manually trigger these jobs in the main pipeline to run other pre-release tests. Depending on the number of Concourse workers, you may need to run these one at a time. Manually check that the resulting job runs passed.
+  - [ ] `run-int-misc`
+  - [ ] `run-int-cloud-providers`
+  - [ ] `run-int-k8s-versions`
 - [ ] Optional: a blog post for the release is written and submitted as a PR but not merged yet
 - [ ] All merged user stories are accepted (manually tested)
 - [ ] Only after all stories are accepted, manually trigger the `release` job to create a draft GitHub release
 - [ ] Manually edit the draft release notes on the [GitHub release](https://github.com/vmware/pinniped/releases) to describe the contents of the release, using the format which was automatically added to the draft release
 - [ ] Publish (i.e. make public) the draft release
-- [ ] After making the release public, the jobs in the [main pipeline](https://ci.pinniped.broadcom.net/teams/main/pipelines/main) beyond the release job should auto-trigger, so check to make sure that they passed
-- [ ] Edit the blog post's date to make it match the actual release date, and merge the blog post PR to make it live on the website
-- [ ] Publicize the release via tweets, etc.
+- [ ] After making the release public, the jobs in the [main pipeline](https://ci.pinniped.broadcom.net/teams/main/pipelines/main) beyond the release job should auto-trigger, so check to make sure that they passed. One of them submits a PR. Merge it.
+- [ ] If you wrote a blog post PR, edit the blog post's date to make it match the actual release date, and merge the blog post PR to make it live on the website
+- [ ] Publicize the release via Kubernetes Slack, etc.
 - [ ] Close this issue

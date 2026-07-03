@@ -7,9 +7,9 @@ replace go.pinniped.dev/generated/1.36/apis => ../apis
 
 require (
 	go.pinniped.dev/generated/1.36/apis v0.0.0
-	k8s.io/api v0.36.0
-	k8s.io/apimachinery v0.36.0
-	k8s.io/client-go v0.36.0
+	k8s.io/api v0.36.2
+	k8s.io/apimachinery v0.36.2
+	k8s.io/client-go v0.36.2
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a
 )
 

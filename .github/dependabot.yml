@@ -3,12 +3,6 @@
 version: 2
 updates:
 
-  - package-ecosystem: "gomod"
-    open-pull-requests-limit: 2
-    directory: "/hack/update-go-mod"
-    schedule:
-      interval: "daily"
-
   # Use dependabot to automate major-only dependency bumps
   - package-ecosystem: "gomod"
     open-pull-requests-limit: 2 # Not sure why there would ever be more than 1, just would not want to hide anything
@@ -28,18 +22,6 @@ updates:
       update-types:
       - "version-update:semver-minor"
       - "version-update:semver-patch"
-
-# Our own CI job is responsible for updating this Docker file now.
-#  - package-ecosystem: "docker"
-#    directory: "/"
-#    schedule:
-#      interval: "daily"
-
-# Our own CI job is responsible for updating this Docker file now.
-#  - package-ecosystem: "docker"
-#    directory: "/hack"  # this should keep the FIPS dockerfile updated per https://github.com/dependabot/feedback/issues/145#issuecomment-414738498
-#    schedule:
-#      interval: "daily"
 
   - package-ecosystem: "docker"
     directory: "/dockerfiles/code-coverage-uploader/"
