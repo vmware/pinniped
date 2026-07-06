@@ -17,21 +17,23 @@ set -euo pipefail
 
 # Check whether the pinniped-server binary was built with GOFIPS140.
 # Look for where GOFIPS140 starts with "v" because it can also equal "off", which we don't want.
-if ! go version -m './image/rootfs/usr/local/bin/pinniped-server' | grep -q 'GOFIPS140=v'; then
+echo "Checking pinniped-server ..."
+if ! go version -m './image/rootfs/usr/local/bin/pinniped-server' | grep 'GOFIPS140=v'; then
   echo "Pinniped server binary wasn't built with GOFIPS140 enabled (no GOFIPS140=v)."
   exit 1
 fi
-if ! go version -m './image/rootfs/usr/local/bin/pinniped-server' | grep -q 'DefaultGODEBUG=fips140=on'; then
+if ! go version -m './image/rootfs/usr/local/bin/pinniped-server' | grep 'DefaultGODEBUG=fips140=on'; then
   echo "Pinniped server binary wasn't built with GOFIPS140 enabled (no DefaultGODEBUG=fips140=on)."
   exit 1
 fi
 
 # Check the same for the kube-cert-agent binary.
-if ! go version -m './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' | grep -q 'GOFIPS140=v'; then
+echo "Checking pinniped-concierge-kube-cert-agent ..."
+if ! go version -m './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' | grep 'GOFIPS140=v'; then
   echo "pinniped-concierge-kube-cert-agent binary wasn't built with GOFIPS140 enabled (no GOFIPS140=v)."
   exit 1
 fi
-if ! go version -m './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' | grep -q 'DefaultGODEBUG=fips140=on'; then
+if ! go version -m './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' | grep 'DefaultGODEBUG=fips140=on'; then
   echo "pinniped-concierge-kube-cert-agent binary wasn't built with GOFIPS140 enabled (no DefaultGODEBUG=fips140=on)."
   exit 1
 fi
@@ -40,14 +42,18 @@ fi
 pinniped_server_ldd="$(ldd './image/rootfs/usr/local/bin/pinniped-server' 2>&1 || true)"
 # If it doesn't contain this line, that means the executable was dynamic, which we don't want.
 if [[ "$pinniped_server_ldd" != *"not a dynamic executable"* ]]; then
-  echo "pinniped server binary is a dynamic executable."
+  echo "pinniped-server binary is a dynamic executable."
   exit 1
+else
+  echo "pinniped-server binary is a static executable."
 fi
 
 # Check the ldd output to see whether we compiled a static executable or not.
 kube_cert_agent_ldd="$(ldd './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' 2>&1 || true)"
 # If it doesn't contain this line, that means the executable was dynamic, which we don't want.
 if [[ "$kube_cert_agent_ldd" != *"not a dynamic executable"* ]]; then
-  echo "kube cert agent binary is a dynamic executable."
+  echo "pinniped-concierge-kube-cert-agent binary is a dynamic executable."
   exit 1
+else
+  echo "pinniped-concierge-kube-cert-agent binary is a static executable."
 fi
