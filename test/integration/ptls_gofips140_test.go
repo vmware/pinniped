@@ -53,8 +53,11 @@ func TestFIPSCipherSuites_Parallel(t *testing.T) {
 	// tls config of the client without explicitly set ciphers
 	// is the same as the tls config of the test server with explicitly
 	// set ciphers from ptls.
-	request, _ := http.NewRequest("GET", server.URL, nil)
+	request, _ := http.NewRequestWithContext(t.Context(), "GET", server.URL, nil)
 	response, err := transport.RoundTrip(request)
+	t.Cleanup(func() {
+		require.NoError(t, response.Body.Close())
+	})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 }

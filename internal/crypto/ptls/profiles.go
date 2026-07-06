@@ -32,8 +32,8 @@ func secureCipherSuiteIDs() []uint16 {
 
 			// These are considered "insecure" by Go because they are returned by tls.InsecureCipherSuites().
 			// So although they are included in Go's src/crypto/tls/defaults_fips140.go, they will not actually be used.
-			//tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-			//tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+			// tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+			// tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
 		}
 	}
 

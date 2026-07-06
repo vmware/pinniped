@@ -1544,7 +1544,6 @@ func TestImpersonationProxy(t *testing.T) { //nolint:gocyclo // yeah, it's compl
 			require.Empty(t, stderr)
 			expectedCiphers := testlib.GetExpectedCiphers(ptls.Default(nil), testlib.DefaultCipherSuitePreference())
 			require.Contains(t, stdout, expectedCiphers, "wantedToContain:\n%s\nactual stdout:\n%s", expectedCiphers, stdout)
-
 		})
 	})
 
