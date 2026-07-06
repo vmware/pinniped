@@ -278,6 +278,22 @@ else
   echo "$api_resource_output"
 fi
 
+# Save this file for possible later use. Sometimes we want to add the GODEBUG fips140=only env var.
+cat <<EOF >>/tmp/add-fips140-only-overlay.yaml
+#@ load("@ytt:overlay", "overlay")
+#@overlay/match by=overlay.subset({"kind": "Deployment"}), expects=1
+---
+spec:
+  template:
+    spec:
+      containers:
+        - #@overlay/match by=overlay.all, expects=1
+          env:
+            #@overlay/append
+            - name: GODEBUG
+              value: fips140=only
+EOF
+
 # Save this file for possible later use. Sometimes we want to remove the CPU requests,
 # which also means that we need to remove the limits or else Kubernetes will use the limit as
 # an implicit request amount.
@@ -825,6 +841,9 @@ fi
 if [[ -n "${SUPERVISOR_AND_CONCIERGE_NO_CPU_REQUEST:-}" ]]; then
   concierge_optional_ytt_values+=("--file=/tmp/remove-cpu-request-overlay.yaml")
 fi
+if [[ -n "${SUPERVISOR_AND_CONCIERGE_GODEBUG_FIPS140_ONLY:-}" ]]; then
+  concierge_optional_ytt_values+=("--file=/tmp/add-fips140-only-overlay.yaml")
+fi
 
 echo "Deploying the Concierge app to the cluster..."
 echo "Using ytt optional flags:" "${concierge_optional_ytt_values[@]}"
@@ -904,6 +923,9 @@ if [[ "${FIREWALL_IDPS:-no}" == "yes" ]]; then
 fi
 if [[ -n "${SUPERVISOR_AND_CONCIERGE_NO_CPU_REQUEST:-}" ]]; then
   supervisor_optional_ytt_values+=("--file=/tmp/remove-cpu-request-overlay.yaml")
+fi
+if [[ -n "${SUPERVISOR_AND_CONCIERGE_GODEBUG_FIPS140_ONLY:-}" ]]; then
+  supervisor_optional_ytt_values+=("--file=/tmp/add-fips140-only-overlay.yaml")
 fi
 if [[ "${SUPERVISOR_INGRESS:-no}" == "yes" && "$cluster_has_gke_backend_config" == "yes" ]]; then
   supervisor_optional_ytt_values+=("--file=/tmp/add-annotations-for-gke-ingress-overlay.yaml")

@@ -1,4 +1,4 @@
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 ---
@@ -32,6 +32,9 @@ params:
 
   # only needed for unusual case of wanting to test the HTTPS_PROXY settings
   FIREWALL_IDPS:
+
+  # only used when testing GOFIPS140 builds
+  SUPERVISOR_AND_CONCIERGE_GODEBUG_FIPS140_ONLY:
 
   # needed when we are testing against active directory.
   TEST_ACTIVE_DIRECTORY:
