@@ -37,7 +37,7 @@ if ! go version -m './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-ag
 fi
 
 # Check the ldd output to see whether we compiled a static executable or not.
-pinniped_server_ldd="$(ldd './image/rootfs/usr/local/bin/pinniped-server' 2>&1)"
+pinniped_server_ldd="$(ldd './image/rootfs/usr/local/bin/pinniped-server' 2>&1 || true)"
 # If it doesn't contain this line, that means the executable was dynamic, which we don't want.
 if [[ "$pinniped_server_ldd" != *"not a dynamic executable"* ]]; then
   echo "pinniped server binary is a dynamic executable."
@@ -45,7 +45,7 @@ if [[ "$pinniped_server_ldd" != *"not a dynamic executable"* ]]; then
 fi
 
 # Check the ldd output to see whether we compiled a static executable or not.
-kube_cert_agent_ldd="$(ldd './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' 2>&1)"
+kube_cert_agent_ldd="$(ldd './image/rootfs/usr/local/bin/pinniped-concierge-kube-cert-agent' 2>&1 || true)"
 # If it doesn't contain this line, that means the executable was dynamic, which we don't want.
 if [[ "$kube_cert_agent_ldd" != *"not a dynamic executable"* ]]; then
   echo "kube cert agent binary is a dynamic executable."
