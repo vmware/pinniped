@@ -1,7 +1,7 @@
-// Copyright 2022-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// This file overrides profiles.go when Pinniped is built in FIPS-only mode.
+// This file overrides profiles.go when Pinniped is built in FIPS-only mode using the legacy boring crypto compiler.
 //go:build fips_strict
 
 package ptls
@@ -20,34 +20,41 @@ import (
 	"go.pinniped.dev/internal/plog"
 )
 
-// The union of these three variables is all the FIPS-approved TLS 1.2 ciphers.
+// secureCipherSuiteIDs(), insecureCipherSuiteIDs(), and additionalSecureCipherSuiteIDsOnlyForLDAPClients()
+// together determine the ciphers to be used for TLS 1.2.
+// The union of these three functions' results is all the FIPS-approved TLS 1.2 ciphers.
 // If this list does not match the boring crypto compiler's list then the TestFIPSCipherSuites integration
 // test should fail, which indicates that this list needs to be updated.
-var (
-	// secureCipherSuiteIDs is the list of TLS ciphers to use for both clients and servers when using TLS 1.2.
-	//
-	// FIPS allows the use of these ciphers which golang considers secure.
-	secureCipherSuiteIDs = []uint16{
+
+// secureCipherSuiteIDs is the list of TLS ciphers to use for both clients and servers when using TLS 1.2.
+//
+// FIPS allows the use of these ciphers which golang considers secure.
+func secureCipherSuiteIDs() []uint16 {
+	return []uint16{
 		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 	}
+}
 
-	// insecureCipherSuiteIDs is a list of additional ciphers that should be allowed for both clients
-	// and servers when using TLS 1.2.
-	//
-	// Previous versions of FIPS allowed the use of some specific ciphers that golang considers insecure.
-	// Go 1.24 does not anymore, so now this list is empty.
-	insecureCipherSuiteIDs []uint16
+// insecureCipherSuiteIDs is a list of additional ciphers that should be allowed for both clients
+// and servers when using TLS 1.2.
+//
+// Previous versions of FIPS allowed the use of some specific ciphers that golang considers insecure.
+// Go 1.24 does not anymore, so now this list is empty.
+func insecureCipherSuiteIDs() []uint16 {
+	return nil
+}
 
-	// additionalSecureCipherSuiteIDsOnlyForLDAPClients are additional ciphers to use only for LDAP clients
-	// when using TLS 1.2. These can be used when the Pinniped Supervisor is making calls to an LDAP server
-	// configured by an LDAPIdentityProvider or ActiveDirectoryIdentityProvider.
-	//
-	// When compiled in FIPS mode, there are no extras for LDAP clients.
-	additionalSecureCipherSuiteIDsOnlyForLDAPClients []uint16
-)
+// additionalSecureCipherSuiteIDsOnlyForLDAPClients are additional ciphers to use only for LDAP clients
+// when using TLS 1.2. These can be used when the Pinniped Supervisor is making calls to an LDAP server
+// configured by an LDAPIdentityProvider or ActiveDirectoryIdentityProvider.
+//
+// When compiled in FIPS mode, there are no extras for LDAP clients.
+func additionalSecureCipherSuiteIDsOnlyForLDAPClients() []uint16 {
+	return nil
+}
 
 // init: see comment in profiles.go.
 func init() {

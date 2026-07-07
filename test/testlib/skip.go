@@ -1,9 +1,12 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package testlib
 
-import "testing"
+import (
+	"crypto/fips140"
+	"testing"
+)
 
 // SkipUnlessIntegration skips the current test if `-short` has been passed to `go test`.
 func SkipUnlessIntegration(t *testing.T) {
@@ -11,6 +14,22 @@ func SkipUnlessIntegration(t *testing.T) {
 
 	if testing.Short() {
 		t.Skip("skipping integration test because of '-short' flag")
+	}
+}
+
+func SkipTestWhenUsingGOFIPS140(t *testing.T) {
+	t.Helper()
+
+	if fips140.Enabled() {
+		t.Skip("this test is skipped when using GOFIPS140")
+	}
+}
+
+func SkipTestUnlessUsingGOFIPS140(t *testing.T) {
+	t.Helper()
+
+	if !fips140.Enabled() {
+		t.Skip("this test requires GOFIPS140")
 	}
 }
 

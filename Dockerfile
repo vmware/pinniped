@@ -24,6 +24,11 @@ ARG TARGETARCH
 # If provided, must be a comma-separated list of Go build tags.
 ARG ADDITIONAL_BUILD_TAGS
 
+# Set this if you would like to enable Go's built-in FIPS compliance module.
+# E.g. GOFIPS140=certified or GOFIPS140=v1.0.0
+# See https://go.dev/doc/security/fips140 for details.
+ARG GOFIPS140=off
+
 # Build the statically linked (CGO_ENABLED=0) binary.
 # Mount source, build cache, and module cache for performance reasons.
 # See https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
@@ -31,7 +36,7 @@ RUN \
   --mount=target=. \
   --mount=type=cache,target=/cache/gocache \
   --mount=type=cache,target=/cache/gomodcache \
-  export GOCACHE=/cache/gocache GOMODCACHE=/cache/gomodcache CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH && \
+  export GOCACHE=/cache/gocache GOMODCACHE=/cache/gomodcache CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOFIPS140=$GOFIPS140 && \
   go build -tags $ADDITIONAL_BUILD_TAGS -v -trimpath -ldflags "$(hack/get-ldflags.sh) -w -s" -o /usr/local/bin/pinniped-concierge-kube-cert-agent ./cmd/pinniped-concierge-kube-cert-agent/... && \
   go build -tags $ADDITIONAL_BUILD_TAGS -v -trimpath -ldflags "$(hack/get-ldflags.sh) -w -s" -o /usr/local/bin/pinniped-server ./cmd/pinniped-server/... && \
   ln -s /usr/local/bin/pinniped-server /usr/local/bin/pinniped-concierge && \

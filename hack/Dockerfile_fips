@@ -3,6 +3,9 @@
 # Copyright 2022-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# Note: This dockerfile is for using boring crypto. If you would like to
+# use Go's built-in GOFIPS140 instead, please use the top-level Dockerfile.
+
 # this dockerfile is used to produce a binary of Pinniped that uses
 # only fips-allowable ciphers.  Note that this is provided only as
 # an example.  Pinniped has no official support for fips and using
