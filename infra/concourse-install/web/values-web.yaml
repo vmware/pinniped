@@ -1,4 +1,4 @@
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # Helps decide the name of the Deployment along with other resources and labels. Will be suffixed with "-web".
@@ -74,7 +74,7 @@ concourse:
           # TODO: this needs to change to be the team in the vmware org. Also need to change the clientID and clientSecret in the concourse-install-bootstrap GCP secret for one in the vmware org.
 #          team: vmware-tanzu:pinniped-owners
           # Temporarily just list which specific users are admins instead.
-          user: cfryanr,joshuatcasey
+          user: cfryanr,v0lkan
       github:
         enabled: true
     bindPort: 80
