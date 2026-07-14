@@ -19,7 +19,7 @@
 # See https://go.googlesource.com/go/+/dev.boringcrypto/README.boringcrypto.md
 # and https://kupczynski.info/posts/fips-golang/ for details.
 
-ARG BUILD_IMAGE=golang:1.26.5@sha256:079e59808d2d252516e27e3f3a9c003740dee7f75e55aa71528766d52bcfc16a
+ARG BUILD_IMAGE=golang:1.26.5@sha256:983a0823d3dab83604654972fe6bbda13142a7c57f987804fbdddb9d47dad9ec
 ARG BASE_IMAGE=gcr.io/distroless/static:nonroot@sha256:d29e660cc75a5b6b1334e03c5c81ccf9bc0884a002c6000dbf0fb96034814478
 
 # This is not currently using --platform to prepare to cross-compile because we use gcc below to build
