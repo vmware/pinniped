@@ -14,7 +14,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-ldap/ldap/v3 v3.4.14
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/gofrs/flock v0.13.0
@@ -52,7 +52,7 @@ require (
 	k8s.io/gengo v0.0.0-20260408192533-25e2208e0dc3
 	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-aggregator v0.36.2
-	k8s.io/kube-openapi v0.0.0-20260706235625-cdb1db5517a0
+	k8s.io/kube-openapi v0.0.0-20260721042612-c26577a1ec9a
 	k8s.io/streaming v0.36.2
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	sigs.k8s.io/yaml v1.6.0
