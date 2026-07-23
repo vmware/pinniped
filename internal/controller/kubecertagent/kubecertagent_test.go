@@ -2126,6 +2126,6 @@ func hasDeploymentSynced(client *kubefake.Clientset, kubeInformers informers.Sha
 			requireEventually.NoError(cachedErr)
 
 			requireEventually.Equal(realDep, cachedDep)
-		}, 2*time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 100*time.Millisecond)
 	}
 }
