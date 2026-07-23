@@ -1,4 +1,4 @@
-// Copyright 2021-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package kubecertagent
@@ -6,10 +6,12 @@ package kubecertagent
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +23,7 @@ import (
 	"go.pinniped.dev/internal/kubeclient"
 	"go.pinniped.dev/internal/plog"
 	"go.pinniped.dev/internal/testutil"
+	"go.pinniped.dev/test/testlib"
 )
 
 func TestLegacyPodCleanerController(t *testing.T) {
@@ -162,10 +165,27 @@ func TestLegacyPodCleanerController(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
-			errorMessages := runControllerUntilQuiet(ctx, t, controller, func(_ context.Context, _ *testing.T) {}, kubeInformers)
+			errorMessages := runControllerUntilQuiet(ctx, t, controller, hasPodsSynced(kubeClientset), kubeInformers)
 			assert.Equal(t, tt.wantDistinctErrors, deduplicate(errorMessages), "unexpected errors")
 			assert.Equal(t, tt.wantDistinctLogs, deduplicate(testutil.SplitByNewline(log.String())), "unexpected logs")
 			assert.Equal(t, tt.wantActions, kubeClientset.Actions()[2:], "unexpected actions")
 		})
+	}
+}
+
+func hasPodsSynced(client *kubefake.Clientset) func(ctx context.Context, t *testing.T) {
+	return func(_ context.Context, t *testing.T) {
+		testlib.RequireEventually(t, func(requireEventually *require.Assertions) {
+			// WaitForCacheSync() can return before the informer's reflector has issued its "watch" request,
+			// because the cache is considered synced once the initial "list" results have been processed.
+			// Since this function is called at the start of every Sync, waiting here for the "watch" action
+			// guarantees that it is recorded before any of Sync's actions.
+			requireEventually.True(
+				slices.ContainsFunc(client.Actions(), func(a coretesting.Action) bool {
+					return a.GetVerb() == "watch" && a.GetResource().Resource == "pods"
+				}),
+				"informer has not started watching pods yet",
+			)
+		}, 5*time.Second, 100*time.Millisecond)
 	}
 }

@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/cache"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	clocktesting "k8s.io/utils/clock/testing"
@@ -2097,9 +2096,22 @@ done:
 	return errorMessages
 }
 
-func hasDeploymentSynced(client kubernetes.Interface, kubeInformers informers.SharedInformerFactory) func(ctx context.Context, t *testing.T) {
+func hasDeploymentSynced(client *kubefake.Clientset, kubeInformers informers.SharedInformerFactory) func(ctx context.Context, t *testing.T) {
 	return func(ctx context.Context, t *testing.T) {
 		testlib.RequireEventually(t, func(requireEventually *require.Assertions) {
+			// The test asserts the exact order of the deployment actions' verbs (wantDeploymentActionVerbs),
+			// expecting the informer's initial "list" and "watch" to appear before any verbs caused by Sync.
+			// However, WaitForCacheSync() can return before the informer's reflector has issued its "watch"
+			// request, because the cache is considered synced once the initial "list" results have been
+			// processed. Since this function is called at the start of every Sync, waiting here for the
+			// "watch" action guarantees that it is recorded before any of Sync's actions.
+			requireEventually.True(
+				slices.ContainsFunc(client.Actions(), func(a coretesting.Action) bool {
+					return a.GetVerb() == "watch" && a.GetResource().Resource == "deployments"
+				}),
+				"informer has not started watching deployments yet",
+			)
+
 			realDep, realErr := client.AppsV1().Deployments("concierge").
 				Get(ctx, "pinniped-concierge-kube-cert-agent", metav1.GetOptions{})
 
@@ -2114,6 +2126,6 @@ func hasDeploymentSynced(client kubernetes.Interface, kubeInformers informers.Sh
 			requireEventually.NoError(cachedErr)
 
 			requireEventually.Equal(realDep, cachedDep)
-		}, 2*time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 100*time.Millisecond)
 	}
 }
