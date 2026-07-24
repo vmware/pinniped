@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -42,14 +42,14 @@ tar -czf "$output_tgz" -C "$output_dir" .
 # Upload the files into the GCS bucket under YYYY/MM/DD/cluster-diagnostics-XXXXXXXX.tgz
 output_url_path="$(date +%Y)/$(date +%m)/$(date +%d)"
 output_tgz_path="$output_url_path/$output_tgz"
-gsutil cp "$output_tgz" "gs://$GCS_BUCKET/$output_tgz_path"
+gcloud storage cp "$output_tgz" "gs://$GCS_BUCKET/$output_tgz_path"
 
 if [ -d test-output ] ; then
   # Take test output and make list of test successes and failures. This should include
   # test name and time elapsed.
   < test-output/testoutput.log jq -s 'map(select((.Action == "fail") or (.Action == "pass")))' > results.log
   output_json_path="$output_url_path/results-$random_string.json"
-  gsutil cp results.log "gs://$GCS_BUCKET/$output_json_path"
+  gcloud storage cp results.log "gs://$GCS_BUCKET/$output_json_path"
   results_link="https://storage.googleapis.com/${GCS_BUCKET}/${output_json_path}"
 else
   # Some "tests" don't actually run any Go tests, so there's nothing to upload here.
