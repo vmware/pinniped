@@ -18,7 +18,7 @@ require (
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/gofrs/flock v0.13.0
-	github.com/google/cel-go v0.29.2
+	github.com/google/cel-go v0.30.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v89 v89.0.0
 	github.com/google/gofuzz v1.2.0
@@ -34,7 +34,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	github.com/tdewolff/minify/v2 v2.24.13
+	github.com/tdewolff/minify/v2 v2.24.14
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.54.0
@@ -76,7 +76,7 @@ require (
 	github.com/dgraph-io/ristretto v1.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8 // indirect
 	github.com/go-json-experiment/json v0.0.0-20260623181947-01eb4420fa68 // indirect
@@ -141,7 +141,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.16.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	github.com/tdewolff/parse/v2 v2.8.12 // indirect
+	github.com/tdewolff/parse/v2 v2.8.14 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.etcd.io/etcd/api/v3 v3.6.8 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.6.8 // indirect
