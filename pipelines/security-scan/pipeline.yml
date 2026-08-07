@@ -189,13 +189,13 @@ jobs:
                 # When editing this, please add an `until=` tag on each entry so we remember to revisit
                 # and clean this file later.
                 # CVE-0000-00000 until=2022-01-01
-                #
-                # CVE-2020-8561 is in k8s.io/apiserver@v0.27.1,
-                # which is the latest version as of 2023-05-10.
-                # From the comments on this issue https://github.com/kubernetes/kubernetes/issues/104720
-                # it seems like the Kubernetes maintainers are never going to fix it.
-                # Removing the "until" date on the next line to ignore this CVE forever.
-                CVE-2020-8561
+
+                # CVE-2026-32283 is a bug in crypto/tls before go1.25.9 and go1.26.2. We are using a newer golang,
+                # so we are not impacted. Nancy thinks that it is also a CVE for golang.org/x/crypto@v0.54.0.
+                # We only use bcrypt from x/crypto, so we can safely ignore this CVE for x/crypto.
+                # We will upgrade beyond v0.54.0 once a newer version is released.
+                CVE-2026-32283
+
                 EOF
 
                 cat pinniped-modules/modules.json | nancy sleuth \
