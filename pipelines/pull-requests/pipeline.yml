@@ -660,6 +660,12 @@ jobs:
                 # See https://ossindex.sonatype.org/vulnerability/CVE-2026-24051?component-type=golang&component-name=go.opentelemetry.io%2Fotel%2Fsdk&utm_source=nancy-client&utm_medium=integration&utm_content=1.2.0
                 CVE-2026-24051 until=2026-06-04
 
+                # CVE-2026-56860 is "net/url: avoid quadratic complexity in resolvePath" which is in the Go std lib,
+                # but nancy also detects it in golang.org/x/net@v0.57.0. If it is in there, we are not using it
+                # for url paths. We only use golang.org/x/net for some tests. Also, there is currently no newer version
+                # available, so we can't upgrade it at the moment.
+                CVE-2026-56860 until=2026-10-17
+
                 EOF
 
                 cat pinniped-modules/modules.json | nancy sleuth \
