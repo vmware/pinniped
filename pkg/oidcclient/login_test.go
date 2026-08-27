@@ -325,7 +325,6 @@ func TestLogin(t *testing.T) { //nolint:gocyclo
 			http.Error(w, "unexpected method", http.StatusMethodNotAllowed)
 			return
 		}
-		//nolint:gosec // this is a test, so we don't care about limiting request body size
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
