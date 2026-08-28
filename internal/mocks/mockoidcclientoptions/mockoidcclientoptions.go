@@ -214,3 +214,17 @@ func (mr *MockOIDCClientOptionsMockRecorder) WithUpstreamIdentityProvider(upstre
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithUpstreamIdentityProvider", reflect.TypeOf((*MockOIDCClientOptions)(nil).WithUpstreamIdentityProvider), upstreamName, upstreamType)
 }
+
+// WithRequireIDTokenOnRefresh mocks base method.
+func (m *MockOIDCClientOptions) WithRequireIDTokenOnRefresh(require bool) oidcclient.Option {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WithRequireIDTokenOnRefresh", require)
+	ret0, _ := ret[0].(oidcclient.Option)
+	return ret0
+}
+
+// WithRequireIDTokenOnRefresh indicates an expected call of WithRequireIDTokenOnRefresh.
+func (mr *MockOIDCClientOptionsMockRecorder) WithRequireIDTokenOnRefresh(require any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithRequireIDTokenOnRefresh", reflect.TypeOf((*MockOIDCClientOptions)(nil).WithRequireIDTokenOnRefresh), require)
+}

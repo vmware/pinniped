@@ -4065,3 +4065,75 @@ func TestMaybePrintAuditID(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleRefreshWithRequireIDTokenOnRefresh(t *testing.T) {
+	accessTokenOnly := &oauth2.Token{
+		AccessToken:  "access-tok",
+		RefreshToken: "new-refresh-tok",
+		TokenType:    "Bearer",
+	}
+
+	t.Run("flag enabled, provider omits id_token, refresh succeeds with access token", func(t *testing.T) {
+		mock := mockUpstream(t)
+		mock.EXPECT().
+			PerformRefresh(gomock.Any(), "old-refresh-tok").
+			Return(accessTokenOnly, nil)
+		mock.EXPECT().
+			ValidateTokenAndMergeWithUserInfo(gomock.Any(), accessTokenOnly, nonce.Nonce(""), false, false).
+			Return(&oidctypes.Token{
+				AccessToken: &oidctypes.AccessToken{Token: "access-tok"},
+			}, nil)
+
+		h := &handlerState{
+			requireIDTokenOnRefresh: false,
+			logger:                  &emptyLogger{},
+			getProvider: func(_ *oauth2.Config, _ *coreosoidc.Provider, _ *http.Client) upstreamprovider.UpstreamOIDCIdentityProviderI {
+				return mock
+			},
+		}
+		token, err := h.handleRefresh(context.Background(), &oidctypes.RefreshToken{Token: "old-refresh-tok"})
+		require.NoError(t, err)
+		require.NotNil(t, token)
+		require.Nil(t, token.IDToken)
+		require.Equal(t, "access-tok", token.AccessToken.Token)
+	})
+
+	t.Run("flag disabled (default), ValidateTokenAndMergeWithUserInfo called with requireIDToken=true", func(t *testing.T) {
+		mock := mockUpstream(t)
+		mock.EXPECT().
+			PerformRefresh(gomock.Any(), "old-refresh-tok").
+			Return(accessTokenOnly, nil)
+		mock.EXPECT().
+			ValidateTokenAndMergeWithUserInfo(gomock.Any(), accessTokenOnly, nonce.Nonce(""), true, false).
+			Return(nil, nil) // simulate provider returning nil (triggers browser login)
+
+		h := &handlerState{
+			requireIDTokenOnRefresh: true,
+			logger:                  &emptyLogger{},
+			getProvider: func(_ *oauth2.Config, _ *coreosoidc.Provider, _ *http.Client) upstreamprovider.UpstreamOIDCIdentityProviderI {
+				return mock
+			},
+		}
+		token, err := h.handleRefresh(context.Background(), &oidctypes.RefreshToken{Token: "old-refresh-tok"})
+		require.NoError(t, err)
+		require.Nil(t, token)
+	})
+
+	t.Run("flag enabled, PerformRefresh itself fails, returns nil to trigger browser login", func(t *testing.T) {
+		mock := mockUpstream(t)
+		mock.EXPECT().
+			PerformRefresh(gomock.Any(), "old-refresh-tok").
+			Return(nil, fmt.Errorf("network error"))
+
+		h := &handlerState{
+			requireIDTokenOnRefresh: false,
+			logger:                  &emptyLogger{},
+			getProvider: func(_ *oauth2.Config, _ *coreosoidc.Provider, _ *http.Client) upstreamprovider.UpstreamOIDCIdentityProviderI {
+				return mock
+			},
+		}
+		token, err := h.handleRefresh(context.Background(), &oidctypes.RefreshToken{Token: "old-refresh-tok"})
+		require.NoError(t, err)
+		require.Nil(t, token)
+	})
+}

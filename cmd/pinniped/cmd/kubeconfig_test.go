@@ -187,6 +187,7 @@ func TestGetKubeconfig(t *testing.T) {
 			  --oidc-scopes strings                      OpenID Connect scopes to request during login (default [offline_access,openid,pinniped:request-audience,username,groups])
 			  --oidc-session-cache string                Path to OpenID Connect session cache file
 			  --oidc-skip-browser                        During OpenID Connect login, skip opening the browser (just print the URL)
+			  --oidc-skip-require-id-token-on-refresh    During OpenID Connect login, skip requiring an ID token in the refresh response (use for OIDC providers that omit id_token on refresh)
 		  -o, --output string                            Output file path (default: stdout)
 			  --pinniped-cli-path string                 Full path or executable name for the Pinniped CLI binary to be embedded in the resulting kubeconfig output (e.g. 'pinniped') (default: full path of the binary used to execute this command)
 			  --skip-validation                          Skip final validation of the kubeconfig (default: false)
