@@ -5,6 +5,7 @@ package federationdomainproviders
 
 import (
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -19,12 +20,17 @@ import (
 )
 
 // FederationDomainIdentityProvider represents an identity provider as configured in a FederationDomain's spec.
-// All the fields are required and must be non-zero values. Note that this might be a reference to an IDP
-// which is not currently loaded into the cache of available IDPs, e.g. due to the IDP's CR having validation errors.
+// All the fields are required and must be non-zero values, except SessionLifetimeOverride which is optional.
+// Note that this might be a reference to an IDP which is not currently loaded into the cache of available IDPs,
+// e.g. due to the IDP's CR having validation errors.
 type FederationDomainIdentityProvider struct {
 	DisplayName string
 	UID         types.UID
 	Transforms  *idtransform.TransformationPipeline
+
+	// SessionLifetimeOverride is the configured override of the default Supervisor session lifetime for sessions
+	// established using this identity provider. Zero means that there is no override, and the default should be used.
+	SessionLifetimeOverride time.Duration
 }
 
 type FederationDomainIdentityProvidersFinderI interface {
@@ -155,10 +161,11 @@ func (u *FederationDomainIdentityProvidersListerFinder) GetIdentityProviders() [
 			if idp.UID == p.GetResourceUID() {
 				// Found it, so append it to the result.
 				providers = append(providers, &resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
-					DisplayName:         idp.DisplayName,
-					Provider:            p,
-					SessionProviderType: psession.ProviderTypeOIDC,
-					Transforms:          idp.Transforms,
+					DisplayName:             idp.DisplayName,
+					Provider:                p,
+					SessionProviderType:     psession.ProviderTypeOIDC,
+					Transforms:              idp.Transforms,
+					SessionLifetimeOverride: idp.SessionLifetimeOverride,
 				})
 			}
 		}
@@ -167,10 +174,11 @@ func (u *FederationDomainIdentityProvidersListerFinder) GetIdentityProviders() [
 			if idp.UID == p.GetResourceUID() {
 				// Found it, so append it to the result.
 				providers = append(providers, &resolvedldap.FederationDomainResolvedLDAPIdentityProvider{
-					DisplayName:         idp.DisplayName,
-					Provider:            p,
-					SessionProviderType: psession.ProviderTypeLDAP,
-					Transforms:          idp.Transforms,
+					DisplayName:             idp.DisplayName,
+					Provider:                p,
+					SessionProviderType:     psession.ProviderTypeLDAP,
+					Transforms:              idp.Transforms,
+					SessionLifetimeOverride: idp.SessionLifetimeOverride,
 				})
 			}
 		}
@@ -179,20 +187,22 @@ func (u *FederationDomainIdentityProvidersListerFinder) GetIdentityProviders() [
 			if idp.UID == p.GetResourceUID() {
 				// Found it, so append it to the result.
 				providers = append(providers, &resolvedldap.FederationDomainResolvedLDAPIdentityProvider{
-					DisplayName:         idp.DisplayName,
-					Provider:            p,
-					SessionProviderType: psession.ProviderTypeActiveDirectory,
-					Transforms:          idp.Transforms,
+					DisplayName:             idp.DisplayName,
+					Provider:                p,
+					SessionProviderType:     psession.ProviderTypeActiveDirectory,
+					Transforms:              idp.Transforms,
+					SessionLifetimeOverride: idp.SessionLifetimeOverride,
 				})
 			}
 		}
 		for _, p := range cachedGitHubProviders {
 			if idp.UID == p.GetResourceUID() {
 				providers = append(providers, &resolvedgithub.FederationDomainResolvedGitHubIdentityProvider{
-					DisplayName:         idp.DisplayName,
-					Provider:            p,
-					SessionProviderType: psession.ProviderTypeGitHub,
-					Transforms:          idp.Transforms,
+					DisplayName:             idp.DisplayName,
+					Provider:                p,
+					SessionProviderType:     psession.ProviderTypeGitHub,
+					Transforms:              idp.Transforms,
+					SessionLifetimeOverride: idp.SessionLifetimeOverride,
 				})
 			}
 		}

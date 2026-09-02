@@ -21,10 +21,12 @@ If the administrator of the external identity provider has removed or locked the
 the user's group memberships, then they typically would like that change to take effect within Kubernetes clusters
 as quickly as possible.
 
-Note that none of the token or credential lifetimes described in this document are currently configurable.
+Note that most of the token or credential lifetimes described in this document are not configurable.
 (One exception is the lifetime of ID tokens issued to OAuth2 clients created as `OIDCClients` may be configured
 by the administrator, but that does not apply when using the Pinniped CLI,
-which always uses the OAuth2 client called `pinniped-cli`.)
+which always uses the OAuth2 client called `pinniped-cli`. Another exception is the lifetime of the Supervisor
+refresh token described below, which may be overridden per identity provider using
+`FederationDomain.spec.identityProviders[].sessionLifetimeSeconds`.)
 
 When an admin user generates a Pinniped-compatible kubeconfig, that kubeconfig will use the Pinniped CLI as a
 [Kubernetes client-go credential plugin](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#client-go-credential-plugins).
@@ -100,6 +102,14 @@ The maximum amount of time that any user can continue to refresh their Superviso
 the initial login time. After that, the next refresh will fail and the user must perform a fresh login.
 This ensures that the user's access privileges are updated at least once a day, even if the Supervisor
 cannot detect an access privilege change made in the external identity provider during the day.
+
+This 9-hour default may be overridden for a particular identity provider by setting
+`sessionLifetimeSeconds` on that identity provider's entry in a `FederationDomain`'s
+`spec.identityProviders` list. Administrators who wish to
+allow longer sessions for a particular identity provider should first consider how quickly that identity
+provider's administrator could revoke a user's access or update their group membership, since a longer
+session lifetime widens the window during which the Supervisor may continue to honor a session based on
+stale information from that identity provider.
 
 A user's session my terminate quicker if the Supervisor determines from an external identity provider that
 the session should end. One example of this is that for an `OIDCIdentityProvider`, the Supervisor will

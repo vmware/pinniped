@@ -52,6 +52,8 @@ import (
 	"go.pinniped.dev/internal/federationdomain/federationdomainproviders"
 	"go.pinniped.dev/internal/federationdomain/oidc"
 	"go.pinniped.dev/internal/federationdomain/oidcclientvalidator"
+	"go.pinniped.dev/internal/federationdomain/resolvedprovider"
+	"go.pinniped.dev/internal/federationdomain/resolvedprovider/resolvedoidc"
 	"go.pinniped.dev/internal/federationdomain/storage"
 	"go.pinniped.dev/internal/federationdomain/upstreamprovider"
 	"go.pinniped.dev/internal/fositestorage/accesstoken"
@@ -6093,4 +6095,114 @@ func TestParamsSafeToLog(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, wantParams, paramsSafeToLog().UnsortedList())
+}
+
+type fakeIDPListerForRefreshTokenLifetimeTest struct {
+	idps []resolvedprovider.FederationDomainResolvedIdentityProvider
+}
+
+func (f *fakeIDPListerForRefreshTokenLifetimeTest) GetIdentityProviders() []resolvedprovider.FederationDomainResolvedIdentityProvider {
+	return f.idps
+}
+
+func TestMaybeOverrideDefaultRefreshTokenLifetime(t *testing.T) {
+	matchingProvider := oidctestutil.NewTestUpstreamOIDCIdentityProviderBuilder().
+		WithName("my-idp").
+		WithResourceUID("my-idp-uid").
+		Build()
+
+	sessionUsingMatchingProvider := func() *psession.PinnipedSession {
+		s := psession.NewPinnipedSession()
+		s.Custom.ProviderName = "my-idp"
+		s.Custom.ProviderType = psession.ProviderTypeOIDC
+		s.Custom.ProviderUID = "my-idp-uid"
+		return s
+	}
+
+	tests := []struct {
+		name    string
+		session *psession.PinnipedSession
+		idps    []resolvedprovider.FederationDomainResolvedIdentityProvider
+		// wantOverriddenLifetime is the expected new refresh token lifetime, or zero if no override should be applied.
+		wantOverriddenLifetime time.Duration
+	}{
+		{
+			name:    "when the identity provider used by the session has a session lifetime override configured, it is applied",
+			session: sessionUsingMatchingProvider(),
+			idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+				&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+					DisplayName:             "my-idp",
+					Provider:                matchingProvider,
+					SessionProviderType:     psession.ProviderTypeOIDC,
+					SessionLifetimeOverride: 3 * time.Hour,
+				},
+			},
+			wantOverriddenLifetime: 3 * time.Hour,
+		},
+		{
+			name:    "when the identity provider used by the session does not have a session lifetime override configured, the default is left alone",
+			session: sessionUsingMatchingProvider(),
+			idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+				&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+					DisplayName:         "my-idp",
+					Provider:            matchingProvider,
+					SessionProviderType: psession.ProviderTypeOIDC,
+				},
+			},
+		},
+		{
+			name:    "when the identity provider used by the session cannot be found, the default is left alone",
+			session: sessionUsingMatchingProvider(),
+			idps:    []resolvedprovider.FederationDomainResolvedIdentityProvider{},
+		},
+		{
+			name: "when the identity provider used by the session matches by name but not by resource UID, the default is left alone",
+			session: func() *psession.PinnipedSession {
+				s := sessionUsingMatchingProvider()
+				s.Custom.ProviderUID = "some-other-uid"
+				return s
+			}(),
+			idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+				&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+					DisplayName:             "my-idp",
+					Provider:                matchingProvider,
+					SessionProviderType:     psession.ProviderTypeOIDC,
+					SessionLifetimeOverride: 3 * time.Hour,
+				},
+			},
+		},
+		{
+			name: "when the session has no custom session data, the default is left alone",
+			session: func() *psession.PinnipedSession {
+				s := psession.NewPinnipedSession()
+				s.Custom = nil
+				return s
+			}(),
+			idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+				&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+					DisplayName:             "my-idp",
+					Provider:                matchingProvider,
+					SessionProviderType:     psession.ProviderTypeOIDC,
+					SessionLifetimeOverride: 3 * time.Hour,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			accessRequest := fosite.NewAccessRequest(tt.session)
+			originalExpiry := time.Now().UTC().Add(9 * time.Hour).Round(time.Second)
+			tt.session.SetExpiresAt(fosite.RefreshToken, originalExpiry)
+
+			maybeOverrideDefaultRefreshTokenLifetime(accessRequest, &fakeIDPListerForRefreshTokenLifetimeTest{idps: tt.idps})
+
+			actualExpiry := tt.session.GetExpiresAt(fosite.RefreshToken)
+			if tt.wantOverriddenLifetime == 0 {
+				require.Equal(t, originalExpiry, actualExpiry)
+			} else {
+				require.WithinDuration(t, time.Now().UTC().Add(tt.wantOverriddenLifetime), actualExpiry, 30*time.Second)
+			}
+		})
+	}
 }

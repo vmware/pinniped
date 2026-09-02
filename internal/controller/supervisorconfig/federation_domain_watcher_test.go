@@ -1155,6 +1155,80 @@ func TestTestFederationDomainWatcherControllerSync(t *testing.T) {
 			},
 		},
 		{
+			name: "the federation domain specifies a per-IDP session lifetime override on some of its identity providers",
+			inputObjects: []runtime.Object{
+				oidcIdentityProvider,
+				ldapIdentityProvider,
+				adIdentityProvider,
+				gitHubIdentityProvider,
+				&supervisorconfigv1alpha1.FederationDomain{
+					ObjectMeta: metav1.ObjectMeta{Name: "config1", Namespace: namespace, Generation: 123},
+					Spec: supervisorconfigv1alpha1.FederationDomainSpec{
+						Issuer: "https://issuer1.com",
+						IdentityProviders: []supervisorconfigv1alpha1.FederationDomainIdentityProvider{
+							{
+								DisplayName: "can-find-me-with-1-hour-session",
+								ObjectRef: corev1.TypedLocalObjectReference{
+									APIGroup: ptr.To(apiGroupSupervisor),
+									Kind:     "OIDCIdentityProvider",
+									Name:     oidcIdentityProvider.Name,
+								},
+								SessionLifetimeSeconds: ptr.To(int32(3600)),
+							},
+							{
+								DisplayName: "can-find-me-with-1-week-session",
+								ObjectRef: corev1.TypedLocalObjectReference{
+									APIGroup: ptr.To(apiGroupSupervisor),
+									Kind:     "LDAPIdentityProvider",
+									Name:     ldapIdentityProvider.Name,
+								},
+								SessionLifetimeSeconds: ptr.To(int32(604800)),
+							},
+							{
+								DisplayName: "can-find-me-with-default-session",
+								ObjectRef: corev1.TypedLocalObjectReference{
+									APIGroup: ptr.To(apiGroupSupervisor),
+									Kind:     "ActiveDirectoryIdentityProvider",
+									Name:     adIdentityProvider.Name,
+								},
+							},
+						},
+					},
+				},
+			},
+			wantFDIssuers: []*federationdomainproviders.FederationDomainIssuer{
+				federationDomainIssuerWithIDPs(t, "https://issuer1.com",
+					[]*federationdomainproviders.FederationDomainIdentityProvider{
+						{
+							DisplayName:             "can-find-me-with-1-hour-session",
+							UID:                     oidcIdentityProvider.UID,
+							Transforms:              idtransform.NewTransformationPipeline(),
+							SessionLifetimeOverride: 1 * time.Hour,
+						},
+						{
+							DisplayName:             "can-find-me-with-1-week-session",
+							UID:                     ldapIdentityProvider.UID,
+							Transforms:              idtransform.NewTransformationPipeline(),
+							SessionLifetimeOverride: 7 * 24 * time.Hour,
+						},
+						{
+							DisplayName: "can-find-me-with-default-session",
+							UID:         adIdentityProvider.UID,
+							Transforms:  idtransform.NewTransformationPipeline(),
+						},
+					}),
+			},
+			wantStatusUpdates: []*supervisorconfigv1alpha1.FederationDomain{
+				expectedFederationDomainStatusUpdate(
+					&supervisorconfigv1alpha1.FederationDomain{
+						ObjectMeta: metav1.ObjectMeta{Name: "config1", Namespace: namespace, Generation: 123},
+					},
+					supervisorconfigv1alpha1.FederationDomainPhaseReady,
+					allHappyConditionsSuccess("https://issuer1.com", frozenMetav1Now, 123),
+				),
+			},
+		},
+		{
 			name: "the federation domain has duplicate display names for IDPs",
 			inputObjects: []runtime.Object{
 				oidcIdentityProvider,

@@ -5,6 +5,7 @@ package federationdomainproviders
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -587,4 +588,54 @@ func TestFederationDomainIdentityProvidersListerFinder(t *testing.T) {
 			require.Equal(t, tt.wantHasDefaultIDP, subject.HasDefaultIDP())
 		})
 	}
+}
+
+func TestFederationDomainIdentityProvidersListerFinderSessionLifetimeOverride(t *testing.T) {
+	oidcIDP := oidctestutil.NewTestUpstreamOIDCIdentityProviderBuilder().
+		WithName("my-oidc-idp").
+		WithResourceUID("my-oidc-uid-idp").
+		Build()
+	ldapIDP := oidctestutil.NewTestUpstreamLDAPIdentityProviderBuilder().
+		WithName("my-ldap-idp").
+		WithResourceUID("my-ldap-uid-idp").
+		Build()
+	adIDP := oidctestutil.NewTestUpstreamLDAPIdentityProviderBuilder().
+		WithName("my-ad-idp").
+		WithResourceUID("my-ad-uid-idp").
+		Build()
+	githubIDP := oidctestutil.NewTestUpstreamGitHubIdentityProviderBuilder().
+		WithName("my-github-idp").
+		WithResourceUID("my-github-uid-idp").
+		Build()
+
+	fakeIssuerURL := "https://www.fakeissuerurl.com"
+	federationDomainIssuer, err := NewFederationDomainIssuer(fakeIssuerURL, []*FederationDomainIdentityProvider{
+		{DisplayName: "my-oidc-idp", UID: "my-oidc-uid-idp", SessionLifetimeOverride: 1 * time.Hour},
+		{DisplayName: "my-ldap-idp", UID: "my-ldap-uid-idp", SessionLifetimeOverride: 2 * time.Hour},
+		{DisplayName: "my-ad-idp", UID: "my-ad-uid-idp", SessionLifetimeOverride: 3 * time.Hour},
+		{DisplayName: "my-github-idp", UID: "my-github-uid-idp"}, // no override configured
+	})
+	require.NoError(t, err)
+
+	wrappedLister := testidplister.NewUpstreamIDPListerBuilder().
+		WithOIDC(oidcIDP).
+		WithLDAP(ldapIDP).
+		WithActiveDirectory(adIDP).
+		WithGitHub(githubIDP).
+		BuildDynamicUpstreamIDPProvider()
+
+	subject := NewFederationDomainIdentityProvidersListerFinder(federationDomainIssuer, wrappedLister)
+	idps := subject.GetIdentityProviders()
+
+	actualOverridesByDisplayName := map[string]time.Duration{}
+	for _, idp := range idps {
+		actualOverridesByDisplayName[idp.GetDisplayName()] = idp.GetSessionLifetimeOverride()
+	}
+
+	require.Equal(t, map[string]time.Duration{
+		"my-oidc-idp":   1 * time.Hour,
+		"my-ldap-idp":   2 * time.Hour,
+		"my-ad-idp":     3 * time.Hour,
+		"my-github-idp": 0,
+	}, actualOverridesByDisplayName)
 }

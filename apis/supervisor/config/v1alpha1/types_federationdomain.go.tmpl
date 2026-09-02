@@ -192,6 +192,16 @@ type FederationDomainIdentityProvider struct {
 	// LDAPIdentityProvider, ActiveDirectoryIdentityProvider.
 	ObjectRef corev1.TypedLocalObjectReference `json:"objectRef"`
 
+	// SessionLifetimeSeconds is an optional override of the default lifetime of a Supervisor session established
+	// using this identity provider, in seconds. This is the maximum amount of time that a user can continue to
+	// refresh their session before they must interactively authenticate again. When null, the default lifetime is
+	// used, which is currently 9 hours. Administrators should weigh the operational reality of their identity 
+  // provider (e.g. how promptly it reflects a revoked account or changed group membership) before configuring 
+  // a long-lived session.
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	SessionLifetimeSeconds *int32 `json:"sessionLifetimeSeconds,omitempty"`
+
 	// Transforms is an optional way to specify transformations to be applied during user authentication and
 	// session refresh.
 	// +optional
