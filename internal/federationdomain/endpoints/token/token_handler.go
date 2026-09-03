@@ -102,6 +102,10 @@ func NewHandler(
 		// Depending on the request, sometimes override the default access token lifespan.
 		maybeOverrideDefaultAccessTokenLifetime(overrideAccessTokenLifespan, accessRequest)
 
+		// Depending on which identity provider was used for this session, sometimes override the default
+		// refresh token lifespan, which determines how long the user's overall session can last.
+		maybeOverrideDefaultRefreshTokenLifetime(accessRequest, idpLister)
+
 		// Create the token response.
 		// The lifetime of the ID token will be determined inside the call NewAccessResponse.
 		// Depending on the request, sometimes override the default ID token lifespan by putting
@@ -127,6 +131,30 @@ func NewHandler(
 func maybeOverrideDefaultAccessTokenLifetime(overrideAccessTokenLifespan timeouts.OverrideLifespan, accessRequest fosite.AccessRequester) {
 	if newLifespan, doOverride := overrideAccessTokenLifespan(accessRequest); doOverride {
 		accessRequest.GetSession().SetExpiresAt(fosite.AccessToken, time.Now().UTC().Add(newLifespan).Round(time.Second))
+	}
+}
+
+// maybeOverrideDefaultRefreshTokenLifetime looks up the identity provider that was used to establish this
+// session and, if it is configured with a session lifetime override, applies it to the refresh token that is
+// about to be issued. This is safe to call for both the authcode exchange and the refresh grant, since both
+// paths issue a fresh refresh token. If the identity provider cannot be determined, the default lifespan from
+// the fosite configuration is left in place.
+func maybeOverrideDefaultRefreshTokenLifetime(
+	accessRequest fosite.AccessRequester,
+	idpLister federationdomainproviders.FederationDomainIdentityProvidersListerI,
+) {
+	session, ok := accessRequest.GetSession().(*psession.PinnipedSession)
+	if !ok || session.Custom == nil {
+		return
+	}
+
+	idp, err := findProviderByNameAndType(session.Custom.ProviderName, session.Custom.ProviderType, session.Custom.ProviderUID, idpLister)
+	if err != nil {
+		return
+	}
+
+	if override := idp.GetSessionLifetimeOverride(); override > 0 {
+		accessRequest.GetSession().SetExpiresAt(fosite.RefreshToken, time.Now().UTC().Add(override).Round(time.Second))
 	}
 }
 

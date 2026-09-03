@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ory/fosite"
 
@@ -28,10 +29,11 @@ import (
 // been resolved dynamically based on the currently loaded IDP CRs to include the provider.UpstreamLDAPIdentityProviderI
 // and other metadata about the provider.
 type FederationDomainResolvedLDAPIdentityProvider struct {
-	DisplayName         string
-	Provider            upstreamprovider.UpstreamLDAPIdentityProviderI
-	SessionProviderType psession.ProviderType
-	Transforms          *idtransform.TransformationPipeline
+	DisplayName             string
+	Provider                upstreamprovider.UpstreamLDAPIdentityProviderI
+	SessionProviderType     psession.ProviderType
+	Transforms              *idtransform.TransformationPipeline
+	SessionLifetimeOverride time.Duration
 }
 
 var _ resolvedprovider.FederationDomainResolvedIdentityProvider = (*FederationDomainResolvedLDAPIdentityProvider)(nil)
@@ -61,6 +63,10 @@ func (p *FederationDomainResolvedLDAPIdentityProvider) GetIDPDiscoveryFlows() []
 
 func (p *FederationDomainResolvedLDAPIdentityProvider) GetTransforms() *idtransform.TransformationPipeline {
 	return p.Transforms
+}
+
+func (p *FederationDomainResolvedLDAPIdentityProvider) GetSessionLifetimeOverride() time.Duration {
+	return p.SessionLifetimeOverride
 }
 
 func (p *FederationDomainResolvedLDAPIdentityProvider) CloneIDPSpecificSessionDataFromSession(session *psession.CustomSessionData) any {

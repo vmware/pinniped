@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/ory/fosite"
 	"github.com/stretchr/testify/require"
@@ -53,10 +54,11 @@ func TestFederationDomainResolvedGitHubIdentityProvider(t *testing.T) {
 	})
 
 	subject := FederationDomainResolvedGitHubIdentityProvider{
-		DisplayName:         "fake-display-name",
-		Provider:            provider,
-		SessionProviderType: psession.ProviderTypeGitHub,
-		Transforms:          transforms,
+		DisplayName:             "fake-display-name",
+		Provider:                provider,
+		SessionProviderType:     psession.ProviderTypeGitHub,
+		Transforms:              transforms,
+		SessionLifetimeOverride: 9001 * time.Second,
 	}
 
 	require.Equal(t, "fake-display-name", subject.GetDisplayName())
@@ -65,6 +67,7 @@ func TestFederationDomainResolvedGitHubIdentityProvider(t *testing.T) {
 	require.Equal(t, idpdiscoveryv1alpha1.IDPTypeGitHub, subject.GetIDPDiscoveryType())
 	require.Equal(t, []idpdiscoveryv1alpha1.IDPFlow{idpdiscoveryv1alpha1.IDPFlowBrowserAuthcode}, subject.GetIDPDiscoveryFlows())
 	require.Equal(t, transforms, subject.GetTransforms())
+	require.Equal(t, 9001*time.Second, subject.GetSessionLifetimeOverride())
 
 	originalCustomSession := &psession.CustomSessionData{
 		Username:         "fake-username",

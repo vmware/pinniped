@@ -45,6 +45,11 @@ func (in *FederationDomain) DeepCopyObject() runtime.Object {
 func (in *FederationDomainIdentityProvider) DeepCopyInto(out *FederationDomainIdentityProvider) {
 	*out = *in
 	in.ObjectRef.DeepCopyInto(&out.ObjectRef)
+	if in.SessionLifetimeSeconds != nil {
+		in, out := &in.SessionLifetimeSeconds, &out.SessionLifetimeSeconds
+		*out = new(int32)
+		**out = **in
+	}
 	in.Transforms.DeepCopyInto(&out.Transforms)
 	return
 }

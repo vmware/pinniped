@@ -425,11 +425,19 @@ func (c *federationDomainWatcherController) makeFederationDomainIssuerWithExplic
 			continue
 		}
 
+		// Allow the user to optionally override the default Supervisor session lifetime for this identity provider.
+		var sessionLifetimeOverride time.Duration
+		if idp.SessionLifetimeSeconds != nil {
+			// It should be safe to cast this int32 to time.Duration, because time.Duration is an int64.
+			sessionLifetimeOverride = time.Duration(*idp.SessionLifetimeSeconds) * time.Second
+		}
+
 		// For a valid IDP (unique displayName, valid objectRef, valid transforms), add it to the list.
 		federationDomainIdentityProviders = append(federationDomainIdentityProviders, &federationdomainproviders.FederationDomainIdentityProvider{
-			DisplayName: idp.DisplayName,
-			UID:         idpResourceUID,
-			Transforms:  pipeline,
+			DisplayName:             idp.DisplayName,
+			UID:                     idpResourceUID,
+			Transforms:              pipeline,
+			SessionLifetimeOverride: sessionLifetimeOverride,
 		})
 	}
 
