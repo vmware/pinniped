@@ -555,11 +555,24 @@ func (c *impersonatorConfigController) ensureLoadBalancerIsStarted(ctx context.C
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        c.generatedLoadBalancerServiceName,
 			Namespace:   c.namespace,
-			Labels:      c.labels,
+			Labels:      c.serviceLabels(config.Service.Labels),
 			Annotations: config.Service.Annotations,
 		},
 	}
 	return c.createOrUpdateService(ctx, &loadBalancer)
+}
+
+func (c *impersonatorConfigController) serviceLabels(labelsFromCredentialIssuer map[string]string) map[string]string {
+	serviceLabels := maps.Clone(c.labels)
+	if len(labelsFromCredentialIssuer) > 0 {
+		if serviceLabels == nil {
+			serviceLabels = map[string]string{}
+		}
+		for k, v := range labelsFromCredentialIssuer {
+			serviceLabels[k] = v
+		}
+	}
+	return serviceLabels
 }
 
 func (c *impersonatorConfigController) ensureLoadBalancerIsStopped(ctx context.Context) error {
@@ -600,7 +613,7 @@ func (c *impersonatorConfigController) ensureClusterIPServiceIsStarted(ctx conte
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        c.generatedClusterIPServiceName,
 			Namespace:   c.namespace,
-			Labels:      c.labels,
+			Labels:      c.serviceLabels(config.Service.Labels),
 			Annotations: config.Service.Annotations,
 		},
 	}
@@ -1249,6 +1262,10 @@ func validateCredentialIssuerSpec(spec *conciergeconfigv1alpha1.ImpersonationPro
 		return fmt.Errorf("invalid LoadBalancerIP %q", spec.Service.LoadBalancerIP)
 	}
 
+	if err := validateServiceLabels(spec.Service.Labels); err != nil {
+		return err
+	}
+
 	// If service is type "None", a non-empty external endpoint must be specified.
 	if spec.ExternalEndpoint == "" && spec.Service.Type == conciergeconfigv1alpha1.ImpersonationProxyServiceTypeNone {
 		return fmt.Errorf("externalEndpoint must be set when service.type is None")
@@ -1260,6 +1277,19 @@ func validateCredentialIssuerSpec(spec *conciergeconfigv1alpha1.ImpersonationPro
 		}
 	}
 
+	return nil
+}
+
+func validateServiceLabels(serviceLabels map[string]string) error {
+	for k, v := range serviceLabels {
+		if errs := validation.IsQualifiedName(k); len(errs) > 0 {
+			return fmt.Errorf("invalid service label key %q: %s", k, strings.Join(errs, "; "))
+		}
+
+		if errs := validation.IsValidLabelValue(v); len(errs) > 0 {
+			return fmt.Errorf("invalid service label value for key %q: %s", k, strings.Join(errs, "; "))
+		}
+	}
 	return nil
 }
 

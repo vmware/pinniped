@@ -1011,7 +1011,6 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 			r.Equal(installedInNamespace, createdLoadBalancerService.Namespace)
 			r.Equal(corev1.ServiceTypeLoadBalancer, createdLoadBalancerService.Spec.Type)
 			r.Equal("app-name", createdLoadBalancerService.Spec.Selector["app"])
-			r.Equal(labels, createdLoadBalancerService.Labels)
 			return createdLoadBalancerService
 		}
 
@@ -1964,7 +1963,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				})
 			})
 
-			when("credentialissuer has service type loadbalancer and custom annotations", func() {
+			when("credentialissuer has service type loadbalancer and custom annotations and labels", func() {
 				it.Before(func() {
 					addCredentialIssuerToTrackers(conciergeconfigv1alpha1.CredentialIssuer{
 						ObjectMeta: metav1.ObjectMeta{Name: credentialIssuerResourceName},
@@ -1974,6 +1973,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 								Service: conciergeconfigv1alpha1.ImpersonationProxyServiceSpec{
 									Type:        conciergeconfigv1alpha1.ImpersonationProxyServiceTypeLoadBalancer,
 									Annotations: map[string]string{"some-annotation-key": "some-annotation-value"},
+									Labels:      map[string]string{"some-label-key": "some-label-value"},
 								},
 							},
 						},
@@ -1987,11 +1987,14 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 					r.Len(kubeAPIClient.Actions(), 3)
 					requireNodesListed(kubeAPIClient.Actions()[0])
 					lbService := requireLoadBalancerWasCreated(kubeAPIClient.Actions()[1])
+					wantLabels := maps.Clone(labels)
+					wantLabels["some-label-key"] = "some-label-value"
+					r.Equal(wantLabels, lbService.Labels)
 					//nolint:gosec // no credentials here
 					r.Equal(lbService.Annotations, map[string]string{
 						"some-annotation-key":                           "some-annotation-value",
 						"credentialissuer.pinniped.dev/annotation-keys": `["some-annotation-key"]`,
-						"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
+						"credentialissuer.pinniped.dev/label-keys":      `["app","other-key","some-label-key"]`,
 					})
 					requireCASecretWasCreated(kubeAPIClient.Actions()[2])
 					requireTLSServerIsRunningWithoutCerts()
@@ -2807,8 +2810,9 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.NoError(runControllerSync())
 				r.Len(kubeAPIClient.Actions(), 4) // no new actions because the controller decides there is nothing to update on the Service
 
-				// Add annotations to the CredentialIssuer spec.
+				// Add annotations and labels to the CredentialIssuer spec.
 				credentialIssuerAnnotations := map[string]string{"my-annotation-key": "my-annotation-val"}
+				credentialIssuerLabels := map[string]string{"my-label-key": "my-label-val"}
 				updateCredentialIssuerInInformerAndWait(credentialIssuerResourceName, conciergeconfigv1alpha1.CredentialIssuerSpec{
 					ImpersonationProxy: &conciergeconfigv1alpha1.ImpersonationProxySpec{
 						Mode:             conciergeconfigv1alpha1.ImpersonationProxyModeEnabled,
@@ -2816,6 +2820,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 						Service: conciergeconfigv1alpha1.ImpersonationProxyServiceSpec{
 							Type:        conciergeconfigv1alpha1.ImpersonationProxyServiceTypeLoadBalancer,
 							Annotations: credentialIssuerAnnotations,
+							Labels:      credentialIssuerLabels,
 						},
 					},
 				}, pinnipedInformers.Config().V1alpha1().CredentialIssuers())
@@ -2824,7 +2829,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 5) // one more item to update the loadbalancer
 				lbService = requireLoadBalancerWasUpdated(kubeAPIClient.Actions()[4])
 				wantLabels := maps.Clone(labels)
-				wantLabels["my-label-key"] = "my-label-from-unrelated-controller-val"
+				wantLabels["my-label-key"] = "my-label-val"
 				r.Equal(wantLabels, lbService.Labels)
 				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{
@@ -2834,7 +2839,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 					"annotation-from-unrelated-controller-key":      "annotation-from-unrelated-controller-val",
 					"my-annotation-key":                             "my-annotation-val",
 					"credentialissuer.pinniped.dev/annotation-keys": `["my-annotation-key"]`,
-					"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
+					"credentialissuer.pinniped.dev/label-keys":      `["app","my-label-key","other-key"]`,
 				}, lbService.Annotations)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
 				requireCredentialIssuer(newSuccessStrategy(localhostIP, ca))
@@ -2890,8 +2895,9 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.NoError(runControllerSync())
 				r.Len(kubeAPIClient.Actions(), 4) // no new actions because the controller decides there is nothing to update on the Service
 
-				// Add annotations to the CredentialIssuer spec.
+				// Add annotations and labels to the CredentialIssuer spec.
 				credentialIssuerAnnotations := map[string]string{"my-annotation-key": "my-annotation-val"}
+				credentialIssuerLabels := map[string]string{"my-label-key": "my-label-val"}
 				updateCredentialIssuerInInformerAndWait(credentialIssuerResourceName, conciergeconfigv1alpha1.CredentialIssuerSpec{
 					ImpersonationProxy: &conciergeconfigv1alpha1.ImpersonationProxySpec{
 						Mode:             conciergeconfigv1alpha1.ImpersonationProxyModeEnabled,
@@ -2899,6 +2905,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 						Service: conciergeconfigv1alpha1.ImpersonationProxyServiceSpec{
 							Type:        conciergeconfigv1alpha1.ImpersonationProxyServiceTypeClusterIP,
 							Annotations: credentialIssuerAnnotations,
+							Labels:      credentialIssuerLabels,
 						},
 					},
 				}, pinnipedInformers.Config().V1alpha1().CredentialIssuers())
@@ -2907,7 +2914,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				r.Len(kubeAPIClient.Actions(), 5) // one more item to update the loadbalancer
 				clusterIPService = requireClusterIPWasUpdated(kubeAPIClient.Actions()[4])
 				wantLabels := maps.Clone(labels)
-				wantLabels["my-label-key"] = "my-label-from-unrelated-controller-val"
+				wantLabels["my-label-key"] = "my-label-val"
 				r.Equal(wantLabels, clusterIPService.Labels)
 				//nolint:gosec // no credentials here
 				r.Equal(map[string]string{
@@ -2917,7 +2924,7 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 					"annotation-from-unrelated-controller-key":      "annotation-from-unrelated-controller-val",
 					"my-annotation-key":                             "my-annotation-val",
 					"credentialissuer.pinniped.dev/annotation-keys": `["my-annotation-key"]`,
-					"credentialissuer.pinniped.dev/label-keys":      `["app","other-key"]`,
+					"credentialissuer.pinniped.dev/label-keys":      `["app","my-label-key","other-key"]`,
 				}, clusterIPService.Annotations)
 				requireTLSServerIsRunning(ca, testServerAddr(), nil)
 				requireCredentialIssuer(newSuccessStrategy(localhostIP, ca))
@@ -3548,6 +3555,58 @@ func TestImpersonatorConfigControllerSync(t *testing.T) {
 				errString := `could not load CredentialIssuer spec.impersonationProxy: invalid LoadBalancerIP "invalid-ip-address"`
 				r.EqualError(runControllerSync(), errString)
 				requireCredentialIssuer(newErrorStrategy(errString))
+				requireMTLSClientCertProviderIsEmpty()
+				requireTLSServerWasNeverStarted()
+			})
+		})
+
+		when("the CredentialIssuer has an invalid service label key", func() {
+			it.Before(func() {
+				addCredentialIssuerToTrackers(conciergeconfigv1alpha1.CredentialIssuer{
+					ObjectMeta: metav1.ObjectMeta{Name: credentialIssuerResourceName},
+					Spec: conciergeconfigv1alpha1.CredentialIssuerSpec{
+						ImpersonationProxy: &conciergeconfigv1alpha1.ImpersonationProxySpec{
+							Mode: conciergeconfigv1alpha1.ImpersonationProxyModeEnabled,
+							Service: conciergeconfigv1alpha1.ImpersonationProxyServiceSpec{
+								Labels: map[string]string{"not a valid key": "valid-value"},
+							},
+						},
+					},
+				}, pinnipedInformerClient, pinnipedAPIClient)
+			})
+
+			it("returns an error", func() {
+				startInformersAndController()
+				err := runControllerSync()
+				r.Error(err)
+				r.Contains(err.Error(), `could not load CredentialIssuer spec.impersonationProxy: invalid service label key "not a valid key":`)
+				requireCredentialIssuer(newErrorStrategy(err.Error()))
+				requireMTLSClientCertProviderIsEmpty()
+				requireTLSServerWasNeverStarted()
+			})
+		})
+
+		when("the CredentialIssuer has an invalid service label value", func() {
+			it.Before(func() {
+				addCredentialIssuerToTrackers(conciergeconfigv1alpha1.CredentialIssuer{
+					ObjectMeta: metav1.ObjectMeta{Name: credentialIssuerResourceName},
+					Spec: conciergeconfigv1alpha1.CredentialIssuerSpec{
+						ImpersonationProxy: &conciergeconfigv1alpha1.ImpersonationProxySpec{
+							Mode: conciergeconfigv1alpha1.ImpersonationProxyModeEnabled,
+							Service: conciergeconfigv1alpha1.ImpersonationProxyServiceSpec{
+								Labels: map[string]string{"valid-key": "not a valid value!"},
+							},
+						},
+					},
+				}, pinnipedInformerClient, pinnipedAPIClient)
+			})
+
+			it("returns an error", func() {
+				startInformersAndController()
+				err := runControllerSync()
+				r.Error(err)
+				r.Contains(err.Error(), `could not load CredentialIssuer spec.impersonationProxy: invalid service label value for key "valid-key":`)
+				requireCredentialIssuer(newErrorStrategy(err.Error()))
 				requireMTLSClientCertProviderIsEmpty()
 				requireTLSServerWasNeverStarted()
 			})

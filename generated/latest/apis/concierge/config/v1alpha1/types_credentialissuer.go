@@ -155,6 +155,11 @@ type ImpersonationProxyServiceSpec struct {
 	//
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Labels specifies zero or more key/value pairs to set as labels on the provisioned Service.
+	//
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // CredentialIssuerStatus describes the status of the Concierge.
