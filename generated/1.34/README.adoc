@@ -754,6 +754,7 @@ value so that the Concierge can properly advertise the endpoint in the Credentia
 | *`loadBalancerIP`* __string__ | LoadBalancerIP specifies the IP address to set in the spec.loadBalancerIP field of the provisioned Service. +
 This is not supported on all cloud providers. +
 | *`annotations`* __object (keys:string, values:string)__ | Annotations specifies zero or more key/value pairs to set as annotations on the provisioned Service. +
+| *`labels`* __object (keys:string, values:string)__ | Labels specifies zero or more key/value pairs to set as labels on the provisioned Service. +
 |===
 
 
