@@ -6,6 +6,7 @@ package resolvedprovider
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/ory/fosite"
 
@@ -113,6 +114,11 @@ type FederationDomainResolvedIdentityProvider interface {
 	// GetTransforms returns the compiled version of the identity transformations and policies configured on the
 	// FederationDomain for this identity provider.
 	GetTransforms() *idtransform.TransformationPipeline
+
+	// GetSessionLifetimeOverride returns the configured override of the default Supervisor session lifetime for
+	// sessions established using this identity provider, as configured on the FederationDomain. Zero means that
+	// there is no override, and the default lifetime should be used.
+	GetSessionLifetimeOverride() time.Duration
 
 	// CloneIDPSpecificSessionDataFromSession should reach into the provided session and return a clone
 	// of the field which is specific to the upstream identity provider type. If the session's field is

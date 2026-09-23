@@ -48,10 +48,11 @@ const (
 // been resolved dynamically based on the currently loaded IDP CRs to include the provider.UpstreamOIDCIdentityProviderI
 // and other metadata about the provider.
 type FederationDomainResolvedOIDCIdentityProvider struct {
-	DisplayName         string
-	Provider            upstreamprovider.UpstreamOIDCIdentityProviderI
-	SessionProviderType psession.ProviderType
-	Transforms          *idtransform.TransformationPipeline
+	DisplayName             string
+	Provider                upstreamprovider.UpstreamOIDCIdentityProviderI
+	SessionProviderType     psession.ProviderType
+	Transforms              *idtransform.TransformationPipeline
+	SessionLifetimeOverride time.Duration
 }
 
 var _ resolvedprovider.FederationDomainResolvedIdentityProvider = (*FederationDomainResolvedOIDCIdentityProvider)(nil)
@@ -82,6 +83,10 @@ func (p *FederationDomainResolvedOIDCIdentityProvider) GetIDPDiscoveryFlows() []
 
 func (p *FederationDomainResolvedOIDCIdentityProvider) GetTransforms() *idtransform.TransformationPipeline {
 	return p.Transforms
+}
+
+func (p *FederationDomainResolvedOIDCIdentityProvider) GetSessionLifetimeOverride() time.Duration {
+	return p.SessionLifetimeOverride
 }
 
 func (p *FederationDomainResolvedOIDCIdentityProvider) CloneIDPSpecificSessionDataFromSession(session *psession.CustomSessionData) any {

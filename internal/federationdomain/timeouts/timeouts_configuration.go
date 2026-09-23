@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package timeouts
@@ -15,6 +15,29 @@ type StorageLifetime func(requester fosite.Requester) time.Duration
 // OverrideLifespan is a function that, given a request, can suggest to override the default lifespan
 // by returning true along with a new lifespan. When false is returned, the returned duration should be ignored.
 type OverrideLifespan func(accessRequest fosite.AccessRequester) (time.Duration, bool)
+
+// RemainingRefreshTokenLifetime returns how much longer the refresh token carried by this request will
+// remain valid, according to the expiration time recorded in the request's session.
+func RemainingRefreshTokenLifetime(requester fosite.Requester, now time.Time, defaultLifespan time.Duration) time.Duration {
+	if requester == nil {
+		return defaultLifespan
+	}
+
+	session := requester.GetSession()
+	if session == nil {
+		return defaultLifespan
+	}
+
+	expiresAt := session.GetExpiresAt(fosite.RefreshToken)
+	if expiresAt.IsZero() {
+		return defaultLifespan
+	}
+
+	if remaining := expiresAt.Sub(now); remaining > 0 {
+		return remaining
+	}
+	return defaultLifespan
+}
 
 type Configuration struct {
 	// The length of time that our state param that we encrypt and pass to the upstream OIDC IDP should be considered

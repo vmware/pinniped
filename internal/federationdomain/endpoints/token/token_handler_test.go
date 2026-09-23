@@ -52,6 +52,8 @@ import (
 	"go.pinniped.dev/internal/federationdomain/federationdomainproviders"
 	"go.pinniped.dev/internal/federationdomain/oidc"
 	"go.pinniped.dev/internal/federationdomain/oidcclientvalidator"
+	"go.pinniped.dev/internal/federationdomain/resolvedprovider"
+	"go.pinniped.dev/internal/federationdomain/resolvedprovider/resolvedoidc"
 	"go.pinniped.dev/internal/federationdomain/storage"
 	"go.pinniped.dev/internal/federationdomain/upstreamprovider"
 	"go.pinniped.dev/internal/fositestorage/accesstoken"
@@ -62,6 +64,7 @@ import (
 	"go.pinniped.dev/internal/fositestoragei"
 	"go.pinniped.dev/internal/here"
 	"go.pinniped.dev/internal/httputil/httperr"
+	"go.pinniped.dev/internal/idtransform"
 	"go.pinniped.dev/internal/oidcclientsecretstorage"
 	"go.pinniped.dev/internal/plog"
 	"go.pinniped.dev/internal/psession"
@@ -6093,4 +6096,234 @@ func TestParamsSafeToLog(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, wantParams, paramsSafeToLog().UnsortedList())
+}
+
+type fakeIDPListerForRefreshTokenLifetimeTest struct {
+	idps []resolvedprovider.FederationDomainResolvedIdentityProvider
+}
+
+func (f *fakeIDPListerForRefreshTokenLifetimeTest) GetIdentityProviders() []resolvedprovider.FederationDomainResolvedIdentityProvider {
+	return f.idps
+}
+
+func TestMaybeOverrideDefaultRefreshTokenLifetime(t *testing.T) {
+	matchingProvider := oidctestutil.NewTestUpstreamOIDCIdentityProviderBuilder().
+		WithName("my-idp").
+		WithResourceUID("my-idp-uid").
+		Build()
+
+	sessionUsingMatchingProvider := func() *psession.PinnipedSession {
+		s := psession.NewPinnipedSession()
+		s.Custom.ProviderName = "my-idp"
+		s.Custom.ProviderType = psession.ProviderTypeOIDC
+		s.Custom.ProviderUID = "my-idp-uid"
+		return s
+	}
+
+	tests := []struct {
+		name    string
+		session *psession.PinnipedSession
+		idps    []resolvedprovider.FederationDomainResolvedIdentityProvider
+		// wantOverriddenLifetime is the expected new refresh token lifetime, or zero if no override should be applied.
+		wantOverriddenLifetime time.Duration
+	}{
+		{
+			name:    "when the identity provider used by the session has a session lifetime override configured, it is applied",
+			session: sessionUsingMatchingProvider(),
+			idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+				&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+					DisplayName:             "my-idp",
+					Provider:                matchingProvider,
+					SessionProviderType:     psession.ProviderTypeOIDC,
+					SessionLifetimeOverride: 3 * time.Hour,
+				},
+			},
+			wantOverriddenLifetime: 3 * time.Hour,
+		},
+		{
+			name:    "when the identity provider used by the session does not have a session lifetime override configured, the default is left alone",
+			session: sessionUsingMatchingProvider(),
+			idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+				&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+					DisplayName:         "my-idp",
+					Provider:            matchingProvider,
+					SessionProviderType: psession.ProviderTypeOIDC,
+				},
+			},
+		},
+		{
+			name:    "when the identity provider used by the session cannot be found, the default is left alone",
+			session: sessionUsingMatchingProvider(),
+			idps:    []resolvedprovider.FederationDomainResolvedIdentityProvider{},
+		},
+		{
+			name: "when the identity provider used by the session matches by name but not by resource UID, the default is left alone",
+			session: func() *psession.PinnipedSession {
+				s := sessionUsingMatchingProvider()
+				s.Custom.ProviderUID = "some-other-uid"
+				return s
+			}(),
+			idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+				&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+					DisplayName:             "my-idp",
+					Provider:                matchingProvider,
+					SessionProviderType:     psession.ProviderTypeOIDC,
+					SessionLifetimeOverride: 3 * time.Hour,
+				},
+			},
+		},
+		{
+			name: "when the session has no custom session data, the default is left alone",
+			session: func() *psession.PinnipedSession {
+				s := psession.NewPinnipedSession()
+				s.Custom = nil
+				return s
+			}(),
+			idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+				&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+					DisplayName:             "my-idp",
+					Provider:                matchingProvider,
+					SessionProviderType:     psession.ProviderTypeOIDC,
+					SessionLifetimeOverride: 3 * time.Hour,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			accessRequest := fosite.NewAccessRequest(tt.session)
+			originalExpiry := time.Now().UTC().Add(9 * time.Hour).Round(time.Second)
+			tt.session.SetExpiresAt(fosite.RefreshToken, originalExpiry)
+
+			maybeOverrideDefaultRefreshTokenLifetime(accessRequest, &fakeIDPListerForRefreshTokenLifetimeTest{idps: tt.idps})
+
+			actualExpiry := tt.session.GetExpiresAt(fosite.RefreshToken)
+			if tt.wantOverriddenLifetime == 0 {
+				require.Equal(t, originalExpiry, actualExpiry)
+			} else {
+				require.WithinDuration(t, time.Now().UTC().Add(tt.wantOverriddenLifetime), actualExpiry, 30*time.Second)
+			}
+		})
+	}
+}
+
+func TestSessionStorageLifetimeHonorsSessionLifetimeOverride(t *testing.T) {
+	const (
+		upstreamName               = "some-oidc-idp"
+		upstreamResourceUID        = "oidc-resource-uid"
+		upstreamRefreshToken       = "initial-upstream-refresh-token"
+		sessionLifetimeOverride    = 7 * 24 * time.Hour
+		accessTokenStoragePadding  = 2 * time.Minute
+		refreshTokenStoragePadding = 2 * time.Minute
+	)
+
+	upstreamProvider := oidctestutil.NewTestUpstreamOIDCIdentityProviderBuilder().
+		WithName(upstreamName).
+		WithResourceUID(upstreamResourceUID).
+		WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+			IDToken: &oidctypes.IDToken{
+				Claims: map[string]any{"sub": goodUpstreamSubject},
+			},
+		}).
+		WithRefreshedTokens(&oauth2.Token{
+			AccessToken:  "fake-refreshed-upstream-access-token",
+			RefreshToken: "fake-refreshed-upstream-refresh-token",
+			Expiry:       time.Now().Add(time.Hour),
+		}).
+		Build()
+
+	idpLister := &fakeIDPListerForRefreshTokenLifetimeTest{
+		idps: []resolvedprovider.FederationDomainResolvedIdentityProvider{
+			&resolvedoidc.FederationDomainResolvedOIDCIdentityProvider{
+				DisplayName:             upstreamName,
+				Provider:                upstreamProvider,
+				SessionProviderType:     psession.ProviderTypeOIDC,
+				Transforms:              idtransform.NewTransformationPipeline(),
+				SessionLifetimeOverride: sessionLifetimeOverride,
+			},
+		},
+	}
+
+	kubeClient := kubefake.NewClientset()
+	supervisorClient := supervisorfake.NewSimpleClientset()
+	secrets := kubeClient.CoreV1().Secrets("some-namespace")
+	oidcClientsClient := supervisorClient.ConfigV1alpha1().OIDCClients("some-namespace")
+
+	timeoutsConfiguration := oidc.DefaultOIDCTimeoutsConfiguration()
+	oauthStore := storage.NewKubeStorage(secrets, oidcClientsClient, timeoutsConfiguration, bcrypt.MinCost)
+
+	auditLogger, _ := plog.TestAuditLogger(t)
+
+	authRequest := deepCopyRequestForm(happyAuthRequest)
+	authRequest.Form.Set("scope", "openid offline_access username groups")
+
+	oauthHelper, authCode, _ := makeHappyOauthHelper(t,
+		authRequest,
+		oauthStore,
+		generateJWTSigningKeyAndJWKSProvider,
+		&psession.CustomSessionData{
+			Username:         goodUsername,
+			UpstreamUsername: goodUsername,
+			UpstreamGroups:   goodGroups,
+			ProviderName:     upstreamName,
+			ProviderUID:      upstreamResourceUID,
+			ProviderType:     psession.ProviderTypeOIDC,
+			OIDC: &psession.OIDCSessionData{
+				UpstreamRefreshToken: upstreamRefreshToken,
+				UpstreamSubject:      goodUpstreamSubject,
+				UpstreamIssuer:       goodIssuer,
+			},
+		},
+		nil,
+	)
+
+	subject := NewHandler(
+		idpLister,
+		oauthHelper,
+		timeoutsConfiguration.OverrideDefaultAccessTokenLifespan,
+		timeoutsConfiguration.OverrideDefaultIDTokenLifespan,
+		auditLogger,
+	)
+
+	// posts the given form to the token endpoint and returns the tokens from a successful response.
+	callTokenEndpoint := func(t *testing.T, requestBody body) (accessToken string, refreshToken string, approxRequestTime time.Time) {
+		t.Helper()
+
+		req := httptest.NewRequestWithContext(t.Context(), "POST", "/path/shouldn't/matter", requestBody.ReadCloser())
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req, _ = auditid.NewRequestWithAuditID(req, func() string { return "fake-audit-id" })
+		rsp := httptest.NewRecorder()
+
+		approxRequestTime = time.Now()
+		subject.ServeHTTP(rsp, req)
+		require.Equal(t, http.StatusOK, rsp.Code, "unexpected response body: %q", rsp.Body.String())
+
+		var parsedResponseBody map[string]any
+		require.NoError(t, json.Unmarshal(rsp.Body.Bytes(), &parsedResponseBody))
+
+		return parsedResponseBody["access_token"].(string), parsedResponseBody["refresh_token"].(string), approxRequestTime
+	}
+
+	const delta = 30 * time.Second
+
+	t.Run("the authcode exchange stores the new session for as long as the session may last", func(t *testing.T) {
+		accessToken, refreshToken, approxRequestTime := callTokenEndpoint(t, happyAuthcodeRequestBody(authCode))
+
+		requireGarbageCollectTimeInDelta(t, accessToken, "access-token", secrets,
+			approxRequestTime.Add(sessionLifetimeOverride).Add(accessTokenStoragePadding), delta)
+		requireGarbageCollectTimeInDelta(t, refreshToken, "refresh-token", secrets,
+			approxRequestTime.Add(sessionLifetimeOverride).Add(refreshTokenStoragePadding), delta)
+
+		require.Greater(t, sessionLifetimeOverride, 9*time.Hour, "this test is only meaningful when the override is longer than the default")
+
+		t.Run("and so does a subsequent refresh", func(t *testing.T) {
+			refreshedAccessToken, refreshedRefreshToken, approxRefreshTime := callTokenEndpoint(t, happyRefreshRequestBody(refreshToken))
+
+			requireGarbageCollectTimeInDelta(t, refreshedAccessToken, "access-token", secrets,
+				approxRefreshTime.Add(sessionLifetimeOverride).Add(accessTokenStoragePadding), delta)
+			requireGarbageCollectTimeInDelta(t, refreshedRefreshToken, "refresh-token", secrets,
+				approxRefreshTime.Add(sessionLifetimeOverride).Add(refreshTokenStoragePadding), delta)
+		})
+	})
 }

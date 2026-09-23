@@ -171,6 +171,12 @@ func DefaultOIDCTimeoutsConfiguration() timeouts.Configuration {
 	// that the storage be garbage collected in the middle of trying to look up the token.
 	storageExtraLifetime := time.Minute
 
+	// How long the session represented by a particular request should be kept in storage. This is usually
+	// the refreshTokenLifespan above, but an identity provider may be configured to override it.
+	sessionLifetime := func(requester fosite.Requester) time.Duration {
+		return timeouts.RemainingRefreshTokenLifetime(requester, time.Now().UTC(), refreshTokenLifespan)
+	}
+
 	return timeouts.Configuration{
 		// Give enough time for someone to start an interactive authorization flow, go eat lunch,
 		// and then finish the authorization afterward.
@@ -208,8 +214,8 @@ func DefaultOIDCTimeoutsConfiguration() timeouts.Configuration {
 
 		RefreshTokenLifespan: refreshTokenLifespan,
 
-		AuthorizationCodeSessionStorageLifetime: func(_ fosite.Requester) time.Duration {
-			return authorizationCodeLifespan + refreshTokenLifespan
+		AuthorizationCodeSessionStorageLifetime: func(requester fosite.Requester) time.Duration {
+			return authorizationCodeLifespan + sessionLifetime(requester)
 		},
 
 		PKCESessionStorageLifetime: func(_ fosite.Requester) time.Duration {
@@ -220,12 +226,12 @@ func DefaultOIDCTimeoutsConfiguration() timeouts.Configuration {
 			return authorizationCodeLifespan + storageExtraLifetime
 		},
 
-		AccessTokenSessionStorageLifetime: func(_ fosite.Requester) time.Duration {
-			return refreshTokenLifespan + accessTokenLifespan
+		AccessTokenSessionStorageLifetime: func(requester fosite.Requester) time.Duration {
+			return sessionLifetime(requester) + accessTokenLifespan
 		},
 
-		RefreshTokenSessionStorageLifetime: func(_ fosite.Requester) time.Duration {
-			return refreshTokenLifespan + accessTokenLifespan
+		RefreshTokenSessionStorageLifetime: func(requester fosite.Requester) time.Duration {
+			return sessionLifetime(requester) + accessTokenLifespan
 		},
 	}
 }

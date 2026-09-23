@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ory/fosite"
 	"golang.org/x/oauth2"
@@ -26,10 +27,11 @@ import (
 // been resolved dynamically based on the currently loaded IDP CRs to include the provider.UpstreamGitHubIdentityProviderI
 // and other metadata about the provider.
 type FederationDomainResolvedGitHubIdentityProvider struct {
-	DisplayName         string
-	Provider            upstreamprovider.UpstreamGithubIdentityProviderI
-	SessionProviderType psession.ProviderType
-	Transforms          *idtransform.TransformationPipeline
+	DisplayName             string
+	Provider                upstreamprovider.UpstreamGithubIdentityProviderI
+	SessionProviderType     psession.ProviderType
+	Transforms              *idtransform.TransformationPipeline
+	SessionLifetimeOverride time.Duration
 }
 
 var _ resolvedprovider.FederationDomainResolvedIdentityProvider = (*FederationDomainResolvedGitHubIdentityProvider)(nil)
@@ -56,6 +58,10 @@ func (p *FederationDomainResolvedGitHubIdentityProvider) GetIDPDiscoveryFlows() 
 
 func (p *FederationDomainResolvedGitHubIdentityProvider) GetTransforms() *idtransform.TransformationPipeline {
 	return p.Transforms
+}
+
+func (p *FederationDomainResolvedGitHubIdentityProvider) GetSessionLifetimeOverride() time.Duration {
+	return p.SessionLifetimeOverride
 }
 
 func (p *FederationDomainResolvedGitHubIdentityProvider) CloneIDPSpecificSessionDataFromSession(session *psession.CustomSessionData) any {

@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidc
@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.pinniped.dev/internal/federationdomain/clientregistry"
+	"go.pinniped.dev/internal/psession"
 )
 
 func TestDefaultLifespans(t *testing.T) {
@@ -26,12 +27,56 @@ func TestDefaultLifespans(t *testing.T) {
 func TestStorageLifetimes(t *testing.T) {
 	c := DefaultOIDCTimeoutsConfiguration()
 
-	// These are currently hard-coded.
+	// When the request does not say anything about when its session should expire, the defaults are used.
 	require.Equal(t, 9*time.Hour+10*time.Minute, c.AuthorizationCodeSessionStorageLifetime(nil))
 	require.Equal(t, 11*time.Minute, c.PKCESessionStorageLifetime(nil))
 	require.Equal(t, 11*time.Minute, c.OIDCSessionStorageLifetime(nil))
 	require.Equal(t, 9*time.Hour+2*time.Minute, c.AccessTokenSessionStorageLifetime(nil))
 	require.Equal(t, 9*time.Hour+2*time.Minute, c.RefreshTokenSessionStorageLifetime(nil))
+}
+
+func TestStorageLifetimesWhenTheSessionOverridesTheDefaultRefreshTokenLifetime(t *testing.T) {
+	c := DefaultOIDCTimeoutsConfiguration()
+
+	requesterWhoseSessionExpiresIn := func(d time.Duration) fosite.Requester {
+		session := psession.NewPinnipedSession()
+		session.SetExpiresAt(fosite.RefreshToken, time.Now().UTC().Add(d))
+		return fosite.NewAccessRequest(session)
+	}
+
+	// Allow for the small amount of time that passes between building the request above and reading the
+	// clock again inside the storage lifetime functions.
+	const delta = 30 * time.Second
+
+	t.Run("a session which lasts longer than the default keeps its storage for longer than the default", func(t *testing.T) {
+		sevenDays := 7 * 24 * time.Hour
+		r := requesterWhoseSessionExpiresIn(sevenDays)
+
+		require.InDelta(t, sevenDays+10*time.Minute, c.AuthorizationCodeSessionStorageLifetime(r), float64(delta))
+		require.InDelta(t, sevenDays+2*time.Minute, c.AccessTokenSessionStorageLifetime(r), float64(delta))
+		require.InDelta(t, sevenDays+2*time.Minute, c.RefreshTokenSessionStorageLifetime(r), float64(delta))
+
+		// These are unrelated to the lifetime of the session, so they are unchanged.
+		require.Equal(t, 11*time.Minute, c.PKCESessionStorageLifetime(r))
+		require.Equal(t, 11*time.Minute, c.OIDCSessionStorageLifetime(r))
+	})
+
+	t.Run("a session which lasts less than the default does not keep its storage for the full default", func(t *testing.T) {
+		oneHour := time.Hour
+		r := requesterWhoseSessionExpiresIn(oneHour)
+
+		require.InDelta(t, oneHour+10*time.Minute, c.AuthorizationCodeSessionStorageLifetime(r), float64(delta))
+		require.InDelta(t, oneHour+2*time.Minute, c.AccessTokenSessionStorageLifetime(r), float64(delta))
+		require.InDelta(t, oneHour+2*time.Minute, c.RefreshTokenSessionStorageLifetime(r), float64(delta))
+	})
+
+	t.Run("a session which has already expired falls back to the defaults", func(t *testing.T) {
+		r := requesterWhoseSessionExpiresIn(-1 * time.Hour)
+
+		require.Equal(t, 9*time.Hour+10*time.Minute, c.AuthorizationCodeSessionStorageLifetime(r))
+		require.Equal(t, 9*time.Hour+2*time.Minute, c.AccessTokenSessionStorageLifetime(r))
+		require.Equal(t, 9*time.Hour+2*time.Minute, c.RefreshTokenSessionStorageLifetime(r))
+	})
 }
 
 func TestOverrideDefaultAccessTokenLifespan(t *testing.T) {

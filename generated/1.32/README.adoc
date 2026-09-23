@@ -927,6 +927,12 @@ disruptive change for those users. +
 If the reference cannot be resolved then the identity provider will not be made available. +
 Must refer to a resource of one of the Pinniped identity provider types, e.g. OIDCIdentityProvider, +
 LDAPIdentityProvider, ActiveDirectoryIdentityProvider. +
+| *`sessionLifetimeSeconds`* __integer__ | SessionLifetimeSeconds is an optional override of the default lifetime of a Supervisor session established +
+using this identity provider, in seconds. This is the maximum amount of time that a user can continue to +
+refresh their session before they must interactively authenticate again. When null, the default lifetime is +
+used, which is currently 9 hours. Administrators should weigh the operational reality of their identity +
+provider (e.g. how promptly it reflects a revoked account or changed group membership) before configuring +
+a long-lived session. +
 | *`transforms`* __xref:{anchor_prefix}-go-pinniped-dev-generated-1-32-apis-supervisor-config-v1alpha1-federationdomaintransforms[$$FederationDomainTransforms$$]__ | Transforms is an optional way to specify transformations to be applied during user authentication and +
 session refresh. +
 |===

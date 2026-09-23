@@ -1,4 +1,4 @@
-// Copyright 2021-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2021-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package downstreamsession provides some shared helpers for creating downstream OIDC sessions.
@@ -94,6 +94,10 @@ func NewPinnipedSession(
 			},
 		},
 		Custom: customSessionData,
+	}
+
+	if sessionLifetimeOverride := c.IdentityProvider.GetSessionLifetimeOverride(); sessionLifetimeOverride > 0 {
+		pinnipedSession.SetExpiresAt(fosite.RefreshToken, now.Add(sessionLifetimeOverride).Round(time.Second))
 	}
 
 	extras := map[string]any{}
