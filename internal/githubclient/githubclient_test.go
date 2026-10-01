@@ -140,8 +140,8 @@ func TestGetUser(t *testing.T) {
 				mock.WithRequestMatch(
 					mock.GetUser,
 					github.User{
-						Login: github.Ptr("some-username"),
-						ID:    github.Ptr[int64](12345678),
+						Login: new("some-username"),
+						ID:    new(int64(12345678)),
 					},
 				),
 			),
@@ -176,7 +176,7 @@ func TestGetUser(t *testing.T) {
 				mock.WithRequestMatch(
 					mock.GetUser,
 					github.User{
-						ID: github.Ptr[int64](12345678),
+						ID: new(int64(12345678)),
 					},
 				),
 			),
@@ -189,7 +189,7 @@ func TestGetUser(t *testing.T) {
 				mock.WithRequestMatch(
 					mock.GetUser,
 					github.User{
-						Login: github.Ptr("some-username"),
+						Login: new("some-username"),
 					},
 				),
 			),
@@ -379,9 +379,9 @@ func TestGetOrgMembership(t *testing.T) {
 				mock.WithRequestMatch(
 					mock.GetUserOrgs,
 					[]github.Organization{
-						{Login: github.Ptr("org1")},
-						{Login: github.Ptr("org2")},
-						{Login: github.Ptr("org3")},
+						{Login: new("org1")},
+						{Login: new("org2")},
+						{Login: new("org3")},
 					},
 				),
 			),
@@ -394,14 +394,14 @@ func TestGetOrgMembership(t *testing.T) {
 				mock.WithRequestMatchPages(
 					mock.GetUserOrgs,
 					[]github.Organization{
-						{Login: github.Ptr("page1-org1")},
-						{Login: github.Ptr("page1-org2")},
-						{Login: github.Ptr("page1-org3")},
+						{Login: new("page1-org1")},
+						{Login: new("page1-org2")},
+						{Login: new("page1-org3")},
 					},
 					[]github.Organization{
-						{Login: github.Ptr("page2-org1")},
-						{Login: github.Ptr("page2-org2")},
-						{Login: github.Ptr("page2-org3")},
+						{Login: new("page2-org1")},
+						{Login: new("page2-org2")},
+						{Login: new("page2-org3")},
 					},
 				),
 			),
@@ -430,9 +430,9 @@ func TestGetOrgMembership(t *testing.T) {
 				mock.WithRequestMatch(
 					mock.GetUserOrgs,
 					[]github.Organization{
-						{Login: github.Ptr("page1-org1")},
+						{Login: new("page1-org1")},
 						{Login: nil},
-						{Login: github.Ptr("page1-org3")},
+						{Login: new("page1-org3")},
 					},
 				),
 			),
@@ -515,31 +515,31 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Name: github.Ptr("orgAlpha-team1-name"),
-							Slug: github.Ptr("orgAlpha-team1-slug"),
+							Name: new("orgAlpha-team1-name"),
+							Slug: new("orgAlpha-team1-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("alpha"),
+								Login: new("alpha"),
 							},
 						},
 						{
-							Name: github.Ptr("orgAlpha-team2-name"),
-							Slug: github.Ptr("orgAlpha-team2-slug"),
+							Name: new("orgAlpha-team2-name"),
+							Slug: new("orgAlpha-team2-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("alpha"),
+								Login: new("alpha"),
 							},
 						},
 						{
-							Name: github.Ptr("orgAlpha-team3-name"),
-							Slug: github.Ptr("orgAlpha-team3-slug"),
+							Name: new("orgAlpha-team3-name"),
+							Slug: new("orgAlpha-team3-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("alpha"),
+								Login: new("alpha"),
 							},
 						},
 						{
-							Name: github.Ptr("orgBeta-team1-name"),
-							Slug: github.Ptr("orgBeta-team1-slug"),
+							Name: new("orgBeta-team1-name"),
+							Slug: new("orgBeta-team1-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("beta"),
+								Login: new("beta"),
 							},
 						},
 					},
@@ -577,24 +577,24 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Name: github.Ptr("team1-name"),
-							Slug: github.Ptr("team1-slug"),
+							Name: new("team1-name"),
+							Slug: new("team1-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("alPhA"),
+								Login: new("alPhA"),
 							},
 						},
 						{
-							Name: github.Ptr("team2-name"),
-							Slug: github.Ptr("team2-slug"),
+							Name: new("team2-name"),
+							Slug: new("team2-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("bEtA"),
+								Login: new("bEtA"),
 							},
 						},
 						{
-							Name: github.Ptr("team3-name"),
-							Slug: github.Ptr("team3-slug"),
+							Name: new("team3-name"),
+							Slug: new("team3-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("gAmmA"),
+								Login: new("gAmmA"),
 							},
 						},
 					},
@@ -622,29 +622,29 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Name: github.Ptr("team1-name"),
-							Slug: github.Ptr("team1-slug"),
+							Name: new("team1-name"),
+							Slug: new("team1-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("alpha"),
+								Login: new("alpha"),
 							},
 						},
 						{
-							Name: github.Ptr("team2-name"),
-							Slug: github.Ptr("team2-slug"),
+							Name: new("team2-name"),
+							Slug: new("team2-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("beta"),
+								Login: new("beta"),
 							},
 						},
 						{
-							Name: github.Ptr("team3-name"),
-							Slug: github.Ptr("team3-slug"),
+							Name: new("team3-name"),
+							Slug: new("team3-slug"),
 							Parent: &github.Team{
-								Name:         github.Ptr("delta-team-name"),
-								Slug:         github.Ptr("delta-team-slug"),
+								Name:         new("delta-team-name"),
+								Slug:         new("delta-team-slug"),
 								Organization: nil, // the real GitHub API does not return Org on "Parent" team.
 							},
 							Organization: &github.Organization{
-								Login: github.Ptr("gamma"),
+								Login: new("gamma"),
 							},
 						},
 					},
@@ -681,53 +681,53 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Name: github.Ptr("team-name-with-parent"),
-							Slug: github.Ptr("team-slug-with-parent"),
+							Name: new("team-name-with-parent"),
+							Slug: new("team-slug-with-parent"),
 							Parent: &github.Team{
-								Name:         github.Ptr("parent-team-name"),
-								Slug:         github.Ptr("parent-team-slug"),
+								Name:         new("parent-team-name"),
+								Slug:         new("parent-team-slug"),
 								Organization: nil, // the real GitHub API does not return Org on "Parent" team.
 							},
 							Organization: &github.Organization{
-								Login: github.Ptr("org-with-nested-teams"),
+								Login: new("org-with-nested-teams"),
 							},
 						},
 						{
-							Name: github.Ptr("team-name-with-same-parent-again"),
-							Slug: github.Ptr("team-slug-with-same-parent-again"),
+							Name: new("team-name-with-same-parent-again"),
+							Slug: new("team-slug-with-same-parent-again"),
 							Parent: &github.Team{
-								Name:         github.Ptr("parent-team-name"),
-								Slug:         github.Ptr("parent-team-slug"),
+								Name:         new("parent-team-name"),
+								Slug:         new("parent-team-slug"),
 								Organization: nil, // the real GitHub API does not return Org on "Parent" team.
 							},
 							Organization: &github.Organization{
-								Login: github.Ptr("org-with-nested-teams"),
+								Login: new("org-with-nested-teams"),
 							},
 						},
 						{
-							Name: github.Ptr("parent-team-name"),
-							Slug: github.Ptr("parent-team-slug"),
+							Name: new("parent-team-name"),
+							Slug: new("parent-team-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("org-with-nested-teams"),
+								Login: new("org-with-nested-teams"),
 							},
 						},
 						{
-							Name: github.Ptr("team-name-with-parent-from-disallowed-org"),
-							Slug: github.Ptr("team-slug-with-parent-from-disallowed-org"),
+							Name: new("team-name-with-parent-from-disallowed-org"),
+							Slug: new("team-slug-with-parent-from-disallowed-org"),
 							Parent: &github.Team{
-								Name:         github.Ptr("parent-team-name-from-disallowed-org"),
-								Slug:         github.Ptr("parent-team-slug-from-disallowed-org"),
+								Name:         new("parent-team-name-from-disallowed-org"),
+								Slug:         new("parent-team-slug-from-disallowed-org"),
 								Organization: nil, // the real GitHub API does not return Org on "Parent" team.
 							},
 							Organization: &github.Organization{
-								Login: github.Ptr("disallowed-org"),
+								Login: new("disallowed-org"),
 							},
 						},
 						{
-							Name: github.Ptr("team-name-without-parent"),
-							Slug: github.Ptr("team-slug-without-parent"),
+							Name: new("team-name-without-parent"),
+							Slug: new("team-slug-without-parent"),
 							Organization: &github.Organization{
-								Login: github.Ptr("beta"),
+								Login: new("beta"),
 							},
 						},
 					},
@@ -765,19 +765,19 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Name: github.Ptr("page1-team-name"),
-							Slug: github.Ptr("page1-team-slug"),
+							Name: new("page1-team-name"),
+							Slug: new("page1-team-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("page1-org-name"),
+								Login: new("page1-org-name"),
 							},
 						},
 					},
 					[]github.Team{
 						{
-							Name: github.Ptr("page2-team-name"),
-							Slug: github.Ptr("page2-team-slug"),
+							Name: new("page2-team-name"),
+							Slug: new("page2-team-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("page2-org-name"),
+								Login: new("page2-org-name"),
 							},
 						},
 					},
@@ -805,8 +805,8 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Name: github.Ptr("team-name"),
-							Slug: github.Ptr("team-slug"),
+							Name: new("team-name"),
+							Slug: new("team-slug"),
 						},
 					},
 				),
@@ -821,8 +821,8 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Name:         github.Ptr("team-name"),
-							Slug:         github.Ptr("team-slug"),
+							Name:         new("team-name"),
+							Slug:         new("team-slug"),
 							Organization: &github.Organization{},
 						},
 					},
@@ -838,9 +838,9 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Slug: github.Ptr("team-slug"),
+							Slug: new("team-slug"),
 							Organization: &github.Organization{
-								Login: github.Ptr("some-org"),
+								Login: new("some-org"),
 							},
 						},
 					},
@@ -856,9 +856,9 @@ func TestGetTeamMembership(t *testing.T) {
 					mock.GetUserTeams,
 					[]github.Team{
 						{
-							Name: github.Ptr("team-name"),
+							Name: new("team-name"),
 							Organization: &github.Organization{
-								Login: github.Ptr("some-org"),
+								Login: new("some-org"),
 							},
 						},
 					},
