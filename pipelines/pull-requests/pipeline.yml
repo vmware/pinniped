@@ -593,7 +593,7 @@ jobs:
             type: registry-image
             source:
               repository: golang
-              tag: '1.27.0'
+              tag: '1.27.1'
           inputs:
             - name: pinniped-pr
           outputs:
