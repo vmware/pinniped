@@ -14,7 +14,7 @@ FROM google/cloud-sdk:577.0.0-slim
 
 # Install apache2-utils (for htpasswd to bcrypt passwords for the
 # local-user-authenticator) and jq.
-RUN apt-get update && apt-get install -y apache2-utils jq wget zip procps alien google-cloud-sdk-gke-gcloud-auth-plugin && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y apache2-utils jq wget zip procps alien google-cloud-cli-gke-gcloud-auth-plugin && rm -rf /var/lib/apt/lists/*
 
 # Print version of gke-gcloud-auth-plugin
 RUN gke-gcloud-auth-plugin --version
