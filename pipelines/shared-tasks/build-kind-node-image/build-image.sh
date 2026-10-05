@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # This procedure is inspired from https://github.com/aojea/kind-images/blob/master/.circleci/config.yml
 
 set -euo pipefail
+
+# Show the backup apt source list, if the OS disk image has one.
+if [[ -f /etc/apt/sources.list.bak ]]; then
+  cat /etc/apt/sources.list.bak
+fi
 
 # Put the original apt source list back.
 sudo cp /etc/apt/sources.list.bak /etc/apt/sources.list

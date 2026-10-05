@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+# Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -23,7 +23,7 @@ gcloud compute instances create "${INSTANCE_NAME}" \
   --labels "kind-node-builder=" \
   --no-service-account --no-scopes \
   --network-interface=stack-type=IPV4_ONLY,subnet=projects/"$SHARED_VPC_PROJECT"/regions/"${SUBNET_REGION}"/subnetworks/"${SUBNET_NAME}",no-address \
-  --create-disk=auto-delete=yes,boot=yes,device-name="${INSTANCE_NAME}",image=projects/"${DISK_IMAGES_PROJECT}"/global/images/labs-saas-gcp-debian11-packer-latest,mode=rw,size=30,type=pd-ssd \
+  --create-disk=auto-delete=yes,boot=yes,device-name="${INSTANCE_NAME}",image=projects/"${DISK_IMAGES_PROJECT}"/global/images/labs-saas-gcp-debian12-packer-latest,mode=rw,size=30,type=pd-ssd \
   --tags=kind-node-image-builder
 
 echo "$INSTANCE_NAME" > name
