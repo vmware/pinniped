@@ -7,26 +7,6 @@
 
 set -euo pipefail
 
-# Show the backup apt source list, if the OS disk image has one.
-if [[ -f /etc/apt/sources.list.bak ]]; then
-  cat /etc/apt/sources.list.bak
-fi
-
-# Put the original apt source list back.
-sudo cp /etc/apt/sources.list.bak /etc/apt/sources.list
-
-# Note that sources.list.bak file should have this content for debian 11,
-# noted here in case the file ever gets removed from the OS disk image:
-
-# deb https://deb.debian.org/debian bullseye main
-# deb-src https://deb.debian.org/debian bullseye main
-# deb https://deb.debian.org/debian-security bullseye-security main
-# deb-src https://deb.debian.org/debian-security bullseye-security main
-# deb https://deb.debian.org/debian bullseye-updates main
-# deb-src https://deb.debian.org/debian bullseye-updates main
-# deb https://deb.debian.org/debian bullseye-backports main
-# deb-src https://deb.debian.org/debian bullseye-backports main
-
 # Choose the tag for the new image that we will build below.
 full_repo="${PUSH_TO_IMAGE_REGISTRY}/${PUSH_TO_IMAGE_REPO}"
 image_tag="${full_repo}:latest"
@@ -40,13 +20,25 @@ chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
 
 # Install docker according to procedure from https://docs.docker.com/engine/install/debian/
-sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release -y
-curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+# Add Docker's official GPG key:
+sudo apt-get install ca-certificates curl -y
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+# Add the repository to Apt sources:
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+# Install Docker:
 sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io -y
-sudo systemctl enable docker.service
-sudo systemctl enable containerd.service
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+# After installation, verify that Docker is running:
+sudo systemctl status docker
 # Docker is only available for use by the root user in a default install, so run docker commands as root.
 sudo docker run hello-world
 
