@@ -9,8 +9,7 @@ golang="golang"
 distroless="gcr.io/distroless/static"
 distroless_tag="nonroot"
 
-# new_golang="${golang}:$(cat golang-image/tag)@$(cat golang-image/digest)"
-new_golang="golang:1.27.1@sha256:e0174e51e81218523251d85d248a90d24c3d5e81543b4f07a5d66229397db190"
+new_golang="${golang}:$(cat golang-image/tag)@$(cat golang-image/digest)"
 
 # Because we were having trouble getting the concourse registry-image resource to check this container image
 # without auth errors, we get its latest digest here by using crane instead.
@@ -21,16 +20,16 @@ echo "$new_golang"
 echo "$new_distroless"
 echo
 
-#if [[ "$(cat golang-image/tag)" == "latest" ]]; then
-#  echo "ERROR: The tag for the golang-image resource is 'latest'."
-#  echo "This means we are experiencing the Concourse bug https://github.com/concourse/registry-image-resource/issues/351."
-#  echo "Refusing to continue. We do not want to put the 'latest' tag into our Dockerfiles."
-#  echo
-#  echo "WORKAROUND: Please visit the Concourse UI page for the golang-image resource"
-#  echo "in this pipeline and disable the resource version with the 'latest' tag by clicking its checkbox"
-#  echo "to toggle it to the disabled state. Then trigger this job again."
-#  exit 1
-#fi
+if [[ "$(cat golang-image/tag)" == "latest" ]]; then
+  echo "ERROR: The tag for the golang-image resource is 'latest'."
+  echo "This means we are experiencing the Concourse bug https://github.com/concourse/registry-image-resource/issues/351."
+  echo "Refusing to continue. We do not want to put the 'latest' tag into our Dockerfiles."
+  echo
+  echo "WORKAROUND: Please visit the Concourse UI page for the golang-image resource"
+  echo "in this pipeline and disable the resource version with the 'latest' tag by clicking its checkbox"
+  echo "to toggle it to the disabled state. Then trigger this job again."
+  exit 1
+fi
 
 # Copy everything to output.
 # Don't use git clone because that would throw away uncommitted changes from previous tasks.
