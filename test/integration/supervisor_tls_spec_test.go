@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 package integration
 
@@ -14,6 +14,7 @@ import (
 
 	"go.pinniped.dev/internal/certauthority"
 	"go.pinniped.dev/internal/here"
+	"go.pinniped.dev/internal/testutil"
 	"go.pinniped.dev/test/testlib"
 )
 
@@ -21,6 +22,8 @@ import (
 // on the TLSSpec in Pinniped supervisor IdentityProvider CRDs.
 func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 	env := testlib.IntegrationEnv(t)
+
+	kubeIs38OrNewer := testutil.KubeServerMinorVersionAtLeastInclusive(t, testlib.NewKubernetesClientset(t).Discovery(), 38)
 
 	ca, err := certauthority.New("pinniped-test", 24*time.Hour)
 	require.NoError(t, err)
@@ -98,9 +101,11 @@ func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 		secretType                string
 		secretOrConfigmapDataYAML string
 
-		wantErrorSnippets            []string
-		wantGitHubErrorSnippets      []string
-		wantTLSValidConditionMessage func(namespace string, secretOrConfigmapName string) string
+		wantErrorSnippets                    []string
+		wantGitHubErrorSnippets              []string
+		wantKube38OrNewerErrorSnippets       []string
+		wantKube38OrNewerGitHubErrorSnippets []string
+		wantTLSValidConditionMessage         func(namespace string, secretOrConfigmapName string) string
 	}{
 		{
 			name: "should disallow certificate authority data source with missing name",
@@ -129,8 +134,10 @@ func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 							key: bar
 				`)
 			},
-			wantErrorSnippets:       []string{`The %s "%s" is invalid: spec.tls.certificateAuthorityDataSource.name: Invalid value: "": spec.tls.certificateAuthorityDataSource.name in body should be at least 1 chars long`},
-			wantGitHubErrorSnippets: []string{`The %s "%s" is invalid: spec.githubAPI.tls.certificateAuthorityDataSource.name: Invalid value: "": spec.githubAPI.tls.certificateAuthorityDataSource.name in body should be at least 1 chars long`},
+			wantErrorSnippets:                    []string{`The %s "%s" is invalid: spec.tls.certificateAuthorityDataSource.name: Invalid value: "": spec.tls.certificateAuthorityDataSource.name in body should be at least 1 chars long`},
+			wantGitHubErrorSnippets:              []string{`The %s "%s" is invalid: spec.githubAPI.tls.certificateAuthorityDataSource.name: Invalid value: "": spec.githubAPI.tls.certificateAuthorityDataSource.name in body should be at least 1 chars long`},
+			wantKube38OrNewerErrorSnippets:       []string{`The %s "%s" is invalid: spec.tls.certificateAuthorityDataSource.name: Too short: must be at least 1 character`},
+			wantKube38OrNewerGitHubErrorSnippets: []string{`The %s "%s" is invalid: spec.githubAPI.tls.certificateAuthorityDataSource.name: Too short: must be at least 1 character`},
 		},
 		{
 			name: "should disallow certificate authority data source with missing key",
@@ -159,8 +166,10 @@ func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 							key: ""
 				`)
 			},
-			wantErrorSnippets:       []string{`The %s "%s" is invalid: spec.tls.certificateAuthorityDataSource.key: Invalid value: "": spec.tls.certificateAuthorityDataSource.key in body should be at least 1 chars long`},
-			wantGitHubErrorSnippets: []string{`The %s "%s" is invalid: spec.githubAPI.tls.certificateAuthorityDataSource.key: Invalid value: "": spec.githubAPI.tls.certificateAuthorityDataSource.key in body should be at least 1 chars long`},
+			wantErrorSnippets:                    []string{`The %s "%s" is invalid: spec.tls.certificateAuthorityDataSource.key: Invalid value: "": spec.tls.certificateAuthorityDataSource.key in body should be at least 1 chars long`},
+			wantGitHubErrorSnippets:              []string{`The %s "%s" is invalid: spec.githubAPI.tls.certificateAuthorityDataSource.key: Invalid value: "": spec.githubAPI.tls.certificateAuthorityDataSource.key in body should be at least 1 chars long`},
+			wantKube38OrNewerErrorSnippets:       []string{`The %s "%s" is invalid: spec.tls.certificateAuthorityDataSource.key: Too short: must be at least 1 character`},
+			wantKube38OrNewerGitHubErrorSnippets: []string{`The %s "%s" is invalid: spec.githubAPI.tls.certificateAuthorityDataSource.key: Too short: must be at least 1 character`},
 		},
 		{
 			name: "should disallow certificate authority data source with missing kind",
@@ -533,6 +542,15 @@ func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			wantErrorSnippets := tc.wantErrorSnippets
+			wantGitHubErrorSnippets := tc.wantGitHubErrorSnippets
+			if kubeIs38OrNewer && len(tc.wantKube38OrNewerErrorSnippets) > 0 {
+				wantErrorSnippets = tc.wantKube38OrNewerErrorSnippets
+			}
+			if kubeIs38OrNewer && len(tc.wantKube38OrNewerGitHubErrorSnippets) > 0 {
+				wantGitHubErrorSnippets = tc.wantKube38OrNewerGitHubErrorSnippets
+			}
+
 			t.Run("apply OIDC IDP", func(t *testing.T) {
 				resourceName := "test-oidc-idp-" + testlib.RandHex(t, 7)
 
@@ -551,12 +569,12 @@ func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 				stdOut, stdErr, err := performKubectlApply(t, resourceName, yamlBytes)
 				requireKubectlApplyResult(t, stdOut, stdErr, err,
 					fmt.Sprintf(`oidcidentityprovider.idp.supervisor.%s`, env.APIGroupSuffix),
-					tc.wantErrorSnippets,
+					wantErrorSnippets,
 					"OIDCIdentityProvider",
 					resourceName,
 				)
 
-				if tc.wantErrorSnippets == nil {
+				if wantErrorSnippets == nil {
 					requireTLSValidConditionMessageOnResource(t,
 						resourceName,
 						env.SupervisorNamespace,
@@ -584,12 +602,12 @@ func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 				stdOut, stdErr, err := performKubectlApply(t, resourceName, yamlBytes)
 				requireKubectlApplyResult(t, stdOut, stdErr, err,
 					fmt.Sprintf(`ldapidentityprovider.idp.supervisor.%s`, env.APIGroupSuffix),
-					tc.wantErrorSnippets,
+					wantErrorSnippets,
 					"LDAPIdentityProvider",
 					resourceName,
 				)
 
-				if tc.wantErrorSnippets == nil {
+				if wantErrorSnippets == nil {
 					requireTLSValidConditionMessageOnResource(t,
 						resourceName,
 						env.SupervisorNamespace,
@@ -617,12 +635,12 @@ func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 				stdOut, stdErr, err := performKubectlApply(t, resourceName, yamlBytes)
 				requireKubectlApplyResult(t, stdOut, stdErr, err,
 					fmt.Sprintf(`activedirectoryidentityprovider.idp.supervisor.%s`, env.APIGroupSuffix),
-					tc.wantErrorSnippets,
+					wantErrorSnippets,
 					"ActiveDirectoryIdentityProvider",
 					resourceName,
 				)
 
-				if tc.wantErrorSnippets == nil {
+				if wantErrorSnippets == nil {
 					requireTLSValidConditionMessageOnResource(t,
 						resourceName,
 						env.SupervisorNamespace,
@@ -652,12 +670,12 @@ func TestTLSSpecValidationSupervisor_Parallel(t *testing.T) {
 				stdOut, stdErr, err := performKubectlApply(t, resourceName, yamlBytes)
 				requireKubectlApplyResult(t, stdOut, stdErr, err,
 					fmt.Sprintf(`githubidentityprovider.idp.supervisor.%s`, env.APIGroupSuffix),
-					tc.wantGitHubErrorSnippets,
+					wantGitHubErrorSnippets,
 					"GitHubIdentityProvider",
 					resourceName,
 				)
 
-				if tc.wantGitHubErrorSnippets == nil {
+				if wantGitHubErrorSnippets == nil {
 					requireTLSValidConditionMessageOnResource(t,
 						resourceName,
 						env.SupervisorNamespace,

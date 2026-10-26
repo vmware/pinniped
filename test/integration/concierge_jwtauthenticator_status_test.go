@@ -1,4 +1,4 @@
-// Copyright 2024-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	authenticationv1alpha1 "go.pinniped.dev/generated/latest/apis/concierge/authentication/v1alpha1"
+	"go.pinniped.dev/internal/testutil"
 	"go.pinniped.dev/test/testlib"
 )
 
@@ -637,6 +638,7 @@ func TestConciergeJWTAuthenticatorStatus_Parallel(t *testing.T) {
 
 func TestConciergeJWTAuthenticatorCRDValidations_Parallel(t *testing.T) {
 	env := testlib.IntegrationEnv(t)
+	kubeIs38OrNewer := testutil.KubeServerMinorVersionAtLeastInclusive(t, testlib.NewKubernetesClientset(t).Discovery(), 38)
 	jwtAuthenticatorClient := testlib.NewConciergeClientset(t).AuthenticationV1alpha1().JWTAuthenticators()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -644,9 +646,10 @@ func TestConciergeJWTAuthenticatorCRDValidations_Parallel(t *testing.T) {
 
 	objectMeta := testlib.ObjectMetaWithRandomName(t, "jwt-authenticator")
 	tests := []struct {
-		name             string
-		jwtAuthenticator *authenticationv1alpha1.JWTAuthenticator
-		wantErr          string
+		name                 string
+		jwtAuthenticator     *authenticationv1alpha1.JWTAuthenticator
+		wantErr              string
+		wantKube38OrNewerErr string
 	}{
 		{
 			name: "issuer can not be empty string",
@@ -659,6 +662,8 @@ func TestConciergeJWTAuthenticatorCRDValidations_Parallel(t *testing.T) {
 			},
 			wantErr: `JWTAuthenticator.authentication.concierge.` + env.APIGroupSuffix + ` "` + objectMeta.Name + `" is invalid: ` +
 				`spec.issuer: Invalid value: "": spec.issuer in body should be at least 1 chars long`,
+			wantKube38OrNewerErr: `JWTAuthenticator.authentication.concierge.` + env.APIGroupSuffix + ` "` + objectMeta.Name + `" is invalid: ` +
+				`spec.issuer: Too short: must be at least 1 character`,
 		},
 		{
 			name: "audience can not be empty string",
@@ -671,6 +676,8 @@ func TestConciergeJWTAuthenticatorCRDValidations_Parallel(t *testing.T) {
 			},
 			wantErr: `JWTAuthenticator.authentication.concierge.` + env.APIGroupSuffix + ` "` + objectMeta.Name + `" is invalid: ` +
 				`spec.audience: Invalid value: "": spec.audience in body should be at least 1 chars long`,
+			wantKube38OrNewerErr: `JWTAuthenticator.authentication.concierge.` + env.APIGroupSuffix + ` "` + objectMeta.Name + `" is invalid: ` +
+				`spec.audience: Too short: must be at least 1 character`,
 		},
 		{
 			name: "issuer must be https",
@@ -768,6 +775,9 @@ func TestConciergeJWTAuthenticatorCRDValidations_Parallel(t *testing.T) {
 
 			if tt.wantErr != "" {
 				wantErr := tt.wantErr
+				if kubeIs38OrNewer && tt.wantKube38OrNewerErr != "" {
+					wantErr = tt.wantKube38OrNewerErr
+				}
 				require.EqualError(t, createErr, wantErr)
 			} else {
 				require.NoError(t, createErr)
