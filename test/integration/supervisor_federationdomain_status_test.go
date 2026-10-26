@@ -1,4 +1,4 @@
-// Copyright 2023-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2023-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -582,6 +582,7 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 		wantKube24Through31InclusiveErrs []string
 		wantKube32Through33InclusiveErrs []string
 		wantKube34OrNewerErrs            []string
+		wantKube38OrNewerErrs            []string
 
 		// These errors are appended to any other wanted errors when k8sAPIServerSupportsCEL is true
 		wantCELErrorsForKube25Through28Inclusive []string
@@ -596,6 +597,7 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 				Issuer: "",
 			},
 			wantErrs:                                 []string{`spec.issuer: Invalid value: "": spec.issuer in body should be at least 1 chars long`},
+			wantKube38OrNewerErrs:                    []string{`spec.issuer: Too short: must be at least 1 character`},
 			wantCELErrorsForKube25Through28Inclusive: []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
 			wantCELErrorsForKube29Through34Inclusive: []string{`spec.issuer: Invalid value: "string": issuer must be an HTTPS URL`},
 			wantCELErrorsForKube35OrNewer:            []string{`spec.issuer: Invalid value: "": issuer must be an HTTPS URL`},
@@ -631,7 +633,8 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 					},
 				},
 			},
-			wantErrs: []string{`spec.identityProviders[0].displayName: Invalid value: "": spec.identityProviders[0].displayName in body should be at least 1 chars long`},
+			wantErrs:              []string{`spec.identityProviders[0].displayName: Invalid value: "": spec.identityProviders[0].displayName in body should be at least 1 chars long`},
+			wantKube38OrNewerErrs: []string{`spec.identityProviders[0].displayName: Too short: must be at least 1 character`},
 		},
 		{
 			name: "IDP transform constants must have unique names",
@@ -675,7 +678,8 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 					},
 				},
 			},
-			wantErrs: []string{`spec.identityProviders[0].transforms.constants[0].name: Invalid value: "": spec.identityProviders[0].transforms.constants[0].name in body should be at least 1 chars long`},
+			wantErrs:              []string{`spec.identityProviders[0].transforms.constants[0].name: Invalid value: "": spec.identityProviders[0].transforms.constants[0].name in body should be at least 1 chars long`},
+			wantKube38OrNewerErrs: []string{`spec.identityProviders[0].transforms.constants[0].name: Too short: must be at least 1 character`},
 		},
 		{
 			name: "IDP transform constant names cannot be more than 64 characters",
@@ -797,7 +801,8 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 					},
 				},
 			},
-			wantErrs: []string{`spec.identityProviders[0].transforms.expressions[0].expression: Invalid value: "": spec.identityProviders[0].transforms.expressions[0].expression in body should be at least 1 chars long`},
+			wantErrs:              []string{`spec.identityProviders[0].transforms.expressions[0].expression: Invalid value: "": spec.identityProviders[0].transforms.expressions[0].expression in body should be at least 1 chars long`},
+			wantKube38OrNewerErrs: []string{`spec.identityProviders[0].transforms.expressions[0].expression: Too short: must be at least 1 character`},
 		},
 		{
 			name: "IDP transform example usernames cannot be empty",
@@ -818,7 +823,8 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 					},
 				},
 			},
-			wantErrs: []string{`spec.identityProviders[0].transforms.examples[0].username: Invalid value: "": spec.identityProviders[0].transforms.examples[0].username in body should be at least 1 chars long`},
+			wantErrs:              []string{`spec.identityProviders[0].transforms.examples[0].username: Invalid value: "": spec.identityProviders[0].transforms.examples[0].username in body should be at least 1 chars long`},
+			wantKube38OrNewerErrs: []string{`spec.identityProviders[0].transforms.examples[0].username: Too short: must be at least 1 character`},
 		},
 		{
 			name: "minimum valid",
@@ -922,6 +928,10 @@ func TestSupervisorFederationDomainCRDValidations_Parallel(t *testing.T) {
 			if minor >= 34 && len(tt.wantKube34OrNewerErrs) > 0 {
 				// Also allow overriding with an exact expected error for these Kube versions.
 				wantErr = tt.wantKube34OrNewerErrs
+			}
+			if minor >= 38 && len(tt.wantKube38OrNewerErrs) > 0 {
+				// Also allow overriding with an exact expected error for these Kube versions.
+				wantErr = tt.wantKube38OrNewerErrs
 			}
 
 			if minor >= 25 && minor <= 28 && len(tt.wantCELErrorsForKube25Through28Inclusive) > 0 {

@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -34,6 +34,7 @@ func TestGitHubIDPStaticValidationOnCreate_Parallel(t *testing.T) {
 
 	namespaceClient := adminClient.CoreV1().Namespaces()
 	skipCELTests := !testutil.KubeServerMinorVersionAtLeastInclusive(t, adminClient.Discovery(), 26)
+	kubeIs38OrNewer := testutil.KubeServerMinorVersionAtLeastInclusive(t, adminClient.Discovery(), 38)
 
 	ns, err := namespaceClient.Create(ctx, &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -49,11 +50,12 @@ func TestGitHubIDPStaticValidationOnCreate_Parallel(t *testing.T) {
 	gitHubIDPClient := testlib.NewSupervisorClientset(t).IDPV1alpha1().GitHubIdentityProviders(ns.Name)
 
 	tests := []struct {
-		name              string
-		usesCELValidation bool
-		inputSpec         idpv1alpha1.GitHubIdentityProviderSpec
-		wantSpec          idpv1alpha1.GitHubIdentityProviderSpec
-		wantErr           string
+		name                 string
+		usesCELValidation    bool
+		inputSpec            idpv1alpha1.GitHubIdentityProviderSpec
+		wantSpec             idpv1alpha1.GitHubIdentityProviderSpec
+		wantErr              string
+		wantKube38OrNewerErr string
 	}{
 		{
 			name: "all fields set",
@@ -190,9 +192,10 @@ func TestGitHubIDPStaticValidationOnCreate_Parallel(t *testing.T) {
 			wantErr: "spec.allowAuthentication.organizations.policy must be 'AllGitHubUsers' when spec.allowAuthentication.organizations.allowed is empty",
 		},
 		{
-			name:      "spec.client.secretName in body should be at least 1 chars long",
-			inputSpec: idpv1alpha1.GitHubIdentityProviderSpec{},
-			wantErr:   "spec.client.secretName in body should be at least 1 chars long",
+			name:                 "spec.client.secretName in body should be at least 1 chars long",
+			inputSpec:            idpv1alpha1.GitHubIdentityProviderSpec{},
+			wantErr:              "spec.client.secretName in body should be at least 1 chars long",
+			wantKube38OrNewerErr: "spec.client.secretName: Too short: must be at least 1 character",
 		},
 		{
 			name: "spec.githubAPI.host in body should be at least 1 chars long",
@@ -209,7 +212,8 @@ func TestGitHubIDPStaticValidationOnCreate_Parallel(t *testing.T) {
 					SecretName: "name-of-a-secret",
 				},
 			},
-			wantErr: "spec.githubAPI.host in body should be at least 1 chars long",
+			wantErr:              "spec.githubAPI.host in body should be at least 1 chars long",
+			wantKube38OrNewerErr: "spec.githubAPI.host: Too short: must be at least 1 character",
 		},
 		{
 			name: "duplicates not permitted in spec.allowAuthentication.organizations.allowed",
@@ -245,12 +249,17 @@ func TestGitHubIDPStaticValidationOnCreate_Parallel(t *testing.T) {
 				Spec: tt.inputSpec,
 			}
 
+			wantErr := tt.wantErr
+			if kubeIs38OrNewer && tt.wantKube38OrNewerErr != "" {
+				wantErr = tt.wantKube38OrNewerErr
+			}
+
 			outputGitHubIDP, err := gitHubIDPClient.Create(ctx, input, metav1.CreateOptions{})
-			if tt.wantErr == "" {
+			if wantErr == "" {
 				require.NoError(t, err)
 				require.Equal(t, tt.wantSpec, outputGitHubIDP.Spec)
 			} else {
-				require.ErrorContains(t, err, tt.wantErr)
+				require.ErrorContains(t, err, wantErr)
 			}
 		})
 	}

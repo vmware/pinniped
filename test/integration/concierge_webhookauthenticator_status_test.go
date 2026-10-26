@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package integration
@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	authenticationv1alpha1 "go.pinniped.dev/generated/latest/apis/concierge/authentication/v1alpha1"
+	"go.pinniped.dev/internal/testutil"
 	"go.pinniped.dev/test/testlib"
 )
 
@@ -313,6 +314,7 @@ func TestConciergeWebhookAuthenticatorStatus_Parallel(t *testing.T) {
 
 func TestConciergeWebhookAuthenticatorCRDValidations_Parallel(t *testing.T) {
 	env := testlib.IntegrationEnv(t)
+	kubeIs38OrNewer := testutil.KubeServerMinorVersionAtLeastInclusive(t, testlib.NewKubernetesClientset(t).Discovery(), 38)
 	webhookAuthenticatorClient := testlib.NewConciergeClientset(t).AuthenticationV1alpha1().WebhookAuthenticators()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -323,6 +325,7 @@ func TestConciergeWebhookAuthenticatorCRDValidations_Parallel(t *testing.T) {
 		name                 string
 		webhookAuthenticator *authenticationv1alpha1.WebhookAuthenticator
 		wantErr              string
+		wantKube38OrNewerErr string
 	}{
 		{
 			name: "endpoint can not be empty string",
@@ -334,6 +337,8 @@ func TestConciergeWebhookAuthenticatorCRDValidations_Parallel(t *testing.T) {
 			},
 			wantErr: `WebhookAuthenticator.authentication.concierge.` + env.APIGroupSuffix + ` "` + objectMeta.Name + `" is invalid: ` +
 				`spec.endpoint: Invalid value: "": spec.endpoint in body should be at least 1 chars long`,
+			wantKube38OrNewerErr: `WebhookAuthenticator.authentication.concierge.` + env.APIGroupSuffix + ` "` + objectMeta.Name + `" is invalid: ` +
+				`spec.endpoint: Too short: must be at least 1 character`,
 		},
 		{
 			name: "endpoint must be https",
@@ -407,6 +412,9 @@ func TestConciergeWebhookAuthenticatorCRDValidations_Parallel(t *testing.T) {
 
 			if tt.wantErr != "" {
 				wantErr := tt.wantErr
+				if kubeIs38OrNewer && tt.wantKube38OrNewerErr != "" {
+					wantErr = tt.wantKube38OrNewerErr
+				}
 				require.EqualError(t, createErr, wantErr)
 			} else {
 				require.NoError(t, createErr)
