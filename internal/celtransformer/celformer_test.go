@@ -668,10 +668,10 @@ func TestTransformer(t *testing.T) {
 				&UsernameTransformation{Expression: `foobar.junk()`},
 			},
 			wantCompileErr: here.Doc(`
-				CEL expression compile error: ERROR: <input>:1:1: undeclared reference to 'foobar' (in container '')
+				CEL expression compile error: ERROR: <input>:1:1: undeclared reference to 'foobar'
 				 | foobar.junk()
 				 | ^
-				ERROR: <input>:1:12: undeclared reference to 'junk' (in container '')
+				ERROR: <input>:1:12: undeclared reference to 'junk'
 				 | foobar.junk()
 				 | ...........^`,
 			),
@@ -682,10 +682,10 @@ func TestTransformer(t *testing.T) {
 				&GroupsTransformation{Expression: `foobar.junk()`},
 			},
 			wantCompileErr: here.Doc(`
-				CEL expression compile error: ERROR: <input>:1:1: undeclared reference to 'foobar' (in container '')
+				CEL expression compile error: ERROR: <input>:1:1: undeclared reference to 'foobar'
 				 | foobar.junk()
 				 | ^
-				ERROR: <input>:1:12: undeclared reference to 'junk' (in container '')
+				ERROR: <input>:1:12: undeclared reference to 'junk'
 				 | foobar.junk()
 				 | ...........^`,
 			),
@@ -696,10 +696,10 @@ func TestTransformer(t *testing.T) {
 				&AllowAuthenticationPolicy{Expression: `foobar.junk()`},
 			},
 			wantCompileErr: here.Doc(`
-				CEL expression compile error: ERROR: <input>:1:1: undeclared reference to 'foobar' (in container '')
+				CEL expression compile error: ERROR: <input>:1:1: undeclared reference to 'foobar'
 				 | foobar.junk()
 				 | ^
-				ERROR: <input>:1:12: undeclared reference to 'junk' (in container '')
+				ERROR: <input>:1:12: undeclared reference to 'junk'
 				 | foobar.junk()
 				 | ...........^`,
 			),
