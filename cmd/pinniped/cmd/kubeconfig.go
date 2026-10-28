@@ -63,8 +63,9 @@ type getKubeconfigOIDCParams struct {
 	clientID          string
 	listenPort        uint16
 	scopes            []string
-	skipBrowser       bool
-	skipListen        bool
+	skipBrowser                 bool
+	skipListen                  bool
+	skipRequireIDTokenOnRefresh bool
 	sessionCachePath  string
 	debugSessionCache bool
 	caBundle          caBundleFlag
@@ -142,6 +143,7 @@ func kubeconfigCommand(deps kubeconfigDeps) *cobra.Command {
 	f.StringSliceVar(&flags.oidc.scopes, "oidc-scopes", []string{oidcapi.ScopeOfflineAccess, oidcapi.ScopeOpenID, oidcapi.ScopeRequestAudience, oidcapi.ScopeUsername, oidcapi.ScopeGroups}, "OpenID Connect scopes to request during login")
 	f.BoolVar(&flags.oidc.skipBrowser, "oidc-skip-browser", false, "During OpenID Connect login, skip opening the browser (just print the URL)")
 	f.BoolVar(&flags.oidc.skipListen, "oidc-skip-listen", false, "During OpenID Connect login, skip starting a localhost callback listener (manual copy/paste flow only)")
+	f.BoolVar(&flags.oidc.skipRequireIDTokenOnRefresh, "oidc-skip-require-id-token-on-refresh", false, "During OpenID Connect login, skip requiring an ID token in the refresh response (use for OIDC providers that omit id_token on refresh)")
 	f.StringVar(&flags.oidc.sessionCachePath, "oidc-session-cache", "", "Path to OpenID Connect session cache file")
 	f.Var(&flags.oidc.caBundle, "oidc-ca-bundle", "Path to TLS certificate authority bundle (PEM format, optional, can be repeated)")
 	f.BoolVar(&flags.oidc.debugSessionCache, "oidc-debug-session-cache", false, "Print debug logs related to the OpenID Connect session cache")
@@ -351,6 +353,9 @@ func newExecConfig(deps kubeconfigDeps, flags getKubeconfigParams) (*clientcmdap
 	}
 	if flags.oidc.skipListen {
 		execConfig.Args = append(execConfig.Args, "--skip-listen")
+	}
+	if flags.oidc.skipRequireIDTokenOnRefresh {
+		execConfig.Args = append(execConfig.Args, "--skip-require-id-token-on-refresh")
 	}
 	if flags.oidc.listenPort != 0 {
 		execConfig.Args = append(execConfig.Args, "--listen-port="+strconv.Itoa(int(flags.oidc.listenPort)))

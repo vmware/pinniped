@@ -97,6 +97,7 @@ type oidcLoginFlags struct {
 	upstreamIdentityProviderName string
 	upstreamIdentityProviderType string
 	upstreamIdentityProviderFlow string
+	skipRequireIDTokenOnRefresh  bool
 }
 
 func oidcLoginCommand(deps oidcLoginCommandDeps) *cobra.Command {
@@ -152,6 +153,7 @@ func oidcLoginCommand(deps oidcLoginCommandDeps) *cobra.Command {
 			idpdiscoveryv1alpha1.IDPTypeGitHub,
 		))
 	cmd.Flags().StringVar(&flags.upstreamIdentityProviderFlow, "upstream-identity-provider-flow", "", fmt.Sprintf("The type of client flow to use with the upstream identity provider during login with a Supervisor (e.g. '%s', '%s')", idpdiscoveryv1alpha1.IDPFlowBrowserAuthcode, idpdiscoveryv1alpha1.IDPFlowCLIPassword))
+	cmd.Flags().BoolVar(&flags.skipRequireIDTokenOnRefresh, "skip-require-id-token-on-refresh", false, "Skip requiring an ID token in the refresh response (use for OIDC providers that omit id_token on refresh)")
 
 	// --skip-listen is mainly needed for testing. We'll leave it hidden until we have a non-testing use case.
 	mustMarkHidden(cmd, "skip-listen")
@@ -241,6 +243,10 @@ func runOIDCLogin(cmd *cobra.Command, deps oidcLoginCommandDeps, flags oidcLogin
 		opts = append(opts, deps.optionsFactory.WithSkipListen())
 	}
 
+	if flags.skipRequireIDTokenOnRefresh {
+		opts = append(opts, deps.optionsFactory.WithRequireIDTokenOnRefresh(false))
+	}
+
 	if len(flags.caBundlePaths) > 0 || len(flags.caBundleData) > 0 {
 		client, err := makeClient(flags.caBundlePaths, flags.caBundleData)
 		if err != nil {
@@ -271,7 +277,7 @@ func runOIDCLogin(cmd *cobra.Command, deps oidcLoginCommandDeps, flags oidcLogin
 	if err != nil {
 		return fmt.Errorf("could not complete Pinniped login: %w", err)
 	}
-	cred := tokenCredential(token.IDToken)
+	cred := tokenCredential(token)
 
 	// If the concierge was configured, exchange the credential for a separate short-lived, cluster-specific credential.
 	if concierge != nil {
@@ -279,6 +285,9 @@ func runOIDCLogin(cmd *cobra.Command, deps oidcLoginCommandDeps, flags oidcLogin
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
+		if token.IDToken == nil {
+			return fmt.Errorf("the OIDC provider did not return an ID token during login; cannot exchange token with Concierge (--skip-require-id-token-on-refresh is not compatible with --enable-concierge)")
+		}
 		cred, err = deps.exchangeToken(ctx, concierge, token.IDToken.Token)
 		if err != nil {
 			return fmt.Errorf("could not complete Concierge credential exchange: %w", err)
@@ -315,20 +324,28 @@ func makeClient(caBundlePaths []string, caBundleData []string) (*http.Client, er
 	return phttp.Default(pool), nil
 }
 
-func tokenCredential(idToken *oidctypes.IDToken) *clientauthv1beta1.ExecCredential {
+func tokenCredential(token *oidctypes.Token) *clientauthv1beta1.ExecCredential {
 	cred := clientauthv1beta1.ExecCredential{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExecCredential",
 			APIVersion: "client.authentication.k8s.io/v1beta1",
 		},
-		Status: &clientauthv1beta1.ExecCredentialStatus{
-			Token: idToken.Token,
-		},
+		Status: &clientauthv1beta1.ExecCredentialStatus{},
 	}
-	if !idToken.Expiry.IsZero() {
-		cred.Status.ExpirationTimestamp = &idToken.Expiry
+	switch {
+	case token.IDToken != nil:
+		applyTokenToStatus(cred.Status, token.IDToken.Token, token.IDToken.Expiry)
+	case token.AccessToken != nil:
+		applyTokenToStatus(cred.Status, token.AccessToken.Token, token.AccessToken.Expiry)
 	}
 	return &cred
+}
+
+func applyTokenToStatus(s *clientauthv1beta1.ExecCredentialStatus, tok string, expiry metav1.Time) {
+	s.Token = tok
+	if !expiry.IsZero() {
+		s.ExpirationTimestamp = &expiry
+	}
 }
 
 func SetLogLevel(ctx context.Context, lookupEnv func(string) (string, bool)) (plog.Logger, error) {

@@ -101,6 +101,7 @@ func TestLoginOIDCCommand(t *testing.T) {
 				      --scopes strings                           OIDC scopes to request during login (default [offline_access,openid,pinniped:request-audience,username,groups])
 				      --session-cache string                     Path to session cache file (default "` + cfgDir + `/sessions.yaml")
 				      --skip-browser                             Skip opening the browser (just print the URL)
+					  --skip-require-id-token-on-refresh         Skip requiring an ID token in the refresh response (use for OIDC providers that omit id_token on refresh)
 					  --upstream-identity-provider-flow string   The type of client flow to use with the upstream identity provider during login with a Supervisor (e.g. 'browser_authcode', 'cli_password')
 					  --upstream-identity-provider-name string   The name of the upstream identity provider used during login with a Supervisor
 					  --upstream-identity-provider-type string   The type of the upstream identity provider used during login with a Supervisor (e.g. 'oidc', 'ldap', 'activedirectory', 'github') (default "oidc")
@@ -274,8 +275,8 @@ func TestLoginOIDCCommand(t *testing.T) {
 			wantOptionsCount: 4,
 			wantStdout:       `{"kind":"ExecCredential","apiVersion":"client.authentication.k8s.io/v1beta1","spec":{"interactive":false},"status":{"expirationTimestamp":"3020-10-12T13:14:15Z","token":"test-id-token"}}` + "\n",
 			wantLogs: []string{
-				nowStr + `  cmd/login_oidc.go:268  Performing OIDC login  {"issuer": "test-issuer", "client id": "test-client-id"}`,
-				nowStr + `  cmd/login_oidc.go:288  No concierge configured, skipping token credential exchange`,
+				nowStr + `  cmd/login_oidc.go:274  Performing OIDC login  {"issuer": "test-issuer", "client id": "test-client-id"}`,
+				nowStr + `  cmd/login_oidc.go:297  No concierge configured, skipping token credential exchange`,
 			},
 		},
 		{
@@ -319,10 +320,10 @@ func TestLoginOIDCCommand(t *testing.T) {
 			wantOptionsCount: 12,
 			wantStdout:       `{"kind":"ExecCredential","apiVersion":"client.authentication.k8s.io/v1beta1","spec":{"interactive":false},"status":{"token":"exchanged-token"}}` + "\n",
 			wantLogs: []string{
-				nowStr + `  cmd/login_oidc.go:268  Performing OIDC login  {"issuer": "test-issuer", "client id": "test-client-id"}`,
-				nowStr + `  cmd/login_oidc.go:278  Exchanging token for cluster credential  {"endpoint": "https://127.0.0.1:1234/", "authenticator type": "webhook", "authenticator name": "test-authenticator"}`,
-				nowStr + `  cmd/login_oidc.go:286  Successfully exchanged token for cluster credential.`,
-				nowStr + `  cmd/login_oidc.go:293  caching cluster credential for future use.`,
+				nowStr + `  cmd/login_oidc.go:274  Performing OIDC login  {"issuer": "test-issuer", "client id": "test-client-id"}`,
+				nowStr + `  cmd/login_oidc.go:284  Exchanging token for cluster credential  {"endpoint": "https://127.0.0.1:1234/", "authenticator type": "webhook", "authenticator name": "test-authenticator"}`,
+				nowStr + `  cmd/login_oidc.go:295  Successfully exchanged token for cluster credential.`,
+				nowStr + `  cmd/login_oidc.go:302  caching cluster credential for future use.`,
 			},
 		},
 	}
@@ -394,4 +395,38 @@ func TestLoginOIDCCommand(t *testing.T) {
 			require.Equal(t, tt.wantLogs, testutil.SplitByNewline(buf.String()))
 		})
 	}
+}
+
+func TestTokenCredential(t *testing.T) {
+	expiry := metav1.NewTime(time.Date(3020, 10, 12, 13, 14, 15, 0, time.UTC))
+
+	t.Run("IDToken present uses IDToken", func(t *testing.T) {
+		token := &oidctypes.Token{
+			IDToken: &oidctypes.IDToken{Token: "id-tok", Expiry: expiry},
+			AccessToken: &oidctypes.AccessToken{Token: "access-tok", Expiry: expiry},
+		}
+		cred := tokenCredential(token)
+		require.Equal(t, "id-tok", cred.Status.Token)
+		require.Equal(t, &expiry, cred.Status.ExpirationTimestamp)
+	})
+
+	t.Run("IDToken nil falls back to AccessToken", func(t *testing.T) {
+		token := &oidctypes.Token{
+			IDToken:     nil,
+			AccessToken: &oidctypes.AccessToken{Token: "access-tok", Expiry: expiry},
+		}
+		cred := tokenCredential(token)
+		require.Equal(t, "access-tok", cred.Status.Token)
+		require.Equal(t, &expiry, cred.Status.ExpirationTimestamp)
+	})
+
+	t.Run("IDToken nil and AccessToken with zero expiry omits ExpirationTimestamp", func(t *testing.T) {
+		token := &oidctypes.Token{
+			IDToken:     nil,
+			AccessToken: &oidctypes.AccessToken{Token: "access-tok"},
+		}
+		cred := tokenCredential(token)
+		require.Equal(t, "access-tok", cred.Status.Token)
+		require.Nil(t, cred.Status.ExpirationTimestamp)
+	})
 }
