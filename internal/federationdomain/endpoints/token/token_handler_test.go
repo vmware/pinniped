@@ -44,6 +44,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	supervisorconfigv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/config/v1alpha1"
+	oidcapi "go.pinniped.dev/generated/latest/apis/supervisor/oidc"
 	supervisorfake "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/fake"
 	"go.pinniped.dev/internal/auditid"
 	"go.pinniped.dev/internal/celtransformer"
@@ -104,9 +105,14 @@ const (
 )
 
 var (
-	goodAuthTime        = time.Date(1, 2, 3, 4, 5, 6, 7, time.UTC)
-	goodRequestedAtTime = time.Date(7, 6, 5, 4, 3, 2, 1, time.UTC)
-	goodGroups          = []string{"group1", "groups2"} // the default groups set by the authorize endpoint for these tests
+	// The time of the initial login, which must be recent enough that the session has not reached its maximum lifetime.
+	goodAuthTime = time.Now().UTC().Add(-1 * time.Hour).Round(time.Second)
+	// Times of the initial login for sessions which have already reached their maximum lifetime of 9 hours.
+	// These can be package-level because they will only become further in the past while the tests are running.
+	sessionEndedJustNowAuthTime = time.Now().UTC().Add(-9 * time.Hour).Add(-1 * time.Second).Truncate(time.Second)
+	sessionEndedLongAgoAuthTime = time.Now().UTC().Add(-20 * time.Hour).Truncate(time.Second)
+	goodRequestedAtTime         = time.Date(7, 6, 5, 4, 3, 2, 1, time.UTC)
+	goodGroups                  = []string{"group1", "groups2"} // the default groups set by the authorize endpoint for these tests
 
 	hmacSecretFunc = func() []byte {
 		return []byte(hmacSecret)
@@ -195,6 +201,13 @@ var (
 		{
 			"error":             "invalid_grant",
 			"error_description": "The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client. The refresh token expired."
+		}
+	`)
+
+	sessionMaxLifetimeReachedErrorBody = here.Doc(`
+		{
+			"error":             "invalid_grant",
+			"error_description": "The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client. Refresh rejected because the session has reached its maximum lifetime."
 		}
 	`)
 
@@ -349,7 +362,9 @@ type tokenEndpointResponseExpectedValues struct {
 	// The expected lifetime of the ID tokens issued by authcode exchange and refresh, but not token exchange.
 	// When zero, will assume that the test wants the default value for ID token lifetime.
 	wantIDTokenLifetimeSeconds int
-	wantAuditLogs              func(sessionID string, idToken string) []testutil.WantedAuditLog
+	// The expected time of the initial login (auth_time). When zero, will assume that the test wants goodAuthTime.
+	wantAuthTime  time.Time
+	wantAuditLogs func(sessionID string, idToken string) []testutil.WantedAuditLog
 }
 
 func withWantCustomIDTokenLifetime(wantIDTokenLifetimeSeconds int, w tokenEndpointResponseExpectedValues) tokenEndpointResponseExpectedValues {
@@ -1362,6 +1377,9 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 		wantErrorType         string
 		wantErrorDescContains string
 		wantAuditLogs         func(sessionID string, idToken string) []testutil.WantedAuditLog
+		// The expected auth_time claim of the new ID token. When zero, will assume that it should be the same as the
+		// auth_time claim of the ID token from the authcode exchange.
+		wantAuthTime time.Time
 	}{
 		{
 			name:              "happy path",
@@ -1900,6 +1918,21 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 			wantErrorDescContains: `Invalid 'subject_token' parameter value.`,
 		},
 		{
+			// A client which refreshed shortly before the end of the session can continue to use its access token for
+			// token exchanges until the access token expires, and the new ID tokens get their usual lifetimes.
+			name:              "happy path with an unexpired access token after the session has reached its max lifetime",
+			authcodeExchange:  doValidAuthCodeExchange,
+			requestedAudience: "some-workload-cluster",
+			modifyStorage: func(t *testing.T, storage *storage.KubeStorage, secrets v1.SecretInterface, pendingRequest *http.Request) {
+				modifyStoredTokenSession(t, secrets, getFositeDataSignature(t, pendingRequest.Form.Get("subject_token")), "access-token",
+					func(session *psession.PinnipedSession) {
+						session.Fosite.Claims.AuthTime = sessionEndedJustNowAuthTime
+					})
+			},
+			wantStatus:   http.StatusOK,
+			wantAuthTime: sessionEndedJustNowAuthTime,
+		},
+		{
 			name:              "valid access token, but it has already expired",
 			authcodeExchange:  doValidAuthCodeExchange,
 			requestedAudience: "some-workload-cluster",
@@ -2137,10 +2170,14 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 			}
 
 			// Also assert that some are the same as the original downstream ID token.
-			requireClaimsAreEqual(t, "iss", claimsOfFirstIDToken, tokenClaims)       // issuer
-			requireClaimsAreEqual(t, "sub", claimsOfFirstIDToken, tokenClaims)       // subject
-			requireClaimsAreEqual(t, "rat", claimsOfFirstIDToken, tokenClaims)       // requested at
-			requireClaimsAreEqual(t, "auth_time", claimsOfFirstIDToken, tokenClaims) // auth time
+			requireClaimsAreEqual(t, "iss", claimsOfFirstIDToken, tokenClaims) // issuer
+			requireClaimsAreEqual(t, "sub", claimsOfFirstIDToken, tokenClaims) // subject
+			requireClaimsAreEqual(t, "rat", claimsOfFirstIDToken, tokenClaims) // requested at
+			if test.wantAuthTime.IsZero() {
+				requireClaimsAreEqual(t, "auth_time", claimsOfFirstIDToken, tokenClaims) // auth time
+			} else {
+				require.Equal(t, float64(test.wantAuthTime.Unix()), tokenClaims["auth_time"])
+			}
 			if len(test.authcodeExchange.want.wantAdditionalClaims) > 0 {
 				requireClaimsAreEqual(t, "additionalClaims", claimsOfFirstIDToken, tokenClaims)
 			}
@@ -2548,6 +2585,44 @@ func TestRefreshGrant(t *testing.T) {
 		),
 	}
 
+	// Simulate a refresh token issued by an older version of the Supervisor for a session which started at authTime.
+	// Older Supervisors gave each refresh token a lifetime of 9 hours starting from the time of the refresh, so a
+	// client which refreshed at least once every 9 hours could keep a session going forever. So the refresh token
+	// has not expired yet, even though the session has reached its maximum lifetime.
+	simulateUnexpiredRefreshTokenFromOlderSupervisor := func(authTime time.Time) func(t *testing.T, oauthStore *storage.KubeStorage, secrets v1.SecretInterface, refreshToken string) {
+		return func(t *testing.T, oauthStore *storage.KubeStorage, secrets v1.SecretInterface, refreshToken string) {
+			modifyStoredTokenSession(t, secrets, getFositeDataSignature(t, refreshToken), "refresh-token", func(session *psession.PinnipedSession) {
+				session.Fosite.Claims.AuthTime = authTime
+				session.Fosite.SetExpiresAt(fosite.RefreshToken, time.Now().UTC().Add(time.Hour))
+			})
+		}
+	}
+
+	sessionMaxLifetimeReachedResponse := func(authTime time.Time) tokenEndpointResponseExpectedValues {
+		return tokenEndpointResponseExpectedValues{
+			wantStatus:            http.StatusBadRequest,
+			wantErrorResponseBody: sessionMaxLifetimeReachedErrorBody,
+			wantAuditLogs: func(sessionID string, idToken string) []testutil.WantedAuditLog {
+				return []testutil.WantedAuditLog{
+					testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+						"params": map[string]any{
+							"client_id":     "pinniped-cli",
+							"grant_type":    "refresh_token",
+							"refresh_token": "redacted",
+							"scope":         "openid",
+						},
+					}),
+					testutil.WantAuditLog("Session Found", map[string]any{"sessionID": sessionID}),
+					testutil.WantAuditLog("Session Max Lifetime Reached", map[string]any{
+						"sessionID":        sessionID,
+						"sessionStartedAt": authTime.Format(time.RFC3339),
+						"sessionEndsAt":    authTime.Add(9 * time.Hour).Format(time.RFC3339),
+					}),
+				}
+			},
+		}
+	}
+
 	prefixUsernameAndGroupsPipeline := transformtestutil.NewPrefixingPipeline(t, transformationUsernamePrefix, transformationGroupsPrefix)
 	rejectAuthPipeline := transformtestutil.NewRejectAllAuthPipeline(t)
 
@@ -2558,6 +2633,11 @@ func TestRefreshGrant(t *testing.T) {
 		authcodeExchange          authcodeExchangeInputs
 		refreshRequest            refreshRequestInputs
 		modifyRefreshTokenStorage func(t *testing.T, oauthStore *storage.KubeStorage, secrets v1.SecretInterface, refreshToken string)
+		// When non-zero, simulate that the initial login happened long enough ago that the session will reach its
+		// maximum lifetime this long after the refresh, by editing the stored session just before the refresh.
+		// The stored refresh token will expire at the end of the session, as it would if it was issued by this
+		// version of the Supervisor.
+		sessionRemainingAtRefresh time.Duration
 	}{
 		{
 			name: "happy path refresh grant with openid scope granted (id token returned)",
@@ -3085,6 +3165,53 @@ func TestRefreshGrant(t *testing.T) {
 						),
 					),
 				),
+			},
+		},
+		{
+			name: "happy path refresh grant moments before the session reaches its max lifetime using dynamic client which has custom ID token lifetime configured, which issues an ID token which outlives the session",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			// The maximum ID token lifetime allowed by the OIDCClient CRD's validation.
+			kubeResources: addFullyCapableDynamicClientWithCustomIDTokenLifetimeAndSecretToKubeResources(1800),
+			authcodeExchange: authcodeExchangeInputs{
+				customSessionData: initialUpstreamOIDCRefreshTokenCustomSessionData(),
+				modifyAuthRequest: func(r *http.Request) {
+					addDynamicClientIDToFormPostBody(r)
+					r.Form.Set("scope", "openid offline_access username groups")
+				},
+				modifyTokenRequest: modifyAuthcodeTokenRequestWithDynamicClientAuth,
+				want: withWantCustomIDTokenLifetime(1800,
+					withWantDynamicClientID(
+						happyAuthcodeExchangeTokenResponseForOpenIDAndOfflineAccess(initialUpstreamOIDCRefreshTokenCustomSessionData()),
+					),
+				),
+			},
+			sessionRemainingAtRefresh: 5 * time.Second,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: modifyRefreshTokenRequestWithDynamicClientAuth,
+				want: withWantCustomIDTokenLifetime(1800,
+					withWantDynamicClientID(
+						happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+							upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+							refreshedUpstreamTokensWithIDAndRefreshTokens(),
+						),
+					),
+				),
+			},
+		},
+		{
+			name:                      "upstream oidc refresh after the session reaches its max lifetime is rejected without calling the upstream IDP, even when the refresh token from an older Supervisor has not expired",
+			idps:                      testidplister.NewUpstreamIDPListerBuilder().WithOIDC(upstreamOIDCIdentityProviderBuilder().Build()),
+			authcodeExchange:          happyAuthcodeExchangeInputsForOIDCUpstream,
+			modifyRefreshTokenStorage: simulateUnexpiredRefreshTokenFromOlderSupervisor(sessionEndedLongAgoAuthTime),
+			refreshRequest: refreshRequestInputs{
+				want: sessionMaxLifetimeReachedResponse(sessionEndedLongAgoAuthTime),
 			},
 		},
 		{
@@ -4697,6 +4824,87 @@ func TestRefreshGrant(t *testing.T) {
 			},
 		},
 		{
+			name: "upstream ldap refresh happy path during the final hour of the session, which does not extend the session",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(oidctestutil.NewTestUpstreamLDAPIdentityProviderBuilder().
+				WithName(ldapUpstreamName).
+				WithResourceUID(ldapUpstreamResourceUID).
+				WithURL(ldapUpstreamURL).
+				WithPerformRefreshGroups(goodGroups).
+				Build(),
+			),
+			authcodeExchange:          happyAuthcodeExchangeInputsForLDAPUpstream,
+			sessionRemainingAtRefresh: time.Hour,
+			refreshRequest: refreshRequestInputs{
+				want: happyRefreshTokenResponseForLDAP(
+					happyLDAPCustomSessionData,
+				),
+			},
+		},
+		{
+			name: "upstream ldap refresh happy path when the session has less than an access token lifetime remaining, which issues an access token and ID token which outlive the session",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(oidctestutil.NewTestUpstreamLDAPIdentityProviderBuilder().
+				WithName(ldapUpstreamName).
+				WithResourceUID(ldapUpstreamResourceUID).
+				WithURL(ldapUpstreamURL).
+				WithPerformRefreshGroups(goodGroups).
+				Build(),
+			),
+			authcodeExchange:          happyAuthcodeExchangeInputsForLDAPUpstream,
+			sessionRemainingAtRefresh: 90 * time.Second,
+			refreshRequest: refreshRequestInputs{
+				want: happyRefreshTokenResponseForLDAP(
+					happyLDAPCustomSessionData,
+				),
+			},
+		},
+		{
+			name: "upstream ldap refresh happy path moments before the session reaches its max lifetime",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(oidctestutil.NewTestUpstreamLDAPIdentityProviderBuilder().
+				WithName(ldapUpstreamName).
+				WithResourceUID(ldapUpstreamResourceUID).
+				WithURL(ldapUpstreamURL).
+				WithPerformRefreshGroups(goodGroups).
+				Build(),
+			),
+			authcodeExchange:          happyAuthcodeExchangeInputsForLDAPUpstream,
+			sessionRemainingAtRefresh: 5 * time.Second,
+			refreshRequest: refreshRequestInputs{
+				want: happyRefreshTokenResponseForLDAP(
+					happyLDAPCustomSessionData,
+				),
+			},
+		},
+		{
+			name: "upstream ldap refresh just after the session reaches its max lifetime is rejected, even when the refresh token from an older Supervisor has not expired",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(oidctestutil.NewTestUpstreamLDAPIdentityProviderBuilder().
+				WithName(ldapUpstreamName).
+				WithResourceUID(ldapUpstreamResourceUID).
+				WithURL(ldapUpstreamURL).
+				WithPerformRefreshGroups(goodGroups).
+				Build(),
+			),
+			authcodeExchange:          happyAuthcodeExchangeInputsForLDAPUpstream,
+			modifyRefreshTokenStorage: simulateUnexpiredRefreshTokenFromOlderSupervisor(sessionEndedJustNowAuthTime),
+			refreshRequest: refreshRequestInputs{
+				want: sessionMaxLifetimeReachedResponse(sessionEndedJustNowAuthTime),
+			},
+		},
+		{
+			name: "upstream ldap refresh long after the session reaches its max lifetime is rejected, even when the refresh token from an older Supervisor has not expired",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(oidctestutil.NewTestUpstreamLDAPIdentityProviderBuilder().
+				WithName(ldapUpstreamName).
+				WithResourceUID(ldapUpstreamResourceUID).
+				WithURL(ldapUpstreamURL).
+				WithPerformRefreshGroups(goodGroups).
+				Build(),
+			),
+			authcodeExchange:          happyAuthcodeExchangeInputsForLDAPUpstream,
+			modifyRefreshTokenStorage: simulateUnexpiredRefreshTokenFromOlderSupervisor(sessionEndedLongAgoAuthTime),
+			refreshRequest: refreshRequestInputs{
+				want: sessionMaxLifetimeReachedResponse(sessionEndedLongAgoAuthTime),
+			},
+		},
+		{
 			name: "upstream ldap refresh happy path with identity transformations which modify the username and group names",
 			idps: testidplister.NewUpstreamIDPListerBuilder().WithLDAP(oidctestutil.NewTestUpstreamLDAPIdentityProviderBuilder().
 				WithName(ldapUpstreamName).
@@ -5366,6 +5574,18 @@ func TestRefreshGrant(t *testing.T) {
 				test.modifyRefreshTokenStorage(t, oauthStore, secrets, firstRefreshToken)
 			}
 
+			refreshRequestWant := test.refreshRequest.want
+			if test.sessionRemainingAtRefresh != 0 {
+				authTime := time.Now().UTC().Truncate(time.Second).Add(test.sessionRemainingAtRefresh).Add(-9 * time.Hour)
+				modifyStoredTokenSession(t, secrets, getFositeDataSignature(t, firstRefreshToken), "refresh-token", func(session *psession.PinnipedSession) {
+					session.Fosite.Claims.AuthTime = authTime
+					session.Fosite.SetExpiresAt(fosite.RefreshToken, authTime.Add(9*time.Hour))
+				})
+				// The refresh should keep the time of the initial login, so the new refresh token should still expire
+				// at the end of the session.
+				refreshRequestWant.wantAuthTime = authTime
+			}
+
 			reqContextWarningRecorder := &TestWarningRecorder{}
 			req := httptest.NewRequestWithContext(t.Context(), "POST", "/path/shouldn't/matter",
 				happyRefreshRequestBody(firstRefreshToken).ReadCloser()).
@@ -5440,7 +5660,7 @@ func TestRefreshGrant(t *testing.T) {
 
 			requireTokenEndpointBehavior(
 				t,
-				test.refreshRequest.want,
+				refreshRequestWant,
 				wantNonceValueInIDToken,
 				refreshResponse,
 				authCode,
@@ -5489,15 +5709,56 @@ func TestRefreshGrant(t *testing.T) {
 					requireClaimsAreNotEqual(t, "iat", claimsOfFirstIDToken, claimsOfSecondIDToken) // issued at
 					require.Greater(t, claimsOfSecondIDToken["iat"], claimsOfFirstIDToken["iat"])
 
-					requireClaimsAreEqual(t, "iss", claimsOfFirstIDToken, claimsOfSecondIDToken)       // issuer
-					requireClaimsAreEqual(t, "aud", claimsOfFirstIDToken, claimsOfSecondIDToken)       // audience
-					requireClaimsAreEqual(t, "sub", claimsOfFirstIDToken, claimsOfSecondIDToken)       // subject
-					requireClaimsAreEqual(t, "rat", claimsOfFirstIDToken, claimsOfSecondIDToken)       // requested at
-					requireClaimsAreEqual(t, "auth_time", claimsOfFirstIDToken, claimsOfSecondIDToken) // auth time
+					requireClaimsAreEqual(t, "iss", claimsOfFirstIDToken, claimsOfSecondIDToken) // issuer
+					requireClaimsAreEqual(t, "aud", claimsOfFirstIDToken, claimsOfSecondIDToken) // audience
+					requireClaimsAreEqual(t, "sub", claimsOfFirstIDToken, claimsOfSecondIDToken) // subject
+					requireClaimsAreEqual(t, "rat", claimsOfFirstIDToken, claimsOfSecondIDToken) // requested at
+					if test.sessionRemainingAtRefresh == 0 {
+						// Otherwise, the stored auth time was edited before the refresh, and requireTokenEndpointBehavior
+						// has already checked the auth time of the new ID token.
+						requireClaimsAreEqual(t, "auth_time", claimsOfFirstIDToken, claimsOfSecondIDToken) // auth time
+					}
 				}
 			}
 		})
 	}
+}
+
+// storedTokenSession has the same JSON shape as both refreshtoken.Session and accesstoken.Session.
+type storedTokenSession struct {
+	Request *fosite.Request `json:"request"`
+	Version string          `json:"version"`
+}
+
+// modifyStoredTokenSession edits the session in the storage Secret of the given refresh token or access token.
+// The fosite storage APIs don't offer a way to update a token, so this updates the underlying storage Secret.
+// The storageType is the storage type used in the Secret's name, i.e. "refresh-token" or "access-token".
+func modifyStoredTokenSession(
+	t *testing.T,
+	secrets v1.SecretInterface,
+	tokenSignature string,
+	storageType string,
+	modify func(session *psession.PinnipedSession),
+) {
+	t.Helper()
+
+	secret, err := secrets.Get(context.Background(), getSecretNameFromSignature(t, tokenSignature, storageType), metav1.GetOptions{})
+	require.NoError(t, err)
+
+	stored := &storedTokenSession{
+		Request: &fosite.Request{
+			Client:  &clientregistry.Client{},
+			Session: &psession.PinnipedSession{},
+		},
+	}
+	require.NoError(t, json.Unmarshal(secret.Data["pinniped-storage-data"], stored))
+
+	modify(stored.Request.Session.(*psession.PinnipedSession))
+
+	secret.Data["pinniped-storage-data"], err = json.Marshal(stored)
+	require.NoError(t, err)
+	_, err = secrets.Update(context.Background(), secret, metav1.UpdateOptions{})
+	require.NoError(t, err)
 }
 
 func requireClaimsAreNotEqual(t *testing.T, claimName string, claimsOfTokenA map[string]any, claimsOfTokenB map[string]any) {
@@ -5562,6 +5823,7 @@ func exchangeAuthcodeForTokens(
 		oauthHelper,
 		timeoutsConfiguration.OverrideDefaultAccessTokenLifespan,
 		timeoutsConfiguration.OverrideDefaultIDTokenLifespan,
+		timeoutsConfiguration.SessionMaxLifespan,
 		auditLogger,
 	)
 
@@ -5643,6 +5905,11 @@ func requireTokenEndpointBehavior(
 	testutil.RequireEqualContentType(t, tokenEndpointResponse.Header().Get("Content-Type"), "application/json")
 	require.Equal(t, test.wantStatus, tokenEndpointResponse.Code)
 
+	wantAuthTime := test.wantAuthTime
+	if wantAuthTime.IsZero() {
+		wantAuthTime = goodAuthTime
+	}
+
 	var actualIDToken string
 	if test.wantStatus == http.StatusOK {
 		require.NotNil(t, test.wantSuccessBodyFields, "problem with test table setup: wanted success but did not specify expected response body")
@@ -5655,7 +5922,7 @@ func requireTokenEndpointBehavior(
 		wantRefreshToken := slices.Contains(test.wantSuccessBodyFields, "refresh_token")
 
 		requireInvalidAuthCodeStorage(t, authCode, oauthStore, secrets, requestTime)
-		requireValidAccessTokenStorage(t, parsedResponseBody, oauthStore, test.wantClientID, test.wantRequestedScopes, test.wantGrantedScopes, test.wantUsername, test.wantGroups, test.wantCustomSessionDataStored, test.wantAdditionalClaims, secrets, requestTime)
+		requireValidAccessTokenStorage(t, parsedResponseBody, oauthStore, test.wantClientID, test.wantRequestedScopes, test.wantGrantedScopes, test.wantUsername, test.wantGroups, test.wantCustomSessionDataStored, test.wantAdditionalClaims, wantAuthTime, secrets, requestTime)
 		requireInvalidPKCEStorage(t, authCode, oauthStore)
 		requireDeletedOIDCStorage(t, authCode, oauthStore) // The OIDC storage was deleted during the authcode exchange.
 
@@ -5664,10 +5931,10 @@ func requireTokenEndpointBehavior(
 			expectedNumberOfRefreshTokenSessionsStored = 1
 		}
 		if wantIDToken {
-			actualIDToken = requireValidIDToken(t, parsedResponseBody, jwtSigningKey, test.wantClientID, wantNonceValueInIDToken, test.wantUsername, test.wantGroups, test.wantAdditionalClaims, test.wantIDTokenLifetimeSeconds, parsedResponseBody["access_token"].(string), requestTime)
+			actualIDToken = requireValidIDToken(t, parsedResponseBody, jwtSigningKey, test.wantClientID, wantNonceValueInIDToken, test.wantUsername, test.wantGroups, test.wantAdditionalClaims, test.wantIDTokenLifetimeSeconds, wantAuthTime, parsedResponseBody["access_token"].(string), requestTime)
 		}
 		if wantRefreshToken {
-			requireValidRefreshTokenStorage(t, parsedResponseBody, oauthStore, test.wantClientID, test.wantRequestedScopes, test.wantGrantedScopes, test.wantUsername, test.wantGroups, test.wantCustomSessionDataStored, test.wantAdditionalClaims, secrets, requestTime)
+			requireValidRefreshTokenStorage(t, parsedResponseBody, oauthStore, test.wantClientID, test.wantRequestedScopes, test.wantGrantedScopes, test.wantUsername, test.wantGroups, test.wantCustomSessionDataStored, test.wantAdditionalClaims, wantAuthTime, secrets, requestTime)
 		}
 
 		testutil.RequireNumberOfSecretsMatchingLabelSelector(t, secrets, labels.Set{crud.SecretLabelKey: authorizationcode.TypeLabelValue}, 1)
@@ -5936,6 +6203,7 @@ func requireValidRefreshTokenStorage(
 	wantGroups []string,
 	wantCustomSessionData *psession.CustomSessionData,
 	wantAdditionalClaims map[string]any,
+	wantAuthTime time.Time,
 	secrets v1.SecretInterface,
 	requestTime time.Time,
 ) {
@@ -5966,10 +6234,16 @@ func requireValidRefreshTokenStorage(
 		wantGroups,
 		wantCustomSessionData,
 		wantAdditionalClaims,
+		wantAuthTime,
 		requestTime,
 	)
 
-	requireGarbageCollectTimeInDelta(t, refreshTokenString, "refresh-token", secrets, requestTime.Add(9*time.Hour).Add(2*time.Minute), 1*time.Minute)
+	// The refresh token must expire when the session reaches its max lifetime, measured from the initial login,
+	// no matter when the refresh token was issued, so that refreshes cannot extend the session.
+	testutil.RequireTimeInDelta(t, wantAuthTime.Add(9*time.Hour), storedRequest.GetSession().GetExpiresAt(fosite.RefreshToken), timeComparisonFudge)
+
+	// The storage is garbage collected shortly after the end of the session.
+	requireGarbageCollectTimeInDelta(t, refreshTokenString, "refresh-token", secrets, wantAuthTime.Add(9*time.Hour).Add(2*time.Minute), 1*time.Minute)
 }
 
 func requireValidAccessTokenStorage(
@@ -5983,6 +6257,7 @@ func requireValidAccessTokenStorage(
 	wantGroups []string,
 	wantCustomSessionData *psession.CustomSessionData,
 	wantAdditionalClaims map[string]any,
+	wantAuthTime time.Time,
 	secrets v1.SecretInterface,
 	requestTime time.Time,
 ) {
@@ -6032,10 +6307,11 @@ func requireValidAccessTokenStorage(
 		wantGroups,
 		wantCustomSessionData,
 		wantAdditionalClaims,
+		wantAuthTime,
 		requestTime,
 	)
 
-	requireGarbageCollectTimeInDelta(t, accessTokenString, "access-token", secrets, requestTime.Add(9*time.Hour).Add(2*time.Minute), 1*time.Minute)
+	requireGarbageCollectTimeInDelta(t, accessTokenString, "access-token", secrets, wantAuthTime.Add(9*time.Hour).Add(2*time.Minute), 1*time.Minute)
 }
 
 func requireInvalidAccessTokenStorage(
@@ -6086,6 +6362,7 @@ func requireValidStoredRequest(
 	wantGroups []string,
 	wantCustomSessionData *psession.CustomSessionData,
 	wantAdditionalClaims map[string]any,
+	wantAuthTime time.Time,
 	requestTime time.Time,
 ) {
 	t.Helper()
@@ -6126,7 +6403,7 @@ func requireValidStoredRequest(
 	// We are in charge of setting these fields. For the purpose of testing, we ensure that the
 	// sentinel test value is set correctly.
 	require.Equal(t, goodRequestedAtTime, claims.RequestedAt)
-	require.Equal(t, goodAuthTime, claims.AuthTime)
+	require.Equal(t, wantAuthTime, claims.AuthTime)
 
 	// These fields will all be given good defaults by fosite at runtime and we only need to use them
 	// if we want to override the default behaviors. We currently don't need to override these defaults,
@@ -6212,6 +6489,7 @@ func requireValidIDToken(
 	wantGroupsInIDToken []string,
 	wantAdditionalClaims map[string]any,
 	wantIDTokenLifetimeSeconds int,
+	wantAuthTime time.Time,
 	actualAccessToken string,
 	requestTime time.Time,
 ) string {
@@ -6295,7 +6573,7 @@ func requireValidIDToken(
 	testutil.RequireTimeInDelta(t, requestTime.UTC().Add(time.Duration(wantIDTokenLifetimeSeconds)*time.Second), expiresAt, timeComparisonFudge)
 	testutil.RequireTimeInDelta(t, requestTime.UTC(), issuedAt, timeComparisonFudge)
 	testutil.RequireTimeInDelta(t, goodRequestedAtTime, requestedAt, timeComparisonFudge)
-	testutil.RequireTimeInDelta(t, goodAuthTime, authTime, timeComparisonFudge)
+	testutil.RequireTimeInDelta(t, wantAuthTime, authTime, timeComparisonFudge)
 
 	require.NotEmpty(t, actualAccessToken)
 	require.Equal(t, hashAccessToken(actualAccessToken), claims.AccessTokenHash)
@@ -6422,4 +6700,84 @@ func TestParamsSafeToLog(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, wantParams, paramsSafeToLog().UnsortedList())
+}
+
+func TestClampRefreshTokenExpirationToSessionEnd(t *testing.T) {
+	const sessionMaxLifespan = 9 * time.Hour
+
+	authTime := time.Now().UTC().Add(-8 * time.Hour).Truncate(time.Second)
+	sessionEnd := authTime.Add(sessionMaxLifespan)
+	beforeSessionEnd := sessionEnd.Add(-time.Minute)
+	afterSessionEnd := sessionEnd.Add(time.Hour)
+
+	tests := []struct {
+		name                      string
+		grantType                 string
+		authTime                  time.Time
+		refreshTokenExpiresAt     time.Time
+		wantRefreshTokenExpiresAt time.Time
+	}{
+		{
+			name:                      "refresh grant: expiration after the session end is clamped",
+			grantType:                 oidcapi.GrantTypeRefreshToken,
+			authTime:                  authTime,
+			refreshTokenExpiresAt:     afterSessionEnd,
+			wantRefreshTokenExpiresAt: sessionEnd,
+		},
+		{
+			name:                      "authcode grant: expiration after the session end is clamped",
+			grantType:                 oidcapi.GrantTypeAuthorizationCode,
+			authTime:                  authTime,
+			refreshTokenExpiresAt:     afterSessionEnd,
+			wantRefreshTokenExpiresAt: sessionEnd,
+		},
+		{
+			name:                      "expiration before the session end is unchanged",
+			grantType:                 oidcapi.GrantTypeRefreshToken,
+			authTime:                  authTime,
+			refreshTokenExpiresAt:     beforeSessionEnd,
+			wantRefreshTokenExpiresAt: beforeSessionEnd,
+		},
+		{
+			name:                      "zero expiration, which means never expire, is clamped",
+			grantType:                 oidcapi.GrantTypeRefreshToken,
+			authTime:                  authTime,
+			wantRefreshTokenExpiresAt: sessionEnd,
+		},
+		{
+			name:                      "token exchange grant is unchanged, because it does not issue refresh tokens",
+			grantType:                 oidcapi.GrantTypeTokenExchange,
+			authTime:                  authTime,
+			refreshTokenExpiresAt:     afterSessionEnd,
+			wantRefreshTokenExpiresAt: afterSessionEnd,
+		},
+		{
+			name:                      "unknown time of initial login is unchanged",
+			grantType:                 oidcapi.GrantTypeRefreshToken,
+			refreshTokenExpiresAt:     afterSessionEnd,
+			wantRefreshTokenExpiresAt: afterSessionEnd,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			session := psession.NewPinnipedSession()
+			session.Fosite.Claims.AuthTime = tt.authTime
+			// The access token is never clamped, so it can be used for its full lifespan.
+			session.SetExpiresAt(fosite.AccessToken, afterSessionEnd)
+			if !tt.refreshTokenExpiresAt.IsZero() {
+				session.SetExpiresAt(fosite.RefreshToken, tt.refreshTokenExpiresAt)
+			}
+			accessRequest := &fosite.AccessRequest{
+				GrantTypes: fosite.Arguments{tt.grantType},
+				Request:    fosite.Request{Session: session},
+			}
+
+			clampRefreshTokenExpirationToSessionEnd(accessRequest, sessionMaxLifespan)
+
+			require.Equal(t, tt.wantRefreshTokenExpiresAt, session.GetExpiresAt(fosite.RefreshToken))
+			require.Equal(t, afterSessionEnd, session.GetExpiresAt(fosite.AccessToken))
+		})
+	}
 }

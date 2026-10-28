@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/ory/fosite"
 	"github.com/stretchr/testify/require"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -39,7 +40,11 @@ import (
 	idpv1alpha1 "go.pinniped.dev/generated/latest/apis/supervisor/idp/v1alpha1"
 	supervisorclient "go.pinniped.dev/generated/latest/client/supervisor/clientset/versioned/typed/config/v1alpha1"
 	"go.pinniped.dev/internal/crud"
+	"go.pinniped.dev/internal/federationdomain/oidc"
+	"go.pinniped.dev/internal/federationdomain/oidcclientvalidator"
+	"go.pinniped.dev/internal/federationdomain/storage"
 	"go.pinniped.dev/internal/here"
+	"go.pinniped.dev/internal/psession"
 	"go.pinniped.dev/internal/testutil"
 	"go.pinniped.dev/pkg/oidcclient"
 	"go.pinniped.dev/pkg/oidcclient/filesession"
@@ -810,6 +815,126 @@ func TestE2EFullIntegration_Browser(t *testing.T) {
 
 		t.Logf("first kubectl command took %s", time.Since(start).String())
 
+		requireUserCanUseKubectlWithoutAuthenticatingAgain(testCtx, t, env, federationDomain, createdProvider.Name, kubeconfigPath,
+			sessionCachePath, pinnipedExe, expectedUsername, expectedGroups, allScopes)
+	})
+
+	t.Run("with Supervisor LDAP upstream IDP, the CLI prompts for a new login after the session reaches its max lifetime", func(t *testing.T) {
+		testlib.SkipTestWhenLDAPIsUnavailable(t, env)
+
+		testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		t.Cleanup(cancel)
+
+		tempDir := t.TempDir() // per-test tmp dir to avoid sharing files between tests
+
+		expectedUsername := env.SupervisorUpstreamLDAP.TestUserMailAttributeValue
+		expectedGroups := env.SupervisorUpstreamLDAP.TestUserDirectGroupsDNs
+
+		authenticator := testlib.CreateTestJWTAuthenticator(testCtx, t, defaultJWTAuthenticatorSpec, authenticationv1alpha1.JWTAuthenticatorPhaseError)
+		createdProvider := setupClusterForEndToEndLDAPTest(t, expectedUsername, env)
+		testlib.WaitForFederationDomainStatusPhase(testCtx, t, federationDomain.Name, supervisorconfigv1alpha1.FederationDomainPhaseReady)
+		testlib.WaitForJWTAuthenticatorStatusPhase(testCtx, t, authenticator.Name, authenticationv1alpha1.JWTAuthenticatorPhaseReady)
+
+		// Use a specific session cache for this test.
+		sessionCachePath := tempDir + "/test-sessions.yaml"
+		credentialCachePath := tempDir + "/test-credentials.yaml"
+
+		kubeconfigPath := runPinnipedGetKubeconfig(t, env, pinnipedExe, tempDir, []string{
+			"get", "kubeconfig",
+			"--concierge-api-group-suffix", env.APIGroupSuffix,
+			"--concierge-authenticator-type", "jwt",
+			"--concierge-authenticator-name", authenticator.Name,
+			"--oidc-session-cache", sessionCachePath,
+			"--credential-cache", credentialCachePath,
+			// use default for --oidc-scopes, which is to request all relevant scopes
+		})
+
+		// runKubectlAndLogInWithPrompts runs "kubectl get namespaces", which should trigger an LDAP-style login
+		// CLI prompt via the plugin, and logs in. Reading from the pty will fail with EOF if the CLI does not prompt.
+		runKubectlAndLogInWithPrompts := func(t *testing.T) {
+			start := time.Now()
+			kubectlCmd := exec.CommandContext(testCtx, "kubectl", "get", "namespace", "--kubeconfig", kubeconfigPath)
+			kubectlCmd.Env = slices.Concat(os.Environ(), env.ProxyEnv())
+			ptyFile, err := pty.Start(kubectlCmd)
+			require.NoError(t, err)
+
+			// Wait for the subprocess to print the username prompt, then type the user's username.
+			readFromFileUntilStringIsSeen(t, ptyFile, "Username: ")
+			_, err = ptyFile.WriteString(expectedUsername + "\n")
+			require.NoError(t, err)
+
+			// Wait for the subprocess to print the password prompt, then type the user's password.
+			readFromFileUntilStringIsSeen(t, ptyFile, "Password: ")
+			_, err = ptyFile.WriteString(env.SupervisorUpstreamLDAP.TestUserPassword + "\n")
+			require.NoError(t, err)
+
+			// Read all output from the subprocess until EOF.
+			// Ignore any errors returned because there is always an error on linux.
+			kubectlOutputBytes, _ := io.ReadAll(ptyFile)
+			requireKubectlGetNamespaceOutput(t, env, string(kubectlOutputBytes))
+
+			t.Logf("kubectl command with login took %s", time.Since(start).String())
+		}
+
+		cache := filesession.New(sessionCachePath, filesession.WithErrorReporter(func(err error) {
+			require.NoError(t, err)
+		}))
+		sessionCacheKey := oidcclient.SessionCacheKey{
+			Issuer:               federationDomain.Spec.Issuer,
+			ClientID:             "pinniped-cli",
+			Scopes:               slices.Sorted(slices.Values(allScopes)),
+			RedirectURI:          "http://localhost:0/callback",
+			UpstreamProviderName: createdProvider.Name,
+		}
+
+		supervisorSecretsClient := testlib.NewKubernetesClientset(t).CoreV1().Secrets(env.SupervisorNamespace)
+		supervisorOIDCClientsClient := testlib.NewSupervisorClientset(t).ConfigV1alpha1().OIDCClients(env.SupervisorNamespace)
+		oauthStore := storage.NewKubeStorage(supervisorSecretsClient, supervisorOIDCClientsClient, oidc.DefaultOIDCTimeoutsConfiguration(), oidcclientvalidator.DefaultMinBcryptCost)
+
+		// getCachedSession returns the CLI's cached tokens, the signature of the cached refresh token,
+		// and the Supervisor's stored session for that refresh token.
+		getCachedSession := func(t *testing.T) (*oidctypes.Token, string, fosite.Requester, *psession.PinnipedSession) {
+			token := cache.GetToken(sessionCacheKey)
+			require.NotNil(t, token)
+			require.NotNil(t, token.RefreshToken)
+			refreshTokenSignature := strings.Split(token.RefreshToken.Token, ".")[1]
+			storedRefreshSession, err := oauthStore.GetRefreshTokenSession(testCtx, refreshTokenSignature, nil)
+			require.NoError(t, err)
+			pinnipedSession, ok := storedRefreshSession.GetSession().(*psession.PinnipedSession)
+			require.True(t, ok, "should have been able to cast session data to PinnipedSession")
+			return token, refreshTokenSignature, storedRefreshSession, pinnipedSession
+		}
+
+		// Log in for the first time.
+		runKubectlAndLogInWithPrompts(t)
+
+		// Make the Supervisor's stored session look like the initial login happened long enough ago
+		// that the session reached its max lifetime a few seconds ago.
+		token, endedRefreshTokenSignature, storedRefreshSession, pinnipedSession := getCachedSession(t)
+		simulateSessionEndsAt(pinnipedSession, time.Now().Add(-10*time.Second), false)
+		// There is no update function, so delete and create again at the same name.
+		require.NoError(t, oauthStore.DeleteRefreshTokenSession(testCtx, endedRefreshTokenSignature))
+		require.NoError(t, oauthStore.CreateRefreshTokenSession(testCtx, endedRefreshTokenSignature, "ignored", storedRefreshSession))
+
+		// Remove the credential cache, which includes the cached cert, so it won't be reused.
+		require.NoError(t, os.Remove(credentialCachePath))
+		// The cached access token is valid for 2 minutes, and can be used to perform the token exchange again
+		// during that time. Remove it to force the refresh flow to happen on the next kubectl invocation,
+		// without needing to wait for the access token to expire first.
+		token.AccessToken = nil
+		cache.PutToken(sessionCacheKey, token)
+
+		// The refresh should be rejected because the session has ended, so the CLI should automatically
+		// fall back to prompting the user to log in again.
+		runKubectlAndLogInWithPrompts(t)
+
+		// The new login should have started a new session with its own full lifetime.
+		_, newRefreshTokenSignature, _, newPinnipedSession := getCachedSession(t)
+		require.NotEqual(t, endedRefreshTokenSignature, newRefreshTokenSignature)
+		testutil.RequireTimeInDelta(t, time.Now(), newPinnipedSession.Fosite.Claims.AuthTime, time.Minute)
+		requireRefreshTokenExpiresWhenSessionEnds(t, newPinnipedSession)
+
+		// The new session should work normally, including refreshes, without prompting.
 		requireUserCanUseKubectlWithoutAuthenticatingAgain(testCtx, t, env, federationDomain, createdProvider.Name, kubeconfigPath,
 			sessionCachePath, pinnipedExe, expectedUsername, expectedGroups, allScopes)
 	})

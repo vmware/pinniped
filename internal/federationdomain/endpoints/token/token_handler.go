@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ory/fosite"
+	"github.com/ory/fosite/handler/openid"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/warning"
@@ -49,6 +50,7 @@ func NewHandler(
 	oauthHelper fosite.OAuth2Provider,
 	overrideAccessTokenLifespan timeouts.OverrideLifespan,
 	overrideIDTokenLifespan timeouts.OverrideLifespan,
+	sessionMaxLifespan time.Duration,
 	auditLogger plog.AuditLogger,
 ) http.Handler {
 	return httperr.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
@@ -85,6 +87,22 @@ func NewHandler(
 			// The session, requested scopes, and requested audience from the original authorize request was retrieved
 			// from the Kube storage layer and added to the accessRequest. Additionally, the audience and scopes may
 			// have already been granted on the accessRequest.
+
+			// Reject the refresh when the session has reached its maximum lifetime, measured from the initial login.
+			// Check this before the upstream refresh, so an ended session does not cause calls to the upstream IDP.
+			//
+			// Note that for sessions started by this version of the Supervisor, fosite will have already rejected a
+			// refresh after the session has ended (inside NewAccessRequest above), because refresh tokens are never
+			// issued with expiration times after the end of their session. This check is still needed to end sessions
+			// whose refresh tokens were issued by older versions of the Supervisor, which gave each refresh token a
+			// fresh lifetime starting from the time of the refresh.
+			err = validateSessionHasNotEnded(r.Context(), accessRequest, sessionMaxLifespan, auditLogger)
+			if err != nil {
+				plog.Info("session lifetime error", oidc.FositeErrorForLog(err)...)
+				oauthHelper.WriteAccessError(r.Context(), w, accessRequest, err)
+				return nil
+			}
+
 			err = upstreamRefresh(r.Context(), accessRequest, idpLister, auditLogger)
 			if err != nil {
 				plog.Info("upstream refresh error", oidc.FositeErrorForLog(err)...)
@@ -108,6 +126,11 @@ func NewHandler(
 		// Lifetimes of the access and refresh tokens are determined by the above call to NewAccessRequest.
 		// Depending on the request, sometimes override the default access token lifespan.
 		maybeOverrideDefaultAccessTokenLifetime(overrideAccessTokenLifespan, accessRequest)
+
+		// Never issue refresh tokens which outlive the session, so the session cannot be extended by refreshing.
+		// Access and ID tokens get their usual lifespans, even when that is after the end of the session, so the
+		// tokens from a refresh shortly before the end of the session are still useful for their usual lifespans.
+		clampRefreshTokenExpirationToSessionEnd(accessRequest, sessionMaxLifespan)
 
 		// Create the token response.
 		// The lifetime of the ID token will be determined inside the call NewAccessResponse.
@@ -142,6 +165,57 @@ func maybeOverrideDefaultIDTokenLifetime(baseCtx context.Context, overrideIDToke
 		return idtokenlifespan.OverrideIDTokenLifespanInContext(baseCtx, newLifespan)
 	}
 	return baseCtx
+}
+
+// sessionEndForAuthcodeOrRefreshGrant returns the time at which the session must end, for authcode and refresh grants.
+// Returns false for other grant types, or when the time of the initial login is unknown.
+func sessionEndForAuthcodeOrRefreshGrant(accessRequest fosite.AccessRequester, sessionMaxLifespan time.Duration) (time.Time, bool) {
+	grantTypes := accessRequest.GetGrantTypes()
+	if !grantTypes.ExactOne(oidcapi.GrantTypeAuthorizationCode) && !grantTypes.ExactOne(oidcapi.GrantTypeRefreshToken) {
+		return time.Time{}, false
+	}
+	return oidc.SessionEnd(accessRequest, sessionMaxLifespan)
+}
+
+// validateSessionHasNotEnded returns an error when the session of a refresh request has reached its maximum lifetime.
+func validateSessionHasNotEnded(
+	ctx context.Context,
+	accessRequest fosite.AccessRequester,
+	sessionMaxLifespan time.Duration,
+	auditLogger plog.AuditLogger,
+) error {
+	sessionEnd, ok := oidc.SessionEnd(accessRequest, sessionMaxLifespan)
+	if !ok {
+		return resolvedprovider.ErrMissingUpstreamSessionInternalError()
+	}
+
+	if time.Now().Before(sessionEnd) {
+		return nil
+	}
+
+	auditLogger.Audit(auditevent.SessionMaxLifetimeReached, &plog.AuditParams{
+		ReqCtx:  ctx,
+		Session: accessRequest,
+		KeysAndValues: []any{
+			"sessionStartedAt", accessRequest.GetSession().(openid.Session).IDTokenClaims().AuthTime.UTC().Format(time.RFC3339),
+			"sessionEndsAt", sessionEnd.Format(time.RFC3339),
+		},
+	})
+
+	return fosite.ErrInvalidGrant.WithHint("Refresh rejected because the session has reached its maximum lifetime.")
+}
+
+// clampRefreshTokenExpirationToSessionEnd makes sure that the refresh token issued for an authcode or refresh grant
+// does not expire after the end of the session.
+func clampRefreshTokenExpirationToSessionEnd(accessRequest fosite.AccessRequester, sessionMaxLifespan time.Duration) {
+	sessionEnd, ok := sessionEndForAuthcodeOrRefreshGrant(accessRequest, sessionMaxLifespan)
+	if !ok {
+		return
+	}
+	// A zero expiration time means that the token never expires.
+	if expiresAt := accessRequest.GetSession().GetExpiresAt(fosite.RefreshToken); expiresAt.IsZero() || expiresAt.After(sessionEnd) {
+		accessRequest.GetSession().SetExpiresAt(fosite.RefreshToken, sessionEnd)
+	}
 }
 
 func errMissingUpstreamSessionInternalError() *fosite.RFC6749Error {

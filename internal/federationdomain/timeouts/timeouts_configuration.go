@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package timeouts
@@ -59,8 +59,17 @@ type Configuration struct {
 	// significantly longer than the access token lifetime, so it can be used to refresh the access token
 	// multiple times. Once the refresh token expires, the user's session is over and they will need
 	// to start a new authorization request, which will require them to log in again with the upstream IDP
-	// in their web browser.
+	// in their web browser. Each refresh issues a new refresh token, so this is effectively an idle timeout
+	// for the user's session. See also SessionMaxLifespan, which limits the total length of the session.
 	RefreshTokenLifespan time.Duration
+
+	// The maximum lifetime of a downstream session, measured from the time of the initial login (the auth_time).
+	// Refreshes cannot extend the session beyond this time, because the token endpoint will not issue refresh tokens
+	// which expire after the session ends, and it rejects refresh requests after the session ends. Then the user
+	// must log in again with the upstream IDP. Refreshes are allowed right up until the end of the session, and the
+	// access and ID tokens which they issue get their usual lifespans, so those tokens can remain valid for up to
+	// their lifespans after the end of the session.
+	SessionMaxLifespan time.Duration
 
 	// AuthorizationCodeSessionStorageLifetime is the length of time after which an authcode is allowed to be garbage
 	// collected from storage. Authcodes are kept in storage after they are redeemed to allow the system to mark the

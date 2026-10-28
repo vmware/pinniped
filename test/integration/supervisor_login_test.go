@@ -22,6 +22,7 @@ import (
 	"time"
 
 	coreosoidc "github.com/coreos/go-oidc/v3/oidc"
+	"github.com/ory/fosite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
@@ -146,8 +147,12 @@ type supervisorLoginTestcase struct {
 	// refresh is performed.
 	editRefreshSessionDataWithoutBreaking func(t *testing.T, sessionData *psession.PinnipedSession, idpName, username string) []string
 	// Optionally either revoke the user's session on the upstream provider, or manipulate the user's session
-	// data in such a way that it should cause the next upstream refresh attempt to fail.
+	// data in such a way that it should cause the next refresh attempt to fail. The session data passed to this
+	// function is the session data which was stored by the most recent successful refresh.
 	breakRefreshSessionData func(t *testing.T, sessionData *psession.PinnipedSession, idpName, username string)
+	// The error expected from the refresh which is performed after breakRefreshSessionData. When not specified,
+	// expects the error which is returned when the upstream refresh fails.
+	wantBreakRefreshSessionDataError string
 }
 
 func TestSupervisorLogin_Browser(t *testing.T) {
@@ -1796,6 +1801,81 @@ func TestSupervisorLogin_Browser(t *testing.T) {
 			wantDownstreamIDTokenGroups: env.SupervisorUpstreamLDAP.TestUserDirectGroupsDNs,
 		},
 		{
+			name:      "ldap refresh is allowed just before the session reaches its max lifetime, and rejected just after",
+			maybeSkip: skipLDAPTests,
+			createIDP: func(t *testing.T) string {
+				idp, _ := createLDAPIdentityProvider(t, nil)
+				return idp.Name
+			},
+			requestAuthorization: func(t *testing.T, _, downstreamAuthorizeURL, _, _, _ string, httpClient *http.Client) {
+				requestAuthorizationUsingCLIPasswordFlow(t,
+					downstreamAuthorizeURL,
+					env.SupervisorUpstreamLDAP.TestUserMailAttributeValue, // username to present to server during login
+					env.SupervisorUpstreamLDAP.TestUserPassword,           // password to present to server during login
+					httpClient,
+					false,
+				)
+			},
+			editRefreshSessionDataWithoutBreaking: func(t *testing.T, pinnipedSession *psession.PinnipedSession, _, _ string) []string {
+				// The authcode exchange should have issued a refresh token which expires when the session ends.
+				requireRefreshTokenExpiresWhenSessionEnds(t, pinnipedSession)
+				// Pretend that the initial login happened long enough ago that the session will end in one minute.
+				// The refresh should still be allowed, because the session has not ended yet.
+				simulateSessionEndsAt(pinnipedSession, time.Now().Add(time.Minute), false)
+				// The groups should not change during the refresh.
+				return env.SupervisorUpstreamLDAP.TestUserDirectGroupsDNs
+			},
+			breakRefreshSessionData: func(t *testing.T, pinnipedSession *psession.PinnipedSession, _, _ string) {
+				// The refresh which was performed one minute before the end of the session should have
+				// issued a refresh token which expires when the session ends, not 9 hours after the refresh.
+				requireRefreshTokenExpiresWhenSessionEnds(t, pinnipedSession)
+				// Pretend that the initial login happened long enough ago that the session ended a few seconds ago.
+				// The refresh should be rejected, because the refresh token expired when the session ended.
+				simulateSessionEndsAt(pinnipedSession, time.Now().Add(-10*time.Second), false)
+			},
+			wantBreakRefreshSessionDataError:    `oauth2: "invalid_grant" "The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client. The refresh token expired."`,
+			wantDownstreamIDTokenSubjectToMatch: expectedIDTokenSubjectRegexForUpstreamLDAP,
+			// the ID token Username should have been pulled from the requested UserSearch.Attributes.Username attribute
+			wantDownstreamIDTokenUsernameToMatch: func(_ string) string {
+				return "^" + regexp.QuoteMeta(env.SupervisorUpstreamLDAP.TestUserMailAttributeValue) + "$"
+			},
+			wantDownstreamIDTokenGroups: env.SupervisorUpstreamLDAP.TestUserDirectGroupsDNs,
+		},
+		{
+			name:      "ldap refresh is rejected after the session reaches its max lifetime, even when the refresh token has not expired",
+			maybeSkip: skipLDAPTests,
+			createIDP: func(t *testing.T) string {
+				idp, _ := createLDAPIdentityProvider(t, nil)
+				return idp.Name
+			},
+			requestAuthorization: func(t *testing.T, _, downstreamAuthorizeURL, _, _, _ string, httpClient *http.Client) {
+				requestAuthorizationUsingCLIPasswordFlow(t,
+					downstreamAuthorizeURL,
+					env.SupervisorUpstreamLDAP.TestUserMailAttributeValue, // username to present to server during login
+					env.SupervisorUpstreamLDAP.TestUserPassword,           // password to present to server during login
+					httpClient,
+					false,
+				)
+			},
+			breakRefreshSessionData: func(t *testing.T, pinnipedSession *psession.PinnipedSession, _, _ string) {
+				// The refresh should have issued a refresh token which expires when the session ends,
+				// not 9 hours after the refresh.
+				requireRefreshTokenExpiresWhenSessionEnds(t, pinnipedSession)
+				// Pretend that the initial login happened long enough ago that the session ended a few seconds ago,
+				// but leave the refresh token unexpired, like a refresh token issued by an older version of the
+				// Supervisor, which did not limit the expiration of refresh tokens to the end of the session.
+				// The refresh should be rejected, because the session has ended.
+				simulateSessionEndsAt(pinnipedSession, time.Now().Add(-10*time.Second), true)
+			},
+			wantBreakRefreshSessionDataError:    `oauth2: "invalid_grant" "The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client. Refresh rejected because the session has reached its maximum lifetime."`,
+			wantDownstreamIDTokenSubjectToMatch: expectedIDTokenSubjectRegexForUpstreamLDAP,
+			// the ID token Username should have been pulled from the requested UserSearch.Attributes.Username attribute
+			wantDownstreamIDTokenUsernameToMatch: func(_ string) string {
+				return "^" + regexp.QuoteMeta(env.SupervisorUpstreamLDAP.TestUserMailAttributeValue) + "$"
+			},
+			wantDownstreamIDTokenGroups: env.SupervisorUpstreamLDAP.TestUserDirectGroupsDNs,
+		},
+		{
 			name:      "disallowed requested audience using reserved substring on token exchange results in token exchange error",
 			maybeSkip: skipNever,
 			createIDP: func(t *testing.T) string {
@@ -2653,6 +2733,7 @@ func TestSupervisorLogin_Browser(t *testing.T) {
 				tt.requestAuthorization,
 				tt.editRefreshSessionDataWithoutBreaking,
 				tt.breakRefreshSessionData,
+				tt.wantBreakRefreshSessionDataError,
 				tt.testUser,
 				tt.createOIDCClient,
 				tt.downstreamScopes,
@@ -2939,6 +3020,7 @@ func testSupervisorLogin(
 	requestAuthorization func(t *testing.T, downstreamIssuer string, downstreamAuthorizeURL string, downstreamCallbackURL string, username string, password string, httpClient *http.Client),
 	editRefreshSessionDataWithoutBreaking func(t *testing.T, pinnipedSession *psession.PinnipedSession, idpName string, username string) []string,
 	breakRefreshSessionData func(t *testing.T, pinnipedSession *psession.PinnipedSession, idpName string, username string),
+	wantBreakRefreshSessionDataError string,
 	testUser func(t *testing.T) (string, string),
 	createOIDCClient func(t *testing.T, callbackURL string) (string, string),
 	downstreamScopes []string,
@@ -3300,13 +3382,48 @@ func testSupervisorLogin(
 		require.NoError(t, oauthStore.DeleteRefreshTokenSession(ctx, signatureOfLatestRefreshToken))
 		require.NoError(t, oauthStore.CreateRefreshTokenSession(ctx, signatureOfLatestRefreshToken, "ignored", storedRefreshSession))
 
-		// Now try to perform a downstream refresh again, knowing that the corresponding upstream refresh should fail.
+		// Now try to perform a downstream refresh again, knowing that it should fail.
 		_, err = downstreamOAuth2Config.TokenSource(oidcHTTPClientContext, &oauth2.Token{RefreshToken: latestRefreshToken}).Token()
-		// Should have got an error since the upstream refresh should have failed.
+		if wantBreakRefreshSessionDataError == "" {
+			// By default, expect that the upstream refresh should have failed.
+			wantBreakRefreshSessionDataError = `oauth2: "error" "Error during upstream refresh. Upstream refresh failed."`
+		}
 		require.Error(t, err)
-		require.EqualError(t, err, `oauth2: "error" "Error during upstream refresh. Upstream refresh failed."`)
+		require.EqualError(t, err, wantBreakRefreshSessionDataError)
 		t.Log("successfully confirmed that breaking the refresh session data caused the refresh to fail")
 	}
+}
+
+// requireRefreshTokenExpiresWhenSessionEnds asserts that the refresh token of the given stored session expires when
+// the session reaches its max lifetime, which is measured from the initial login (auth_time).
+func requireRefreshTokenExpiresWhenSessionEnds(t *testing.T, pinnipedSession *psession.PinnipedSession) {
+	t.Helper()
+
+	sessionMaxLifespan := oidc.DefaultOIDCTimeoutsConfiguration().SessionMaxLifespan
+
+	authTime := pinnipedSession.Fosite.Claims.AuthTime
+	require.False(t, authTime.IsZero(), "stored session should have an auth_time")
+	refreshTokenExpiresAt := pinnipedSession.Fosite.GetExpiresAt(fosite.RefreshToken)
+	require.False(t, refreshTokenExpiresAt.IsZero(), "stored session should have a refresh token expiration time")
+
+	testutil.RequireTimeInDelta(t, authTime.Add(sessionMaxLifespan), refreshTokenExpiresAt, time.Second)
+}
+
+// simulateSessionEndsAt edits the given stored session to make it look like the initial login (auth_time) happened
+// long enough ago that the session reaches its max lifetime at the given time. The refresh token expiration is moved
+// to the end of the session, unless keepRefreshTokenUnexpired is true, in which case the refresh token is made to
+// expire in one hour instead.
+func simulateSessionEndsAt(pinnipedSession *psession.PinnipedSession, sessionEnd time.Time, keepRefreshTokenUnexpired bool) {
+	sessionMaxLifespan := oidc.DefaultOIDCTimeoutsConfiguration().SessionMaxLifespan
+
+	authTime := sessionEnd.Add(-sessionMaxLifespan).UTC().Truncate(time.Second)
+	pinnipedSession.Fosite.Claims.AuthTime = authTime
+
+	refreshTokenExpiresAt := authTime.Add(sessionMaxLifespan)
+	if keepRefreshTokenUnexpired {
+		refreshTokenExpiresAt = time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	}
+	pinnipedSession.Fosite.SetExpiresAt(fosite.RefreshToken, refreshTokenExpiresAt)
 }
 
 // getFositeDataSignature returns the signature of the provided data. The provided data could be an auth code, access
