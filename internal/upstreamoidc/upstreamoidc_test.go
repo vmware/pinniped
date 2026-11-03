@@ -1532,7 +1532,7 @@ func mockVerifier() *coreosoidc.IDTokenVerifier {
 	mockKeySet.EXPECT().VerifySignature(gomock.Any(), gomock.Any()).
 		AnyTimes().
 		DoAndReturn(func(ctx context.Context, jwt string) ([]byte, error) {
-			jws, err := jose.ParseSigned(jwt, []jose.SignatureAlgorithm{jose.ES256, jose.RS256})
+			jws, err := jose.ParseSignedCompact(jwt, []jose.SignatureAlgorithm{jose.ES256, jose.RS256})
 			if err != nil {
 				return nil, err
 			}
