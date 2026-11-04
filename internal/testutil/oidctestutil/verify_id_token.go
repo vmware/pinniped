@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidctestutil
@@ -24,7 +24,7 @@ func newStaticKeySet(publicKey crypto.PublicKey) coreosoidc.KeySet {
 }
 
 func (s *staticKeySet) VerifySignature(_ context.Context, jwt string) ([]byte, error) {
-	jws, err := jose.ParseSigned(jwt, []jose.SignatureAlgorithm{jose.ES256})
+	jws, err := jose.ParseSignedCompact(jwt, []jose.SignatureAlgorithm{jose.ES256})
 	if err != nil {
 		return nil, fmt.Errorf("oidc: malformed jwt: %w", err)
 	}

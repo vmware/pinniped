@@ -1916,7 +1916,7 @@ func TestTokenEndpointTokenExchange(t *testing.T) { // tests for grant_type "urn
 
 			// Parse the returned token.
 			actualIDToken := parsedResponseBody["access_token"].(string)
-			parsedJWT, err := jose.ParseSigned(actualIDToken, []jose.SignatureAlgorithm{jose.ES256})
+			parsedJWT, err := jose.ParseSignedCompact(actualIDToken, []jose.SignatureAlgorithm{jose.ES256})
 			require.NoError(t, err)
 			var tokenClaims map[string]any
 			require.NoError(t, json.Unmarshal(parsedJWT.UnsafePayloadWithoutVerification(), &tokenClaims))

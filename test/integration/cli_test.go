@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 package integration
 
@@ -194,7 +194,7 @@ func TestCLILoginOIDC_Browser(t *testing.T) {
 
 	// Assert some properties about the token, which should be a valid JWT.
 	require.NotEmpty(t, credOutput.Status.Token)
-	jws, err := jose.ParseSigned(credOutput.Status.Token, []jose.SignatureAlgorithm{jose.ES256, jose.RS256})
+	jws, err := jose.ParseSignedCompact(credOutput.Status.Token, []jose.SignatureAlgorithm{jose.ES256, jose.RS256})
 	require.NoError(t, err)
 	claims := map[string]any{}
 	require.NoError(t, json.Unmarshal(jws.UnsafePayloadWithoutVerification(), &claims))
