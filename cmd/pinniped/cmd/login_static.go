@@ -134,7 +134,7 @@ func runStaticLogin(cmd *cobra.Command, deps staticLoginDeps, flags staticLoginP
 			return fmt.Errorf("--token-env variable %q is empty", flags.staticTokenEnvName)
 		}
 	}
-	cred := tokenCredential(&oidctypes.IDToken{Token: token})
+	cred := tokenCredential(&oidctypes.Token{IDToken: &oidctypes.IDToken{Token: token}})
 
 	// Look up cached credentials based on a hash of all the CLI arguments, the current token value, and the cluster info.
 	cacheKey := struct {

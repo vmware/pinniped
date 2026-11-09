@@ -28,6 +28,7 @@ type OIDCClientOptions interface {
 	WithRequestAudience(audience string) oidcclient.Option
 	WithLoginFlow(loginFlow v1alpha1.IDPFlow, flowSource string) oidcclient.Option
 	WithUpstreamIdentityProvider(upstreamName, upstreamType string) oidcclient.Option
+	WithRequireIDTokenOnRefresh(require bool) oidcclient.Option
 }
 
 // clientOptions implements OIDCClientOptions for production use.
@@ -81,4 +82,8 @@ func (o *clientOptions) WithLoginFlow(loginFlow v1alpha1.IDPFlow, flowSource str
 
 func (o *clientOptions) WithUpstreamIdentityProvider(upstreamName, upstreamType string) oidcclient.Option {
 	return oidcclient.WithUpstreamIdentityProvider(upstreamName, upstreamType)
+}
+
+func (o *clientOptions) WithRequireIDTokenOnRefresh(require bool) oidcclient.Option {
+	return oidcclient.WithRequireIDTokenOnRefresh(require)
 }
