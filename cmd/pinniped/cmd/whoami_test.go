@@ -32,7 +32,7 @@ func TestWhoami(t *testing.T) {
 
 		Flags:
 			  --api-group-suffix string     Concierge API group suffix (default "pinniped.dev")
-		  -h, --help                        help for whoami
+		  -h, --help[=true|false]           help for whoami
 			  --kubeconfig string           Path to kubeconfig file%s
 			  --kubeconfig-context string   Kubeconfig context name (default: current active context)
 		  -o, --output string               Output format (e.g., 'yaml', 'json', 'text') (default "text")

@@ -171,14 +171,14 @@ func TestGetKubeconfig(t *testing.T) {
 			  --concierge-credential-issuer string       Concierge CredentialIssuer object to use for autodiscovery (default: autodiscover)
 			  --concierge-endpoint string                API base for the Concierge endpoint
 			  --concierge-mode mode                      Concierge mode of operation (default TokenCredentialRequestAPI)
-			  --concierge-skip-wait                      Skip waiting for any pending Concierge strategies to become ready (default: false)
+			  --concierge-skip-wait[=true|false]         Skip waiting for any pending Concierge strategies to become ready (default: false)
 			  --credential-cache string                  Path to cluster-specific credentials cache
 			  --generated-name-suffix string             Suffix to append to generated cluster, context, user kubeconfig entries (default "-pinniped")
-		  -h, --help                                     help for kubeconfig
+		  -h, --help[=true|false]                        help for kubeconfig
 			  --install-hint string                      This text is shown to the user when the pinniped CLI is not installed. (default "The pinniped CLI does not appear to be installed.  See https://get.pinniped.dev/cli for more details")
 			  --kubeconfig string                        Path to kubeconfig file%s
 			  --kubeconfig-context string                Kubeconfig context name (default: current active context)
-			  --no-concierge                             Generate a configuration which does not use the Concierge, but sends the credential to the cluster directly
+			  --no-concierge[=true|false]                Generate a configuration which does not use the Concierge, but sends the credential to the cluster directly
 			  --oidc-ca-bundle path                      Path to TLS certificate authority bundle (PEM format, optional, can be repeated)
 			  --oidc-client-id string                    OpenID Connect client ID (default: autodiscover) (default "pinniped-cli")
 			  --oidc-issuer string                       OpenID Connect issuer URL (default: autodiscover)
@@ -186,10 +186,10 @@ func TestGetKubeconfig(t *testing.T) {
 			  --oidc-request-audience string             Request a token with an alternate audience using RFC8693 token exchange
 			  --oidc-scopes strings                      OpenID Connect scopes to request during login (default [offline_access,openid,pinniped:request-audience,username,groups])
 			  --oidc-session-cache string                Path to OpenID Connect session cache file
-			  --oidc-skip-browser                        During OpenID Connect login, skip opening the browser (just print the URL)
+			  --oidc-skip-browser[=true|false]           During OpenID Connect login, skip opening the browser (just print the URL)
 		  -o, --output string                            Output file path (default: stdout)
 			  --pinniped-cli-path string                 Full path or executable name for the Pinniped CLI binary to be embedded in the resulting kubeconfig output (e.g. 'pinniped') (default: full path of the binary used to execute this command)
-			  --skip-validation                          Skip final validation of the kubeconfig (default: false)
+			  --skip-validation[=true|false]             Skip final validation of the kubeconfig (default: false)
 			  --static-token string                      Instead of doing an OIDC-based login, specify a static token
 			  --static-token-env string                  Instead of doing an OIDC-based login, read a static token from the environment
 			  --timeout duration                         Timeout for autodiscovery and validation (default 10m0s)

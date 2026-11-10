@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -93,14 +93,14 @@ func TestLoginOIDCCommand(t *testing.T) {
 				      --concierge-ca-bundle-data string          CA bundle to use when connecting to the Concierge
 				      --concierge-endpoint string                API base for the Concierge endpoint
 				      --credential-cache string                  Path to cluster-specific credentials cache ("" disables the cache) (default "` + cfgDir + `/credentials.yaml")
-				      --enable-concierge                         Use the Concierge to login
-				  -h, --help                                     help for oidc
+				      --enable-concierge[=true|false]            Use the Concierge to login
+				  -h, --help[=true|false]                        help for oidc
 				      --issuer string                            OpenID Connect issuer URL
 				      --listen-port uint16                       TCP port for localhost listener (authorization code flow only)
 				      --request-audience string                  Request a token with an alternate audience using RFC8693 token exchange
 				      --scopes strings                           OIDC scopes to request during login (default [offline_access,openid,pinniped:request-audience,username,groups])
 				      --session-cache string                     Path to session cache file (default "` + cfgDir + `/sessions.yaml")
-				      --skip-browser                             Skip opening the browser (just print the URL)
+				      --skip-browser[=true|false]                Skip opening the browser (just print the URL)
 					  --upstream-identity-provider-flow string   The type of client flow to use with the upstream identity provider during login with a Supervisor (e.g. 'browser_authcode', 'cli_password')
 					  --upstream-identity-provider-name string   The name of the upstream identity provider used during login with a Supervisor
 					  --upstream-identity-provider-type string   The type of the upstream identity provider used during login with a Supervisor (e.g. 'oidc', 'ldap', 'activedirectory', 'github') (default "oidc")
