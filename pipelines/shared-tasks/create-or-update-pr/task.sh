@@ -46,15 +46,29 @@ fi
 
 # Check if the branch already exists on the remote.
 new_branch="no"
-if [[ -z "$(git ls-remote https_origin "$BRANCH")" ]]; then
-  echo "The branch does not already exist, so create it."
+stale_branch_sha=""
+remote_branch_exists="no"
+if [[ -n "$(git ls-remote https_origin "$BRANCH")" ]]; then
+  remote_branch_exists="yes"
+fi
+if [[ "$remote_branch_exists" == "yes" ]]; then
+  # Fetch all the remote branches so we can use one of them.
+  git fetch https_origin
+  # If every commit on the remote branch is already on main (e.g. a previous PR was merged with a merge
+  # commit but its branch was not deleted), then the branch has nothing worth keeping. Treat it like a new branch,
+  # remembering its current commit so we can safely overwrite it when pushing.
+  if git merge-base --is-ancestor https_origin/"$BRANCH" https_origin/main; then
+    stale_branch_sha="$(git rev-parse https_origin/"$BRANCH")"
+    echo "The remote branch $BRANCH at $stale_branch_sha has only commits which are already on main, so it will be replaced."
+  fi
+fi
+if [[ "$remote_branch_exists" == "no" || -n "$stale_branch_sha" ]]; then
+  echo "The branch does not already exist (or is stale), so create it."
   git checkout -b "$BRANCH"
   git status
   new_branch="yes"
 else
   echo "The branch already exists, so pull it."
-  # Fetch all the remote branches so we can use one of them.
-  git fetch https_origin
   echo "Comparing local changes to remote branch..."
   # Find the common ancestor commit between the PR branch and main. This is where the PR branch branches from main.
   common_ancestor_commit="$(git merge-base https_origin/main https_origin/"$BRANCH")"
@@ -101,8 +115,14 @@ git commit -m "$COMMIT_MESSAGE"
 # Push.
 if [[ "$new_branch" == "yes" ]]; then
   # Push the new branch to the remote.
-  echo "Pushing the new branch."
-  git push --set-upstream https_origin "$BRANCH"
+  if [[ -n "$stale_branch_sha" ]]; then
+    # Overwrite the stale remote branch, but only if nobody has changed it since we looked at it.
+    echo "Force pushing the new branch to replace the stale remote branch."
+    git push --force-with-lease="$BRANCH:$stale_branch_sha" --set-upstream https_origin "$BRANCH"
+  else
+    echo "Pushing the new branch."
+    git push --set-upstream https_origin "$BRANCH"
+  fi
 else
   # Force push the existing branch to the remote.
   echo "Force pushing the existing branch."
