@@ -263,6 +263,13 @@ var (
 		}
 	`)
 
+	fositeClientAssertionNotSupportedErrorBody = here.Doc(`
+		{
+			"error":             "invalid_client",
+			"error_description": "Client authentication failed (e.g., unknown client, no client authentication included, or unsupported authentication method). Client authentication using client_assertion is not supported."
+		}
+	`)
+
 	fositeClientAuthMustBeBasicAuthErrorBody = here.Doc(`
 		{
 			"error":             "invalid_client",
@@ -962,6 +969,47 @@ func TestTokenEndpointAuthcodeExchange(t *testing.T) {
 				want: tokenEndpointResponseExpectedValues{
 					wantStatus:            http.StatusBadRequest,
 					wantErrorResponseBody: fositeInvalidMultipartPayloadErrorBody,
+				},
+			},
+		},
+		{
+			name: "client_assertion and client_assertion_type params are rejected without parsing the assertion",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					r.Body = happyAuthcodeRequestBody(authCode).
+						with("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer").
+						with("client_assertion", "this is not a valid JWT, but it should not be parsed").
+						ReadCloser()
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusUnauthorized,
+					wantErrorResponseBody: fositeClientAssertionNotSupportedErrorBody,
+				},
+			},
+		},
+		{
+			name: "client_assertion param without client_assertion_type param is rejected",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					r.Body = happyAuthcodeRequestBody(authCode).with("client_assertion", "some-assertion").ReadCloser()
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusUnauthorized,
+					wantErrorResponseBody: fositeClientAssertionNotSupportedErrorBody,
+				},
+			},
+		},
+		{
+			name: "client_assertion_type param without client_assertion param is rejected",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					r.Body = happyAuthcodeRequestBody(authCode).
+						with("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer").
+						ReadCloser()
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusUnauthorized,
+					wantErrorResponseBody: fositeClientAssertionNotSupportedErrorBody,
 				},
 			},
 		},
