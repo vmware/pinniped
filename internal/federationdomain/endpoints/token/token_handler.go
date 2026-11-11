@@ -60,6 +60,11 @@ func NewHandler(
 		}
 		auditLogBasicAuthClientID(r, auditLogger)
 
+		// Ignore the optional id_token_hint param by removing it before fosite sees the request.
+		// It is not meaningful for any grant type which Pinniped supports at the token endpoint.
+		r.Form.Del("id_token_hint")
+		r.PostForm.Del("id_token_hint")
+
 		session := psession.NewPinnipedSession()
 		accessRequest, err := oauthHelper.NewAccessRequest(r.Context(), r, session)
 		if err != nil {

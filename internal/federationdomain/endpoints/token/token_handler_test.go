@@ -96,6 +96,11 @@ const (
 
 	// maxRequestBodyBytes is the maximum size of request body accepted by the token endpoint.
 	maxRequestBodyBytes = 1 << 20
+
+	// An unsigned JWT which looks like an ID token, for use as an id_token_hint param value.
+	// Header is {"alg":"ES256","kid":"some-kid"} and payload is {"sub":"some-subject","iss":"https://some-issuer"}.
+	// If fosite were to parse this as an id_token_hint, then it would fail signature validation and the request would fail.
+	someIDTokenHint = "eyJhbGciOiJFUzI1NiIsImtpZCI6InNvbWUta2lkIn0.eyJzdWIiOiJzb21lLXN1YmplY3QiLCJpc3MiOiJodHRwczovL3NvbWUtaXNzdWVyIn0.c2ln" //nolint:gosec // not a credential, just an unsigned fake JWT
 )
 
 var (
@@ -984,6 +989,43 @@ func TestTokenEndpointAuthcodeExchange(t *testing.T) {
 				want: tokenEndpointResponseExpectedValues{
 					wantStatus:            http.StatusUnauthorized,
 					wantErrorResponseBody: fositeClientAssertionNotSupportedErrorBody,
+				},
+			},
+		},
+		{
+			name: "id_token_hint param is ignored before fosite parses it",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyAuthRequest: func(r *http.Request) { r.Form.Set("scope", "openid profile email username groups") },
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					r.Body = happyAuthcodeRequestBody(authCode).with("id_token_hint", someIDTokenHint).ReadCloser()
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusOK,
+					wantClientID:          pinnipedCLIClientID,
+					wantSuccessBodyFields: []string{"id_token", "access_token", "token_type", "scope", "expires_in"}, // no refresh token
+					wantRequestedScopes:   []string{"openid", "profile", "email", "username", "groups"},
+					wantGrantedScopes:     []string{"openid", "username", "groups"},
+					wantUsername:          goodUsername,
+					wantGroups:            goodGroups,
+					wantAuditLogs: func(sessionID string, idToken string) []testutil.WantedAuditLog {
+						return []testutil.WantedAuditLog{
+							testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+								"params": map[string]any{
+									"client_id":     "pinniped-cli",
+									"code":          "redacted",
+									"code_verifier": "redacted",
+									"grant_type":    "authorization_code",
+									"id_token_hint": "redacted", // the param is still audit logged, even though it is ignored, but its value is redacted
+									"redirect_uri":  "http://127.0.0.1/callback",
+								},
+							}),
+							testutil.WantAuditLog("Session Found", map[string]any{"sessionID": sessionID}),
+							testutil.WantAuditLog("ID Token Issued", map[string]any{
+								"sessionID": sessionID,
+								"tokenID":   idTokenToHash(idToken),
+							}),
+						}
+					},
 				},
 			},
 		},
@@ -2569,6 +2611,143 @@ func TestRefreshGrant(t *testing.T) {
 							}),
 						}
 					},
+				),
+			},
+		},
+		{
+			// The id_token_hint param is ignored and dropped before getting parsed by fosite.
+			// If fosite parsed it, then the request would fail because the hint is not signed by the Supervisor.
+			name: "refresh grant with id_token_hint param ignores the param before fosite parses it",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			authcodeExchange: happyAuthcodeExchangeInputsForOIDCUpstream,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: func(r *http.Request, refreshToken string, _ string) {
+					r.Body = happyRefreshRequestBody(refreshToken).with("id_token_hint", someIDTokenHint).ReadCloser()
+				},
+				want: refreshResponseWithAuditLogs(
+					happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+						upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+						refreshedUpstreamTokensWithIDAndRefreshTokens(),
+					),
+					func(sessionID string, idToken string) []testutil.WantedAuditLog {
+						return []testutil.WantedAuditLog{
+							testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+								"params": map[string]any{
+									"client_id":     "pinniped-cli",
+									"grant_type":    "refresh_token",
+									"id_token_hint": "redacted", // the param is still audit logged, even though it is ignored, but its value is redacted
+									"refresh_token": "redacted",
+									"scope":         "openid",
+								},
+							}),
+							testutil.WantAuditLog("Session Found", map[string]any{"sessionID": sessionID}),
+							testutil.WantAuditLog("Identity Refreshed From Upstream IDP", map[string]any{
+								"sessionID": sessionID,
+								"personalInfo": map[string]any{
+									"upstreamGroups":   []any{},
+									"upstreamUsername": "some-username",
+								},
+							}),
+							testutil.WantAuditLog("Session Refreshed", map[string]any{
+								"sessionID": sessionID,
+								"personalInfo": map[string]any{
+									"username": "some-username",
+									"groups": []any{
+										"group1",
+										"groups2",
+									},
+									"subject": "https://issuer?sub=some-subject",
+								},
+							}),
+							testutil.WantAuditLog("ID Token Issued", map[string]any{
+								"sessionID": sessionID,
+								"tokenID":   idTokenToHash(idToken),
+							}),
+						}
+					},
+				),
+			},
+		},
+		{
+			name: "refresh grant with id_token_hint param and grant_type with extra whitespace still ignores the id_token_hint param",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			authcodeExchange: happyAuthcodeExchangeInputsForOIDCUpstream,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: func(r *http.Request, refreshToken string, _ string) {
+					r.Body = happyRefreshRequestBody(refreshToken).
+						WithGrantType("refresh_token ").
+						with("id_token_hint", someIDTokenHint).
+						ReadCloser()
+				},
+				want: happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+					upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+					refreshedUpstreamTokensWithIDAndRefreshTokens(),
+				),
+			},
+		},
+		{
+			name: "refresh grant with id_token_hint param in a multipart form body and grant_type with extra whitespace ignores the param",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			authcodeExchange: happyAuthcodeExchangeInputsForOIDCUpstream,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: func(r *http.Request, refreshToken string, _ string) {
+					var buf bytes.Buffer
+					w := multipart.NewWriter(&buf)
+					for k, v := range happyRefreshRequestBody(refreshToken).WithGrantType("refresh_token ").with("id_token_hint", someIDTokenHint) {
+						require.NoError(t, w.WriteField(k, v[0]))
+					}
+					require.NoError(t, w.Close())
+					r.Body = io.NopCloser(&buf)
+					r.ContentLength = int64(buf.Len())
+					r.Header.Set("Content-Type", w.FormDataContentType())
+				},
+				want: happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+					upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+					refreshedUpstreamTokensWithIDAndRefreshTokens(),
+				),
+			},
+		},
+		{
+			// Fosite currently only reads params from the POST body, so it would not see this param anyway,
+			// but this guards against that behavior changing in the future.
+			name: "refresh grant with id_token_hint query param ignores the param before being parsed by fosite",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			authcodeExchange: happyAuthcodeExchangeInputsForOIDCUpstream,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: func(r *http.Request, _ string, _ string) {
+					r.URL.RawQuery = url.Values{"id_token_hint": {someIDTokenHint}}.Encode()
+				},
+				want: happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+					upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+					refreshedUpstreamTokensWithIDAndRefreshTokens(),
 				),
 			},
 		},
