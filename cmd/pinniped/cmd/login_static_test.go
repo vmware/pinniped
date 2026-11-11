@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -73,8 +73,8 @@ func TestLoginStaticCommand(t *testing.T) {
 				      --concierge-ca-bundle-data string       CA bundle to use when connecting to the Concierge
 				      --concierge-endpoint string             API base for the Concierge endpoint
 				      --credential-cache string               Path to cluster-specific credentials cache ("" disables the cache) (default "` + cfgDir + `/credentials.yaml")
-				      --enable-concierge                      Use the Concierge to login
-				  -h, --help                                  help for static
+				      --enable-concierge[=true|false]         Use the Concierge to login
+				  -h, --help[=true|false]                     help for static
 				      --token string                          Static token to present during login
 				      --token-env string                      Environment variable containing a static token
 			`),

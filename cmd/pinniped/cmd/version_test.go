@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -21,8 +21,8 @@ var (
 		  version \[flags\]
 
 		Flags:
-		  -h, --help            help for version
-		  -o, --output string   one of 'yaml' or 'json'
+		  -h, --help\[=true\|false\]   help for version
+		  -o, --output string       one of 'yaml' or 'json'
 		`)
 
 	knownGoodHelpRegexpForVersion = here.Doc(`
@@ -32,8 +32,8 @@ var (
 		  version \[flags\]
 
 		Flags:
-		  -h, --help            help for version
-		  -o, --output string   one of 'yaml' or 'json'
+		  -h, --help\[=true\|false\]   help for version
+		  -o, --output string       one of 'yaml' or 'json'
 		`)
 
 	jsonRegexp = here.Doc(`{

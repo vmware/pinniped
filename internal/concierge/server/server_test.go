@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package server
@@ -25,7 +25,7 @@ Usage:
 Flags:
   -c, --config string              path to configuration file (default "pinniped.yaml")
       --downward-api-path string   path to Downward API volume mount (default "/etc/podinfo")
-  -h, --help                       help for pinniped-concierge
+  -h, --help[=true|false]          help for pinniped-concierge
 `
 
 func TestCommand(t *testing.T) {
