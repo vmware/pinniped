@@ -52,6 +52,8 @@ func NewHandler(
 	auditLogger plog.AuditLogger,
 ) http.Handler {
 	return httperr.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
+
 		if err := auditLogger.AuditRequestParams(r, paramsSafeToLog()); err != nil {
 			oauthHelper.WriteAccessError(r.Context(), w, nil, err)
 			return nil

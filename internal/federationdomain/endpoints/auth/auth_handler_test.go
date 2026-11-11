@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -91,6 +92,9 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 
 		transformationUsernamePrefix = "username_prefix:"
 		transformationGroupsPrefix   = "groups_prefix:"
+
+		// The authorize endpoint limits the size of the request body to 1 MB.
+		maxRequestBodyBytes = 1 << 20
 	)
 
 	require.Len(t, happyState, 8, "we expect fosite to allow 8 byte state params, so we want to test that boundary case")
@@ -659,6 +663,31 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 
 	prefixUsernameAndGroupsPipeline := transformtestutil.NewPrefixingPipeline(t, transformationUsernamePrefix, transformationGroupsPrefix)
 	rejectAuthPipeline := transformtestutil.NewRejectAllAuthPipeline(t)
+
+	// happyQueryMapWithEncodedSize returns the happy request params with the state param padded so that the
+	// form-encoded params are exactly the requested number of bytes. This simulates a client which sends
+	// an unusually large state param in a POST body.
+	happyQueryMapWithEncodedSize := func(size int) map[string]string {
+		query := modifiedHappyGetRequestQueryMap(map[string]string{"state": "s"})
+		query["state"] = strings.Repeat("s", size-len(encodeQuery(query))+1)
+		require.Len(t, encodeQuery(query), size)
+		return query
+	}
+
+	// happyMultipartBodyLargerThan returns the happy request params as a multipart form body, with the state param
+	// padded so that the body is larger than the requested number of bytes. It also returns the content type
+	// to use for the request, which includes the multipart boundary.
+	happyMultipartBodyLargerThan := func(size int) (string, string) {
+		var buf bytes.Buffer
+		w := multipart.NewWriter(&buf)
+		for k, v := range modifiedHappyGetRequestQueryMap(map[string]string{"state": strings.Repeat("s", size)}) {
+			require.NoError(t, w.WriteField(k, v))
+		}
+		require.NoError(t, w.Close())
+		require.Greater(t, buf.Len(), size)
+		return w.FormDataContentType(), buf.String()
+	}
+	largeMultipartContentType, largeMultipartBody := happyMultipartBodyLargerThan(maxRequestBodyBytes)
 
 	type testCase struct {
 		name string
@@ -4007,6 +4036,49 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 			path:            "/some/path",
 			contentType:     "multipart/form-data",
 			body:            "this is not a valid multipart form",
+			wantStatus:      http.StatusBadRequest,
+			wantContentType: plainContentType,
+			wantBodyString:  `{"error":"invalid_request","error_description":"The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. Unable to parse multipart HTTP body, make sure to send a properly formatted form request body."}`,
+		},
+		{
+			name: "post with a form body which is exactly the maximum allowed size",
+			// Use multiple IDPs without choosing one, so the handler redirects to the IDP chooser with all the
+			// same params. This shows that the whole body was read and parsed, including the padded state param.
+			idps: testidplister.NewUpstreamIDPListerBuilder().
+				WithOIDC(upstreamOIDCIdentityProviderBuilder().Build()).
+				WithLDAP(upstreamLDAPIdentityProviderBuilder().Build()),
+			method:                                 http.MethodPost,
+			path:                                   "/some/path",
+			contentType:                            formContentType,
+			body:                                   encodeQuery(happyQueryMapWithEncodedSize(maxRequestBodyBytes)),
+			wantStatus:                             http.StatusSeeOther,
+			wantContentType:                        "",
+			wantBodyString:                         "",
+			wantLocationHeader:                     urlWithQuery(downstreamIssuer+"/choose_identity_provider", happyQueryMapWithEncodedSize(maxRequestBodyBytes)),
+			wantUpstreamStateParamInLocationHeader: false,
+		},
+		{
+			name: "post with a form body which is one byte larger than the maximum allowed size",
+			idps: testidplister.NewUpstreamIDPListerBuilder().
+				WithOIDC(upstreamOIDCIdentityProviderBuilder().Build()).
+				WithLDAP(upstreamLDAPIdentityProviderBuilder().Build()),
+			method:          http.MethodPost,
+			path:            "/some/path",
+			contentType:     formContentType,
+			body:            encodeQuery(happyQueryMapWithEncodedSize(maxRequestBodyBytes + 1)),
+			wantStatus:      http.StatusBadRequest,
+			wantContentType: plainContentType,
+			wantBodyString:  `{"error":"invalid_request","error_description":"The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. Unable to parse form params, make sure to send a properly formatted query params or form request body."}`,
+		},
+		{
+			name: "post with a multipart form body which is larger than the maximum allowed size",
+			idps: testidplister.NewUpstreamIDPListerBuilder().
+				WithOIDC(upstreamOIDCIdentityProviderBuilder().Build()).
+				WithLDAP(upstreamLDAPIdentityProviderBuilder().Build()),
+			method:          http.MethodPost,
+			path:            "/some/path",
+			contentType:     largeMultipartContentType,
+			body:            largeMultipartBody,
 			wantStatus:      http.StatusBadRequest,
 			wantContentType: plainContentType,
 			wantBodyString:  `{"error":"invalid_request","error_description":"The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. Unable to parse multipart HTTP body, make sure to send a properly formatted form request body."}`,

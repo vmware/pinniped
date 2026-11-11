@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -92,6 +93,9 @@ const (
 	idTokenExpirationSeconds     = 2 * 60  // Currently, we set our ID token expiration to 2 minutes
 
 	timeComparisonFudge = 15 * time.Second
+
+	// maxRequestBodyBytes is the maximum size of request body accepted by the token endpoint.
+	maxRequestBodyBytes = 1 << 20
 )
 
 var (
@@ -130,6 +134,13 @@ var (
 		{
 			"error":             "invalid_request",
 			"error_description": "The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. Unable to parse form params, make sure to send a properly formatted query params or form request body."
+		}
+	`)
+
+	fositeInvalidMultipartPayloadErrorBody = here.Doc(`
+		{
+			"error":             "invalid_request",
+			"error_description": "The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. Unable to parse multipart HTTP body, make sure to send a properly formatted form request body."
 		}
 	`)
 
@@ -873,10 +884,84 @@ func TestTokenEndpointAuthcodeExchange(t *testing.T) {
 		{
 			name: "payload is empty",
 			authcodeExchange: authcodeExchangeInputs{
-				modifyTokenRequest: func(r *http.Request, authCode string) { r.Body = nil },
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					// This is what the server provides to the handler when the request has no body.
+					r.Body = http.NoBody
+					r.ContentLength = 0
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusBadRequest,
+					wantErrorResponseBody: fositeEmptyPayloadErrorBody,
+				},
+			},
+		},
+		{
+			name: "payload is exactly the maximum allowed size",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyAuthRequest: func(r *http.Request) { r.Form.Set("scope", "openid profile email username groups") },
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					setRequestBody(r, happyAuthcodeRequestBody(authCode).paddedToEncodedSize(t, maxRequestBodyBytes))
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusOK,
+					wantClientID:          pinnipedCLIClientID,
+					wantSuccessBodyFields: []string{"id_token", "access_token", "token_type", "scope", "expires_in"}, // no refresh token
+					wantRequestedScopes:   []string{"openid", "profile", "email", "username", "groups"},
+					wantGrantedScopes:     []string{"openid", "username", "groups"},
+					wantUsername:          goodUsername,
+					wantGroups:            goodGroups,
+					wantAuditLogs: func(sessionID string, idToken string) []testutil.WantedAuditLog {
+						return []testutil.WantedAuditLog{
+							testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+								"params": map[string]any{
+									"client_id":     "pinniped-cli",
+									"code":          "redacted",
+									"code_verifier": "redacted",
+									"grant_type":    "authorization_code",
+									"padding":       "redacted",
+									"redirect_uri":  "http://127.0.0.1/callback",
+								},
+							}),
+							testutil.WantAuditLog("Session Found", map[string]any{"sessionID": sessionID}),
+							testutil.WantAuditLog("ID Token Issued", map[string]any{
+								"sessionID": sessionID,
+								"tokenID":   idTokenToHash(idToken),
+							}),
+						}
+					},
+				},
+			},
+		},
+		{
+			name: "payload is one byte larger than the maximum allowed size",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					setRequestBody(r, happyAuthcodeRequestBody(authCode).paddedToEncodedSize(t, maxRequestBodyBytes+1))
+				},
 				want: tokenEndpointResponseExpectedValues{
 					wantStatus:            http.StatusBadRequest,
 					wantErrorResponseBody: fositeInvalidPayloadErrorBody,
+				},
+			},
+		},
+		{
+			name: "multipart payload is larger than the maximum allowed size",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					var buf bytes.Buffer
+					w := multipart.NewWriter(&buf)
+					for k, v := range happyAuthcodeRequestBody(authCode).with("padding", strings.Repeat("p", maxRequestBodyBytes)) {
+						require.NoError(t, w.WriteField(k, v[0]))
+					}
+					require.NoError(t, w.Close())
+					require.Greater(t, buf.Len(), maxRequestBodyBytes)
+					r.Body = io.NopCloser(&buf)
+					r.ContentLength = int64(buf.Len())
+					r.Header.Set("Content-Type", w.FormDataContentType())
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusBadRequest,
+					wantErrorResponseBody: fositeInvalidMultipartPayloadErrorBody,
 				},
 			},
 		},
@@ -5439,6 +5524,23 @@ func (b body) WithRedirectURI(redirectURI string) body {
 
 func (b body) WithPKCE(verifier string) body {
 	return b.with("code_verifier", verifier)
+}
+
+// paddedToEncodedSize adds a "padding" param, which is ignored by the token endpoint, sized so that
+// the form-encoded body is exactly the requested number of bytes.
+func (b body) paddedToEncodedSize(t *testing.T, size int) body {
+	t.Helper()
+	b = b.with("padding", "p")
+	b = b.with("padding", strings.Repeat("p", size-len(url.Values(b).Encode())+1))
+	require.Len(t, url.Values(b).Encode(), size)
+	return b
+}
+
+// setRequestBody replaces the body of the request with the form-encoded body.
+func setRequestBody(r *http.Request, b body) {
+	encoded := url.Values(b).Encode()
+	r.Body = io.NopCloser(strings.NewReader(encoded))
+	r.ContentLength = int64(len(encoded))
 }
 
 func (b body) ReadCloser() io.ReadCloser {
