@@ -95,6 +95,10 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 
 		// The authorize endpoint limits the size of the request body to 1 MB.
 		maxRequestBodyBytes = 1 << 20
+
+		// An unsigned JWT which looks like an ID token, for use as an id_token_hint param value.
+		// Header is {"alg":"ES256","kid":"some-kid"} and payload is {"sub":"some-subject","iss":"https://some-issuer"}.
+		someIDTokenHint = "eyJhbGciOiJFUzI1NiIsImtpZCI6InNvbWUta2lkIn0.eyJzdWIiOiJzb21lLXN1YmplY3QiLCJpc3MiOiJodHRwczovL3NvbWUtaXNzdWVyIn0.c2ln" //nolint:gosec // not a credential, just an unsigned fake JWT
 	)
 
 	require.Len(t, happyState, 8, "we expect fosite to allow 8 byte state params, so we want to test that boundary case")
@@ -4084,6 +4088,135 @@ func TestAuthorizationEndpoint(t *testing.T) { //nolint:gocyclo
 			wantBodyString:  `{"error":"invalid_request","error_description":"The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. Unable to parse multipart HTTP body, make sure to send a properly formatted form request body."}`,
 		},
 		{
+			// The id_token_hint param is ignored and dropped before getting parsed by fosite, and it is not included in the upstream state param.
+			name:                                   "OIDC upstream browser flow with id_token_hint param ignores the param",
+			idps:                                   testidplister.NewUpstreamIDPListerBuilder().WithOIDC(upstreamOIDCIdentityProviderBuilder().Build()),
+			generateCSRF:                           happyCSRFGenerator,
+			generatePKCE:                           happyPKCEGenerator,
+			generateNonce:                          happyNonceGenerator,
+			stateEncoder:                           happyStateEncoder,
+			cookieEncoder:                          happyCookieEncoder,
+			method:                                 http.MethodGet,
+			path:                                   modifiedHappyGetRequestPathForOIDCUpstream(map[string]string{"id_token_hint": someIDTokenHint}),
+			wantStatus:                             http.StatusSeeOther,
+			wantContentType:                        htmlContentType,
+			wantCSRFValueInCookieHeader:            happyCSRF,
+			wantLocationHeader:                     expectedRedirectLocationForUpstreamOIDC(expectedUpstreamStateParam(nil, "", oidcUpstreamName, "oidc"), nil),
+			wantUpstreamStateParamInLocationHeader: true,
+			wantBodyStringWithLocationInHref:       true,
+			wantAuditLogs: func(encodedStateParam stateparam.Encoded, sessionID string) []testutil.WantedAuditLog {
+				return []testutil.WantedAuditLog{
+					testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+						"params": map[string]any{
+							"client_id":             "pinniped-cli",
+							"code_challenge":        "redacted",
+							"code_challenge_method": "S256",
+							"id_token_hint":         "redacted", // the param is still audit logged, even though it is ignored, but its value is redacted
+							"nonce":                 "redacted",
+							"pinniped_idp_name":     "some-oidc-idp",
+							"redirect_uri":          "http://127.0.0.1/callback",
+							"response_type":         "code",
+							"scope":                 "openid profile email username groups",
+							"state":                 "redacted",
+						},
+					}),
+					testutil.WantAuditLog("HTTP Request Custom Headers Used", map[string]any{
+						"Pinniped-Username": false,
+						"Pinniped-Password": false,
+					}),
+					testutil.WantAuditLog("Using Upstream IDP", map[string]any{
+						"displayName":  "some-oidc-idp",
+						"resourceName": "some-oidc-idp",
+						"resourceUID":  "oidc-resource-uid",
+						"type":         "oidc",
+					}),
+					testutil.WantAuditLog("Upstream Authorize Redirect", map[string]any{
+						"authorizeID": encodedStateParam.AuthorizeID(),
+					}),
+				}
+			},
+		},
+		{
+			// The request and request_uri params are audit logged, but their values are redacted.
+			// Fosite rejects the request because it has both params, before it would try to parse either of them.
+			// Fosite cannot redirect this error because it happens before the redirect_uri is validated.
+			name:            "OIDC upstream browser flow with request and request_uri params is rejected and the param values are redacted in the audit log",
+			idps:            testidplister.NewUpstreamIDPListerBuilder().WithOIDC(upstreamOIDCIdentityProviderBuilder().Build()),
+			generateCSRF:    happyCSRFGenerator,
+			generatePKCE:    happyPKCEGenerator,
+			generateNonce:   happyNonceGenerator,
+			stateEncoder:    happyStateEncoder,
+			cookieEncoder:   happyCookieEncoder,
+			method:          http.MethodGet,
+			path:            modifiedHappyGetRequestPathForOIDCUpstream(map[string]string{"request": someIDTokenHint, "request_uri": "https://example.com/some-request-object"}),
+			wantStatus:      http.StatusBadRequest,
+			wantContentType: jsonContentType,
+			wantBodyJSON:    `{"error":"invalid_request","error_description":"The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. OpenID Connect parameters 'request' and 'request_uri' were both given, but you can use at most one."}`,
+			wantAuditLogs: func(_ stateparam.Encoded, sessionID string) []testutil.WantedAuditLog {
+				return []testutil.WantedAuditLog{
+					testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+						"params": map[string]any{
+							"client_id":             "pinniped-cli",
+							"code_challenge":        "redacted",
+							"code_challenge_method": "S256",
+							"nonce":                 "redacted",
+							"pinniped_idp_name":     "some-oidc-idp",
+							"redirect_uri":          "http://127.0.0.1/callback",
+							"request":               "redacted",
+							"request_uri":           "redacted",
+							"response_type":         "code",
+							"scope":                 "openid profile email username groups",
+							"state":                 "redacted",
+						},
+					}),
+					testutil.WantAuditLog("HTTP Request Custom Headers Used", map[string]any{
+						"Pinniped-Username": false,
+						"Pinniped-Password": false,
+					}),
+					testutil.WantAuditLog("Using Upstream IDP", map[string]any{
+						"displayName":  "some-oidc-idp",
+						"resourceName": "some-oidc-idp",
+						"resourceUID":  "oidc-resource-uid",
+						"type":         "oidc",
+					}),
+				}
+			},
+		},
+		{
+			name: "with multiple IDPs available and an id_token_hint param, redirects to the IDP chooser without the param",
+			idps: testidplister.NewUpstreamIDPListerBuilder().
+				WithOIDC(upstreamOIDCIdentityProviderBuilder().Build()).
+				WithLDAP(upstreamLDAPIdentityProviderBuilder().Build()),
+			method:                                 http.MethodGet,
+			path:                                   modifiedHappyGetRequestPath(map[string]string{"id_token_hint": someIDTokenHint}),
+			wantStatus:                             http.StatusSeeOther,
+			wantContentType:                        htmlContentType,
+			wantLocationHeader:                     urlWithQuery(downstreamIssuer+"/choose_identity_provider", happyGetRequestQueryMap),
+			wantUpstreamStateParamInLocationHeader: false,
+			wantBodyStringWithLocationInHref:       true,
+		},
+		{
+			name:                              "LDAP upstream cli_password flow with id_token_hint param ignores the param",
+			idps:                              testidplister.NewUpstreamIDPListerBuilder().WithLDAP(upstreamLDAPIdentityProviderBuilder().Build()),
+			method:                            http.MethodGet,
+			path:                              modifiedHappyGetRequestPathForLDAPUpstream(map[string]string{"id_token_hint": someIDTokenHint}),
+			customUsernameHeader:              ptr.To(happyLDAPUsername),
+			customPasswordHeader:              ptr.To(happyLDAPPassword),
+			wantStatus:                        http.StatusFound,
+			wantContentType:                   htmlContentType,
+			wantRedirectLocationRegexp:        happyAuthcodeDownstreamRedirectLocationRegexp,
+			wantDownstreamIDTokenSubject:      upstreamLDAPURL + "&idpName=" + ldapUpstreamName + "&sub=" + happyLDAPUID,
+			wantDownstreamIDTokenUsername:     happyLDAPUsernameFromAuthenticator,
+			wantDownstreamIDTokenGroups:       happyLDAPGroups,
+			wantDownstreamRequestedScopes:     happyDownstreamScopesRequested,
+			wantDownstreamRedirectURI:         downstreamRedirectURI,
+			wantDownstreamGrantedScopes:       happyDownstreamScopesGranted,
+			wantDownstreamNonce:               downstreamNonce,
+			wantDownstreamPKCEChallenge:       downstreamPKCEChallenge,
+			wantDownstreamPKCEChallengeMethod: downstreamPKCEChallengeMethod,
+			wantDownstreamCustomSessionData:   expectedHappyLDAPUpstreamCustomSession,
+		},
+		{
 			name:            "get with invalid query",
 			idps:            testidplister.NewUpstreamIDPListerBuilder().WithOIDC(upstreamOIDCIdentityProviderBuilder().Build()),
 			method:          http.MethodGet,
@@ -4514,7 +4647,6 @@ func TestParamsSafeToLog(t *testing.T) {
 		"client_id",
 		"code_challenge_method",
 		"display",
-		"id_token_hint",
 		"login_hint",
 		"max_age",
 		"pinniped_idp_name",
@@ -4522,8 +4654,6 @@ func TestParamsSafeToLog(t *testing.T) {
 		"prompt",
 		"redirect_uri",
 		"registration",
-		"request",
-		"request_uri",
 		"response_mode",
 		"response_type",
 		"scope",
