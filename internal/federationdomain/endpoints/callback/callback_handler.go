@@ -1,4 +1,4 @@
-// Copyright 2020-2025 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 // Package callback provides a handler for the OIDC callback endpoint.
@@ -41,6 +41,8 @@ func NewHandler(
 	auditLogger plog.AuditLogger,
 ) http.Handler {
 	handler := httperr.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
+
 		if err := auditLogger.AuditRequestParams(r, paramsSafeToLog()); err != nil {
 			plog.DebugErr("error parsing callback request params", err)
 			return httperr.New(http.StatusBadRequest, "error parsing request params")
