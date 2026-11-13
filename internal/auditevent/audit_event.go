@@ -1,4 +1,4 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package auditevent
@@ -30,8 +30,9 @@ const (
 
 	// Supervisor session ending logging.
 
-	UpstreamOIDCTokenRevoked Message = "Upstream OIDC Token Revoked" //nolint:gosec // this is not a credential
-	SessionGarbageCollected  Message = "Session Garbage Collected"
+	UpstreamOIDCTokenRevoked  Message = "Upstream OIDC Token Revoked" //nolint:gosec // this is not a credential
+	SessionGarbageCollected   Message = "Session Garbage Collected"
+	SessionMaxLifetimeReached Message = "Session Max Lifetime Reached"
 
 	// Supervisor aggregated APIs logging.
 

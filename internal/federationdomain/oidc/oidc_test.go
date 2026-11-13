@@ -12,12 +12,15 @@ import (
 	"time"
 
 	"github.com/ory/fosite"
+	"github.com/ory/fosite/handler/openid"
+	fositejwt "github.com/ory/fosite/token/jwt"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 
 	"go.pinniped.dev/internal/federationdomain/clientregistry"
 	"go.pinniped.dev/internal/federationdomain/endpoints/jwks"
 	"go.pinniped.dev/internal/federationdomain/storage"
+	"go.pinniped.dev/internal/psession"
 )
 
 func TestDefaultLifespans(t *testing.T) {
@@ -28,6 +31,7 @@ func TestDefaultLifespans(t *testing.T) {
 	require.Equal(t, 2*time.Minute, c.AccessTokenLifespan)
 	require.Equal(t, 2*time.Minute, c.IDTokenLifespan)
 	require.Equal(t, 9*time.Hour, c.RefreshTokenLifespan)
+	require.Equal(t, 9*time.Hour, c.SessionMaxLifespan)
 }
 
 func TestStorageLifetimes(t *testing.T) {
@@ -39,6 +43,62 @@ func TestStorageLifetimes(t *testing.T) {
 	require.Equal(t, 11*time.Minute, c.OIDCSessionStorageLifetime(nil))
 	require.Equal(t, 9*time.Hour+2*time.Minute, c.AccessTokenSessionStorageLifetime(nil))
 	require.Equal(t, 9*time.Hour+2*time.Minute, c.RefreshTokenSessionStorageLifetime(nil))
+}
+
+func TestAccessAndRefreshTokenStorageLifetimesEndWithTheSession(t *testing.T) {
+	requestWithAuthTime := func(authTime time.Time) fosite.Requester {
+		session := psession.NewPinnipedSession()
+		session.Fosite.Claims.AuthTime = authTime
+		return &fosite.Request{Session: session}
+	}
+
+	tests := []struct {
+		name         string
+		requester    fosite.Requester
+		wantLifetime time.Duration
+	}{
+		{
+			name:         "the session has more than a full refresh token lifespan remaining, which should not happen",
+			requester:    requestWithAuthTime(time.Now().Add(time.Hour)),
+			wantLifetime: 9*time.Hour + 2*time.Minute,
+		},
+		{
+			name:         "the session has 8 hours remaining",
+			requester:    requestWithAuthTime(time.Now().Add(-time.Hour)),
+			wantLifetime: 8*time.Hour + 2*time.Minute,
+		},
+		{
+			name:         "the session has 1 minute remaining",
+			requester:    requestWithAuthTime(time.Now().Add(-9 * time.Hour).Add(time.Minute)),
+			wantLifetime: 3 * time.Minute,
+		},
+		{
+			name:         "the session has already ended",
+			requester:    requestWithAuthTime(time.Now().Add(-20 * time.Hour)),
+			wantLifetime: 2 * time.Minute,
+		},
+		{
+			name:         "the time of the initial login is unknown",
+			requester:    requestWithAuthTime(time.Time{}),
+			wantLifetime: 9*time.Hour + 2*time.Minute,
+		},
+		{
+			name:         "the session is not an OpenID Connect session",
+			requester:    &fosite.Request{Session: &fosite.DefaultSession{}},
+			wantLifetime: 9*time.Hour + 2*time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c := DefaultOIDCTimeoutsConfiguration()
+
+			require.InDelta(t, tt.wantLifetime, c.AccessTokenSessionStorageLifetime(tt.requester), float64(5*time.Second))
+			require.InDelta(t, tt.wantLifetime, c.RefreshTokenSessionStorageLifetime(tt.requester), float64(5*time.Second))
+		})
+	}
 }
 
 func TestOverrideDefaultAccessTokenLifespan(t *testing.T) {
@@ -214,4 +274,73 @@ func TestFositeOauth2HelperConfiguresClientAuthenticationStrategy(t *testing.T) 
 	_, err := strategy(t.Context(), &http.Request{}, url.Values{"client_assertion": {"some-jwt"}})
 	require.ErrorIs(t, err, fosite.ErrInvalidClient)
 	require.Equal(t, "Client authentication using client_assertion is not supported.", fosite.ErrorToRFC6749Error(err).HintField)
+}
+
+func TestSessionEnd(t *testing.T) {
+	const sessionMaxLifespan = 9 * time.Hour
+
+	requestWithAuthTime := func(authTime time.Time) fosite.Requester {
+		return &fosite.Request{Session: &openid.DefaultSession{Claims: &fositejwt.IDTokenClaims{AuthTime: authTime}}}
+	}
+
+	authTime := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+
+	tests := []struct {
+		name          string
+		requester     fosite.Requester
+		wantOK        bool
+		wantSessionAt time.Time
+	}{
+		{
+			name:          "session ends sessionMaxLifespan after auth_time",
+			requester:     requestWithAuthTime(authTime),
+			wantOK:        true,
+			wantSessionAt: authTime.Add(sessionMaxLifespan),
+		},
+		{
+			name:          "sub-second auth_time is truncated, never rounded up, so the session never ends late",
+			requester:     requestWithAuthTime(authTime.Add(999 * time.Millisecond)),
+			wantOK:        true,
+			wantSessionAt: authTime.Add(sessionMaxLifespan),
+		},
+		{
+			name:          "non-UTC auth_time is returned in UTC",
+			requester:     requestWithAuthTime(authTime.In(time.FixedZone("UTC-7", -7*60*60))),
+			wantOK:        true,
+			wantSessionAt: authTime.Add(sessionMaxLifespan),
+		},
+		{
+			name:      "nil requester",
+			requester: nil,
+		},
+		{
+			name:      "nil session",
+			requester: &fosite.Request{},
+		},
+		{
+			name:      "session which is not an OpenID Connect session",
+			requester: &fosite.Request{Session: &fosite.DefaultSession{}},
+		},
+		{
+			name:      "OpenID Connect session with nil claims",
+			requester: &fosite.Request{Session: &openid.DefaultSession{}},
+		},
+		{
+			name:      "zero auth_time",
+			requester: requestWithAuthTime(time.Time{}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			sessionEnd, ok := SessionEnd(tt.requester, sessionMaxLifespan)
+			require.Equal(t, tt.wantOK, ok)
+			require.Equal(t, tt.wantSessionAt, sessionEnd)
+			if ok {
+				require.Equal(t, time.UTC, sessionEnd.Location())
+			}
+		})
+	}
 }

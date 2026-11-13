@@ -1,4 +1,4 @@
-// Copyright 2020-2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2020-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package endpointsmanager
@@ -177,6 +177,7 @@ func (m *Manager) SetFederationDomains(federationDomains ...*federationdomainpro
 			oauthHelperWithKubeStorage,
 			timeoutsConfiguration.OverrideDefaultAccessTokenLifespan,
 			timeoutsConfiguration.OverrideDefaultIDTokenLifespan,
+			timeoutsConfiguration.SessionMaxLifespan,
 			m.auditLogger,
 		)
 

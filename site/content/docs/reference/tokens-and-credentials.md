@@ -75,7 +75,9 @@ with the Supervisor before they can make any more Kubernetes API calls. The CLI 
 token to the Supervisor's token endpoint.
 The Supervisor performs checks with the external identity provider to decide if the user's session should
 be allowed to continue, and to update the user's group memberships. A successful refresh results in a new ID token,
-a new access token, and a new refresh token, all with the same lifetimes as before. The old refresh token is revoked.
+a new access token, and a new refresh token. The new ID token and access token have the same lifetimes as before.
+The new refresh token expires at the same time as the old one, 9 hours from the time of the initial authentication,
+because refreshing does not extend the user's session. The old refresh token is revoked.
 This refresh process is automatic and does not require any user interaction. A failed refresh will cause the CLI
 to start all over again with a new authentication attempt.
 
@@ -101,7 +103,16 @@ the initial login time. After that, the next refresh will fail and the user must
 This ensures that the user's access privileges are updated at least once a day, even if the Supervisor
 cannot detect an access privilege change made in the external identity provider during the day.
 
-A user's session my terminate quicker if the Supervisor determines from an external identity provider that
+Refreshes are allowed right up until the end of the session, and the ID token and access token from a refresh
+always have their usual lifetimes, so the tokens from a refresh shortly before the end of the session can remain
+valid for up to 2 minutes after the end of the session. The access token can still be used to fetch cluster-scoped
+ID tokens until it expires, and the resulting cluster credentials remain valid until they expire. So a user may
+continue to access clusters for up to about 2 + 2 + 5 = 9 minutes after the end of their session,
+which is the same as the maximum staleness after a refresh described above.
+Similarly, an ID token issued to an `OIDCClient` which configures a custom ID token lifetime can remain valid
+for up to that lifetime after the end of the session.
+
+A user's session may terminate quicker if the Supervisor determines from an external identity provider that
 the session should end. One example of this is that for an `OIDCIdentityProvider`, the Supervisor will
 typically receive a refresh token for a user from the external OIDC provider, and when this token expires
 then the user's Supervisor session will also expire, which can be shorter than 9 hours.

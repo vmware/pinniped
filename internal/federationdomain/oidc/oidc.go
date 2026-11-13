@@ -17,6 +17,7 @@ import (
 	"github.com/felixge/httpsnoop"
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/compose"
+	"github.com/ory/fosite/handler/openid"
 
 	oidcapi "go.pinniped.dev/generated/latest/apis/supervisor/oidc"
 	"go.pinniped.dev/internal/federationdomain/clientregistry"
@@ -165,9 +166,32 @@ func DefaultOIDCTimeoutsConfiguration() timeouts.Configuration {
 	// limit the window of opportunity to make that exchange to be small.
 	idTokenLifespan := accessTokenLifespan
 
+	// This is the lifetime of each refresh token. Each refresh issues a new refresh
+	// token, so this is also how long a session may sit idle before it ends.
+	// Note that this is currently the same as sessionMaxLifespan below, which makes
+	// sessionMaxLifespan the only limit that matters in practice, since refresh tokens
+	// are never issued with expiration times after the end of their session.
+	// These are kept as separate settings because they are separate concepts
+	// (an idle timeout and an absolute timeout), so that either could be changed
+	// independently in the future.
+	refreshTokenLifespan := 9 * time.Hour
+
 	// This is just long enough to cover a typical work day, giving the end user an
 	// experience of logging in once per day to access all their Kubernetes clusters.
-	refreshTokenLifespan := 9 * time.Hour
+	// Refreshes cannot extend a session beyond this time after the initial login,
+	// which ensures that the user's session is fully re-established with the
+	// external identity provider at least once per day.
+	sessionMaxLifespan := 9 * time.Hour
+
+	// Refresh tokens never outlive their session, so they only need to be stored
+	// until the session ends.
+	remainingRefreshTokenLifespan := func(requester fosite.Requester) time.Duration {
+		sessionEnd, ok := SessionEnd(requester, sessionMaxLifespan)
+		if !ok {
+			return refreshTokenLifespan
+		}
+		return max(0, min(refreshTokenLifespan, time.Until(sessionEnd)))
+	}
 
 	// Give a little extra time for some storage lifetimes, to avoid the possibility
 	// that the storage be garbage collected in the middle of trying to look up the token.
@@ -210,6 +234,8 @@ func DefaultOIDCTimeoutsConfiguration() timeouts.Configuration {
 
 		RefreshTokenLifespan: refreshTokenLifespan,
 
+		SessionMaxLifespan: sessionMaxLifespan,
+
 		AuthorizationCodeSessionStorageLifetime: func(_ fosite.Requester) time.Duration {
 			return authorizationCodeLifespan + refreshTokenLifespan
 		},
@@ -222,14 +248,32 @@ func DefaultOIDCTimeoutsConfiguration() timeouts.Configuration {
 			return authorizationCodeLifespan + storageExtraLifetime
 		},
 
-		AccessTokenSessionStorageLifetime: func(_ fosite.Requester) time.Duration {
-			return refreshTokenLifespan + accessTokenLifespan
+		AccessTokenSessionStorageLifetime: func(requester fosite.Requester) time.Duration {
+			// An access token issued by a refresh shortly before the end of the session can be valid for up to
+			// accessTokenLifespan after the end of the session, so it must be stored at least that long, so it can
+			// be used for RFC8693 token exchanges until it expires.
+			return remainingRefreshTokenLifespan(requester) + accessTokenLifespan
 		},
 
-		RefreshTokenSessionStorageLifetime: func(_ fosite.Requester) time.Duration {
-			return refreshTokenLifespan + accessTokenLifespan
+		RefreshTokenSessionStorageLifetime: func(requester fosite.Requester) time.Duration {
+			return remainingRefreshTokenLifespan(requester) + accessTokenLifespan
 		},
 	}
+}
+
+// SessionEnd returns the time at which the session of the given request must end, which is sessionMaxLifespan
+// after the time of the initial login (the auth_time). Returns false when the time of the initial login is unknown.
+// The result is truncated to the second (never rounded up), because fosite stores token expiration times with
+// second precision, and the session should never end later than sessionMaxLifespan after the initial login.
+func SessionEnd(requester fosite.Requester, sessionMaxLifespan time.Duration) (time.Time, bool) {
+	if requester == nil {
+		return time.Time{}, false
+	}
+	session, ok := requester.GetSession().(openid.Session)
+	if !ok || session.IDTokenClaims() == nil || session.IDTokenClaims().AuthTime.IsZero() {
+		return time.Time{}, false
+	}
+	return session.IDTokenClaims().AuthTime.UTC().Add(sessionMaxLifespan).Truncate(time.Second), true
 }
 
 func FositeOauth2Helper(
