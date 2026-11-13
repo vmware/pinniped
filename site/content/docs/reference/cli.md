@@ -45,8 +45,8 @@ pinniped completion bash
 ### Options
 
 ```
-  -h, --help              help for bash
-      --no-descriptions   disable completion descriptions
+  -h, --help[=true|false]              help for bash
+      --no-descriptions[=true|false]   disable completion descriptions
 ```
 
 ### SEE ALSO
@@ -79,8 +79,8 @@ pinniped completion fish [flags]
 ### Options
 
 ```
-  -h, --help              help for fish
-      --no-descriptions   disable completion descriptions
+  -h, --help[=true|false]              help for fish
+      --no-descriptions[=true|false]   disable completion descriptions
 ```
 
 ### SEE ALSO
@@ -110,8 +110,8 @@ pinniped completion powershell [flags]
 ### Options
 
 ```
-  -h, --help              help for powershell
-      --no-descriptions   disable completion descriptions
+  -h, --help[=true|false]              help for powershell
+      --no-descriptions[=true|false]   disable completion descriptions
 ```
 
 ### SEE ALSO
@@ -155,8 +155,8 @@ pinniped completion zsh [flags]
 ### Options
 
 ```
-  -h, --help              help for zsh
-      --no-descriptions   disable completion descriptions
+  -h, --help[=true|false]              help for zsh
+      --no-descriptions[=true|false]   disable completion descriptions
 ```
 
 ### SEE ALSO
@@ -181,14 +181,14 @@ pinniped get kubeconfig [flags]
       --concierge-credential-issuer string       Concierge CredentialIssuer object to use for autodiscovery (default: autodiscover)
       --concierge-endpoint string                API base for the Concierge endpoint
       --concierge-mode mode                      Concierge mode of operation (default TokenCredentialRequestAPI)
-      --concierge-skip-wait                      Skip waiting for any pending Concierge strategies to become ready (default: false)
+      --concierge-skip-wait[=true|false]         Skip waiting for any pending Concierge strategies to become ready (default: false)
       --credential-cache string                  Path to cluster-specific credentials cache
       --generated-name-suffix string             Suffix to append to generated cluster, context, user kubeconfig entries (default "-pinniped")
-  -h, --help                                     help for kubeconfig
+  -h, --help[=true|false]                        help for kubeconfig
       --install-hint string                      This text is shown to the user when the pinniped CLI is not installed. (default "The pinniped CLI does not appear to be installed.  See https://get.pinniped.dev/cli for more details")
       --kubeconfig string                        Path to kubeconfig file
       --kubeconfig-context string                Kubeconfig context name (default: current active context)
-      --no-concierge                             Generate a configuration which does not use the Concierge, but sends the credential to the cluster directly
+      --no-concierge[=true|false]                Generate a configuration which does not use the Concierge, but sends the credential to the cluster directly
       --oidc-ca-bundle path                      Path to TLS certificate authority bundle (PEM format, optional, can be repeated)
       --oidc-client-id string                    OpenID Connect client ID (default: autodiscover) (default "pinniped-cli")
       --oidc-issuer string                       OpenID Connect issuer URL (default: autodiscover)
@@ -196,10 +196,10 @@ pinniped get kubeconfig [flags]
       --oidc-request-audience string             Request a token with an alternate audience using RFC8693 token exchange
       --oidc-scopes strings                      OpenID Connect scopes to request during login (default [offline_access,openid,pinniped:request-audience,username,groups])
       --oidc-session-cache string                Path to OpenID Connect session cache file
-      --oidc-skip-browser                        During OpenID Connect login, skip opening the browser (just print the URL)
+      --oidc-skip-browser[=true|false]           During OpenID Connect login, skip opening the browser (just print the URL)
   -o, --output string                            Output file path (default: stdout)
       --pinniped-cli-path string                 Full path or executable name for the Pinniped CLI binary to be embedded in the resulting kubeconfig output (e.g. 'pinniped') (default: full path of the binary used to execute this command)
-      --skip-validation                          Skip final validation of the kubeconfig (default: false)
+      --skip-validation[=true|false]             Skip final validation of the kubeconfig (default: false)
       --static-token string                      Instead of doing an OIDC-based login, specify a static token
       --static-token-env string                  Instead of doing an OIDC-based login, read a static token from the environment
       --timeout duration                         Timeout for autodiscovery and validation (default 10m0s)
@@ -228,7 +228,7 @@ pinniped help [command] [flags]
 ### Options
 
 ```
-  -h, --help   help for help
+  -h, --help[=true|false]   help for help
 ```
 
 ### SEE ALSO
@@ -267,14 +267,14 @@ pinniped login oidc --issuer ISSUER [flags]
       --concierge-ca-bundle-data string          CA bundle to use when connecting to the Concierge
       --concierge-endpoint string                API base for the Concierge endpoint
       --credential-cache string                  Path to cluster-specific credentials cache ("" disables the cache) (default "/root/.config/pinniped/credentials.yaml")
-      --enable-concierge                         Use the Concierge to login
-  -h, --help                                     help for oidc
+      --enable-concierge[=true|false]            Use the Concierge to login
+  -h, --help[=true|false]                        help for oidc
       --issuer string                            OpenID Connect issuer URL
       --listen-port uint16                       TCP port for localhost listener (authorization code flow only)
       --request-audience string                  Request a token with an alternate audience using RFC8693 token exchange
       --scopes strings                           OIDC scopes to request during login (default [offline_access,openid,pinniped:request-audience,username,groups])
       --session-cache string                     Path to session cache file (default "/root/.config/pinniped/sessions.yaml")
-      --skip-browser                             Skip opening the browser (just print the URL)
+      --skip-browser[=true|false]                Skip opening the browser (just print the URL)
       --upstream-identity-provider-flow string   The type of client flow to use with the upstream identity provider during login with a Supervisor (e.g. 'browser_authcode', 'cli_password')
       --upstream-identity-provider-name string   The name of the upstream identity provider used during login with a Supervisor
       --upstream-identity-provider-type string   The type of the upstream identity provider used during login with a Supervisor (e.g. 'oidc', 'ldap', 'activedirectory', 'github') (default "oidc")
@@ -313,8 +313,8 @@ pinniped login static [--token TOKEN] [--token-env TOKEN_NAME] [flags]
       --concierge-ca-bundle-data string       CA bundle to use when connecting to the Concierge
       --concierge-endpoint string             API base for the Concierge endpoint
       --credential-cache string               Path to cluster-specific credentials cache ("" disables the cache) (default "/root/.config/pinniped/credentials.yaml")
-      --enable-concierge                      Use the Concierge to login
-  -h, --help                                  help for static
+      --enable-concierge[=true|false]         Use the Concierge to login
+  -h, --help[=true|false]                     help for static
       --token string                          Static token to present during login
       --token-env string                      Environment variable containing a static token
 ```
@@ -334,8 +334,8 @@ pinniped version [flags]
 ### Options
 
 ```
-  -h, --help            help for version
-  -o, --output string   one of 'yaml' or 'json'
+  -h, --help[=true|false]   help for version
+  -o, --output string       one of 'yaml' or 'json'
 ```
 
 ### SEE ALSO
@@ -354,7 +354,7 @@ pinniped whoami [flags]
 
 ```
       --api-group-suffix string     Concierge API group suffix (default "pinniped.dev")
-  -h, --help                        help for whoami
+  -h, --help[=true|false]           help for whoami
       --kubeconfig string           Path to kubeconfig file
       --kubeconfig-context string   Kubeconfig context name (default: current active context)
   -o, --output string               Output format (e.g., 'yaml', 'json', 'text') (default "text")
