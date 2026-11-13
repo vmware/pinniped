@@ -83,14 +83,38 @@ const (
 	defaultResyncInterval = 3 * time.Minute
 )
 
-func startServer(ctx context.Context, shutdown *sync.WaitGroup, l net.Listener, handler http.Handler) {
+type serverTimeouts struct {
+	// readHeader is the maximum time to read the request headers. For HTTPS, Go also uses this to limit the
+	// TLS handshake time.
+	readHeader time.Duration
+	// read is the maximum time to read the entire request, including the body. Without it, a client could hold
+	// a request open indefinitely by never finishing sending its body, while the server holds the partially
+	// read body in memory. For HTTP/2, Go applies this per stream.
+	read time.Duration
+	// idle is the maximum time to keep an idle keep-alive connection open while waiting for the next request.
+	idle time.Duration
+}
+
+func defaultServerTimeouts() serverTimeouts {
+	return serverTimeouts{
+		readHeader: 10 * time.Second,
+		read:       30 * time.Second,
+		idle:       90 * time.Second,
+		// Note that we intentionally do not set a write timeout, because the time to write a response includes the time
+		// spent by handlers making calls to upstream identity providers, which can legitimately be slow.
+	}
+}
+
+func startServer(ctx context.Context, shutdown *sync.WaitGroup, l net.Listener, handler http.Handler, timeouts serverTimeouts) {
 	handler = genericapifilters.WithWarningRecorder(handler)
 	handler = withBootstrapPaths(handler, "/healthz") // only health checks are allowed for bootstrap connections
 
 	server := http.Server{
 		Handler:           handler,
 		ConnContext:       withBootstrapConnCtx,
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: timeouts.readHeader,
+		ReadTimeout:       timeouts.read,
+		IdleTimeout:       timeouts.idle,
 	}
 
 	shutdown.Add(1)
@@ -563,7 +587,7 @@ func runSupervisor(ctx context.Context, podInfo *downward.PodInfo, cfg *supervis
 		}
 
 		defer func() { _ = httpListener.Close() }()
-		startServer(ctx, shutdown, httpListener, oidProvidersManager.HandlerChain())
+		startServer(ctx, shutdown, httpListener, oidProvidersManager.HandlerChain(), defaultServerTimeouts())
 		plog.Debug("supervisor http listener started", "address", httpListener.Addr().String())
 	}
 
@@ -620,7 +644,7 @@ func runSupervisor(ctx context.Context, podInfo *downward.PodInfo, cfg *supervis
 		}
 
 		defer func() { _ = httpsListener.Close() }()
-		startServer(ctx, shutdown, httpsListener, oidProvidersManager.HandlerChain())
+		startServer(ctx, shutdown, httpsListener, oidProvidersManager.HandlerChain(), defaultServerTimeouts())
 		plog.Debug("supervisor https listener started", "address", httpsListener.Addr().String())
 	}
 

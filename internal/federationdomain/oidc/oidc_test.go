@@ -1,16 +1,23 @@
-// Copyright 2024 the Pinniped contributors. All Rights Reserved.
+// Copyright 2024-2026 the Pinniped contributors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package oidc
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/ory/fosite"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 
 	"go.pinniped.dev/internal/federationdomain/clientregistry"
+	"go.pinniped.dev/internal/federationdomain/endpoints/jwks"
+	"go.pinniped.dev/internal/federationdomain/storage"
 )
 
 func TestDefaultLifespans(t *testing.T) {
@@ -113,4 +120,98 @@ func TestOverrideIDTokenLifespan(t *testing.T) {
 			require.Equal(t, tt.wantLifespan, newLifespan)
 		})
 	}
+}
+
+func TestClientAuthenticationStrategyRejectingClientAssertions(t *testing.T) {
+	delegateClient := &clientregistry.Client{}
+	delegateErr := errors.New("some delegate error")
+
+	tests := []struct {
+		name          string
+		form          url.Values
+		delegateErr   error
+		wantDelegated bool
+		wantClient    fosite.Client
+		wantErr       error
+		wantHint      string
+	}{
+		{
+			name:          "no client assertion params delegates to the wrapped strategy",
+			form:          url.Values{"grant_type": {"authorization_code"}, "client_id": {"some-client"}},
+			wantDelegated: true,
+			wantClient:    delegateClient,
+		},
+		{
+			name:          "no client assertion params delegates to the wrapped strategy and returns its error",
+			form:          url.Values{"grant_type": {"authorization_code"}},
+			delegateErr:   delegateErr,
+			wantDelegated: true,
+			wantErr:       delegateErr,
+		},
+		{
+			name:     "client_assertion and client_assertion_type params are rejected",
+			form:     url.Values{"client_assertion_type": {"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"}, "client_assertion": {"some-jwt"}},
+			wantErr:  fosite.ErrInvalidClient,
+			wantHint: "Client authentication using client_assertion is not supported.",
+		},
+		{
+			name:     "client_assertion param alone is rejected",
+			form:     url.Values{"client_assertion": {"some-jwt"}},
+			wantErr:  fosite.ErrInvalidClient,
+			wantHint: "Client authentication using client_assertion is not supported.",
+		},
+		{
+			name:     "client_assertion_type param alone is rejected",
+			form:     url.Values{"client_assertion_type": {"some-type"}},
+			wantErr:  fosite.ErrInvalidClient,
+			wantHint: "Client authentication using client_assertion is not supported.",
+		},
+		{
+			name:     "empty client_assertion param is rejected",
+			form:     url.Values{"client_assertion": {""}},
+			wantErr:  fosite.ErrInvalidClient,
+			wantHint: "Client authentication using client_assertion is not supported.",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			delegated := false
+			subject := clientAuthenticationStrategyRejectingClientAssertions(
+				func(_ context.Context, _ *http.Request, form url.Values) (fosite.Client, error) {
+					delegated = true
+					require.Equal(t, tt.form, form)
+					if tt.delegateErr != nil {
+						return nil, tt.delegateErr
+					}
+					return delegateClient, nil
+				},
+			)
+
+			client, err := subject(t.Context(), &http.Request{}, tt.form)
+
+			require.Equal(t, tt.wantDelegated, delegated)
+			require.Equal(t, tt.wantClient, client)
+			if tt.wantErr == nil {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, tt.wantErr)
+			}
+			if tt.wantHint != "" {
+				require.Equal(t, tt.wantHint, fosite.ErrorToRFC6749Error(err).HintField)
+			}
+		})
+	}
+}
+
+func TestFositeOauth2HelperConfiguresClientAuthenticationStrategy(t *testing.T) {
+	oauthStore := storage.NewNullStorage(nil, nil, bcrypt.MinCost)
+	provider := FositeOauth2Helper(oauthStore, "https://some-issuer", func() []byte { return []byte("some-secret-of-at-least-32-bytes!!") },
+		jwks.NewDynamicJWKSProvider(), DefaultOIDCTimeoutsConfiguration())
+
+	strategy := provider.(*fosite.Fosite).Config.GetClientAuthenticationStrategy(t.Context())
+	require.NotNil(t, strategy)
+
+	_, err := strategy(t.Context(), &http.Request{}, url.Values{"client_assertion": {"some-jwt"}})
+	require.ErrorIs(t, err, fosite.ErrInvalidClient)
+	require.Equal(t, "Client authentication using client_assertion is not supported.", fosite.ErrorToRFC6749Error(err).HintField)
 }

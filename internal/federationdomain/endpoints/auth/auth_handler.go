@@ -42,9 +42,11 @@ func paramsSafeToLog() sets.Set[string] {
 	return sets.New[string](
 		// Standard params from https://openid.net/specs/openid-connect-core-1_0.html, some of which are ignored.
 		// Redacting state and nonce params, in case they contain any info that the client considers sensitive.
+		// Redacting id_token_hint param, because it is an ID token which contains information about the user.
+		// Redacting request and request_uri params, because they are a request object JWT (or a URL which references
+		// one) which can contain any of the other params, including the ones which are redacted.
 		"scope", "response_type", "client_id", "redirect_uri", "response_mode", "display", "prompt",
-		"max_age", "ui_locales", "id_token_hint", "login_hint", "acr_values", "claims_locales", "claims",
-		"request", "request_uri", "registration",
+		"max_age", "ui_locales", "login_hint", "acr_values", "claims_locales", "claims", "registration",
 		// PKCE params from https://datatracker.ietf.org/doc/html/rfc7636. Let code_challenge be redacted.
 		"code_challenge_method",
 		// Custom Pinniped authorization params.
@@ -98,6 +100,8 @@ func NewHandler(
 }
 
 func (h *authorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
+
 	// If the client set a username or password header, they are trying to log in without using a browser.
 	hadUsernameHeader := len(r.Header.Values(oidcapi.AuthorizeUsernameHeaderName)) > 0
 	hadPasswordHeader := len(r.Header.Values(oidcapi.AuthorizePasswordHeaderName)) > 0
@@ -110,6 +114,13 @@ func (h *authorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.oauthHelperWithoutStorage, fosite.NewAuthorizeRequest(), err, requestedBrowserlessFlow)
 		return
 	}
+
+	// Ignore the optional id_token_hint param by removing it before fosite sees the request.
+	// Pinniped doesn't support prompt=none, which is the main use for this param, so we don't need it.
+	// AuditRequestParams above has already parsed the form, so fosite will use this same r.Form, and this
+	// param will also not be included in any redirects or upstream state params which are created from the
+	// request's params.
+	r.Form.Del("id_token_hint")
 
 	// Log if these headers were present, but don't log the actual values. The password is obviously sensitive,
 	// and sometimes users use their password as their username by mistake.

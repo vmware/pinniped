@@ -6,9 +6,11 @@
 package oidc
 
 import (
+	"context"
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"net/url"
 	"reflect"
 	"time"
 
@@ -286,7 +288,30 @@ func FositeOauth2Helper(
 		tokenexchange.HandlerFactory, // handle the "urn:ietf:params:oauth:grant-type:token-exchange" grant type
 	)
 
+	// Fosite's default client authentication strategy is a method on the provider returned by Compose(),
+	// so it can only be wrapped after calling Compose(). Fosite reads this setting from the config on every request.
+	oauthConfig.ClientAuthenticationStrategy = clientAuthenticationStrategyRejectingClientAssertions(
+		oAuth2Provider.(*fosite.Fosite).DefaultClientAuthenticationStrategy,
+	)
+
 	return oAuth2Provider
+}
+
+// clientAuthenticationStrategyRejectingClientAssertions wraps the given client authentication strategy
+// to reject any request which includes the client_assertion or client_assertion_type params, and
+// otherwise delegates to the given strategy.
+//
+// Pinniped does not support the private_key_jwt or client_secret_jwt client authentication methods,
+// so client assertions could never succeed. However, fosite's default strategy parses the client_assertion
+// as a JWT before it looks up the client, which means unauthenticated requests can reach the parser.
+// Rejecting these requests first means that fosite never parses client assertions.
+func clientAuthenticationStrategyRejectingClientAssertions(delegate fosite.ClientAuthenticationStrategy) fosite.ClientAuthenticationStrategy {
+	return func(ctx context.Context, r *http.Request, form url.Values) (fosite.Client, error) {
+		if form.Has("client_assertion") || form.Has("client_assertion_type") {
+			return nil, fosite.ErrInvalidClient.WithHint("Client authentication using client_assertion is not supported.")
+		}
+		return delegate(ctx, r, form)
+	}
 }
 
 // FositeErrorForLog generates a list of information about the provided Fosite error that can be

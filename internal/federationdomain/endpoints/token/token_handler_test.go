@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -92,6 +93,14 @@ const (
 	idTokenExpirationSeconds     = 2 * 60  // Currently, we set our ID token expiration to 2 minutes
 
 	timeComparisonFudge = 15 * time.Second
+
+	// maxRequestBodyBytes is the maximum size of request body accepted by the token endpoint.
+	maxRequestBodyBytes = 1 << 20
+
+	// An unsigned JWT which looks like an ID token, for use as an id_token_hint param value.
+	// Header is {"alg":"ES256","kid":"some-kid"} and payload is {"sub":"some-subject","iss":"https://some-issuer"}.
+	// If fosite were to parse this as an id_token_hint, then it would fail signature validation and the request would fail.
+	someIDTokenHint = "eyJhbGciOiJFUzI1NiIsImtpZCI6InNvbWUta2lkIn0.eyJzdWIiOiJzb21lLXN1YmplY3QiLCJpc3MiOiJodHRwczovL3NvbWUtaXNzdWVyIn0.c2ln" //nolint:gosec // not a credential, just an unsigned fake JWT
 )
 
 var (
@@ -130,6 +139,13 @@ var (
 		{
 			"error":             "invalid_request",
 			"error_description": "The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. Unable to parse form params, make sure to send a properly formatted query params or form request body."
+		}
+	`)
+
+	fositeInvalidMultipartPayloadErrorBody = here.Doc(`
+		{
+			"error":             "invalid_request",
+			"error_description": "The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed. Unable to parse multipart HTTP body, make sure to send a properly formatted form request body."
 		}
 	`)
 
@@ -249,6 +265,13 @@ var (
 		{
 			"error":             "invalid_client",
 			"error_description": "Client authentication failed (e.g., unknown client, no client authentication included, or unsupported authentication method)."
+		}
+	`)
+
+	fositeClientAssertionNotSupportedErrorBody = here.Doc(`
+		{
+			"error":             "invalid_client",
+			"error_description": "Client authentication failed (e.g., unknown client, no client authentication included, or unsupported authentication method). Client authentication using client_assertion is not supported."
 		}
 	`)
 
@@ -873,10 +896,162 @@ func TestTokenEndpointAuthcodeExchange(t *testing.T) {
 		{
 			name: "payload is empty",
 			authcodeExchange: authcodeExchangeInputs{
-				modifyTokenRequest: func(r *http.Request, authCode string) { r.Body = nil },
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					// This is what the server provides to the handler when the request has no body.
+					r.Body = http.NoBody
+					r.ContentLength = 0
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusBadRequest,
+					wantErrorResponseBody: fositeEmptyPayloadErrorBody,
+				},
+			},
+		},
+		{
+			name: "payload is exactly the maximum allowed size",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyAuthRequest: func(r *http.Request) { r.Form.Set("scope", "openid profile email username groups") },
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					setRequestBody(r, happyAuthcodeRequestBody(authCode).paddedToEncodedSize(t, maxRequestBodyBytes))
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusOK,
+					wantClientID:          pinnipedCLIClientID,
+					wantSuccessBodyFields: []string{"id_token", "access_token", "token_type", "scope", "expires_in"}, // no refresh token
+					wantRequestedScopes:   []string{"openid", "profile", "email", "username", "groups"},
+					wantGrantedScopes:     []string{"openid", "username", "groups"},
+					wantUsername:          goodUsername,
+					wantGroups:            goodGroups,
+					wantAuditLogs: func(sessionID string, idToken string) []testutil.WantedAuditLog {
+						return []testutil.WantedAuditLog{
+							testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+								"params": map[string]any{
+									"client_id":     "pinniped-cli",
+									"code":          "redacted",
+									"code_verifier": "redacted",
+									"grant_type":    "authorization_code",
+									"padding":       "redacted",
+									"redirect_uri":  "http://127.0.0.1/callback",
+								},
+							}),
+							testutil.WantAuditLog("Session Found", map[string]any{"sessionID": sessionID}),
+							testutil.WantAuditLog("ID Token Issued", map[string]any{
+								"sessionID": sessionID,
+								"tokenID":   idTokenToHash(idToken),
+							}),
+						}
+					},
+				},
+			},
+		},
+		{
+			name: "payload is one byte larger than the maximum allowed size",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					setRequestBody(r, happyAuthcodeRequestBody(authCode).paddedToEncodedSize(t, maxRequestBodyBytes+1))
+				},
 				want: tokenEndpointResponseExpectedValues{
 					wantStatus:            http.StatusBadRequest,
 					wantErrorResponseBody: fositeInvalidPayloadErrorBody,
+				},
+			},
+		},
+		{
+			name: "multipart payload is larger than the maximum allowed size",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					var buf bytes.Buffer
+					w := multipart.NewWriter(&buf)
+					for k, v := range happyAuthcodeRequestBody(authCode).with("padding", strings.Repeat("p", maxRequestBodyBytes)) {
+						require.NoError(t, w.WriteField(k, v[0]))
+					}
+					require.NoError(t, w.Close())
+					require.Greater(t, buf.Len(), maxRequestBodyBytes)
+					r.Body = io.NopCloser(&buf)
+					r.ContentLength = int64(buf.Len())
+					r.Header.Set("Content-Type", w.FormDataContentType())
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusBadRequest,
+					wantErrorResponseBody: fositeInvalidMultipartPayloadErrorBody,
+				},
+			},
+		},
+		{
+			name: "client_assertion and client_assertion_type params are rejected without parsing the assertion",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					r.Body = happyAuthcodeRequestBody(authCode).
+						with("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer").
+						with("client_assertion", "this is not a valid JWT, but it should not be parsed").
+						ReadCloser()
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusUnauthorized,
+					wantErrorResponseBody: fositeClientAssertionNotSupportedErrorBody,
+				},
+			},
+		},
+		{
+			name: "id_token_hint param is ignored before fosite parses it",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyAuthRequest: func(r *http.Request) { r.Form.Set("scope", "openid profile email username groups") },
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					r.Body = happyAuthcodeRequestBody(authCode).with("id_token_hint", someIDTokenHint).ReadCloser()
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusOK,
+					wantClientID:          pinnipedCLIClientID,
+					wantSuccessBodyFields: []string{"id_token", "access_token", "token_type", "scope", "expires_in"}, // no refresh token
+					wantRequestedScopes:   []string{"openid", "profile", "email", "username", "groups"},
+					wantGrantedScopes:     []string{"openid", "username", "groups"},
+					wantUsername:          goodUsername,
+					wantGroups:            goodGroups,
+					wantAuditLogs: func(sessionID string, idToken string) []testutil.WantedAuditLog {
+						return []testutil.WantedAuditLog{
+							testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+								"params": map[string]any{
+									"client_id":     "pinniped-cli",
+									"code":          "redacted",
+									"code_verifier": "redacted",
+									"grant_type":    "authorization_code",
+									"id_token_hint": "redacted", // the param is still audit logged, even though it is ignored, but its value is redacted
+									"redirect_uri":  "http://127.0.0.1/callback",
+								},
+							}),
+							testutil.WantAuditLog("Session Found", map[string]any{"sessionID": sessionID}),
+							testutil.WantAuditLog("ID Token Issued", map[string]any{
+								"sessionID": sessionID,
+								"tokenID":   idTokenToHash(idToken),
+							}),
+						}
+					},
+				},
+			},
+		},
+		{
+			name: "client_assertion param without client_assertion_type param is rejected",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					r.Body = happyAuthcodeRequestBody(authCode).with("client_assertion", "some-assertion").ReadCloser()
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusUnauthorized,
+					wantErrorResponseBody: fositeClientAssertionNotSupportedErrorBody,
+				},
+			},
+		},
+		{
+			name: "client_assertion_type param without client_assertion param is rejected",
+			authcodeExchange: authcodeExchangeInputs{
+				modifyTokenRequest: func(r *http.Request, authCode string) {
+					r.Body = happyAuthcodeRequestBody(authCode).
+						with("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer").
+						ReadCloser()
+				},
+				want: tokenEndpointResponseExpectedValues{
+					wantStatus:            http.StatusUnauthorized,
+					wantErrorResponseBody: fositeClientAssertionNotSupportedErrorBody,
 				},
 			},
 		},
@@ -2436,6 +2611,143 @@ func TestRefreshGrant(t *testing.T) {
 							}),
 						}
 					},
+				),
+			},
+		},
+		{
+			// The id_token_hint param is ignored and dropped before getting parsed by fosite.
+			// If fosite parsed it, then the request would fail because the hint is not signed by the Supervisor.
+			name: "refresh grant with id_token_hint param ignores the param before fosite parses it",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			authcodeExchange: happyAuthcodeExchangeInputsForOIDCUpstream,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: func(r *http.Request, refreshToken string, _ string) {
+					r.Body = happyRefreshRequestBody(refreshToken).with("id_token_hint", someIDTokenHint).ReadCloser()
+				},
+				want: refreshResponseWithAuditLogs(
+					happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+						upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+						refreshedUpstreamTokensWithIDAndRefreshTokens(),
+					),
+					func(sessionID string, idToken string) []testutil.WantedAuditLog {
+						return []testutil.WantedAuditLog{
+							testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+								"params": map[string]any{
+									"client_id":     "pinniped-cli",
+									"grant_type":    "refresh_token",
+									"id_token_hint": "redacted", // the param is still audit logged, even though it is ignored, but its value is redacted
+									"refresh_token": "redacted",
+									"scope":         "openid",
+								},
+							}),
+							testutil.WantAuditLog("Session Found", map[string]any{"sessionID": sessionID}),
+							testutil.WantAuditLog("Identity Refreshed From Upstream IDP", map[string]any{
+								"sessionID": sessionID,
+								"personalInfo": map[string]any{
+									"upstreamGroups":   []any{},
+									"upstreamUsername": "some-username",
+								},
+							}),
+							testutil.WantAuditLog("Session Refreshed", map[string]any{
+								"sessionID": sessionID,
+								"personalInfo": map[string]any{
+									"username": "some-username",
+									"groups": []any{
+										"group1",
+										"groups2",
+									},
+									"subject": "https://issuer?sub=some-subject",
+								},
+							}),
+							testutil.WantAuditLog("ID Token Issued", map[string]any{
+								"sessionID": sessionID,
+								"tokenID":   idTokenToHash(idToken),
+							}),
+						}
+					},
+				),
+			},
+		},
+		{
+			name: "refresh grant with id_token_hint param and grant_type with extra whitespace still ignores the id_token_hint param",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			authcodeExchange: happyAuthcodeExchangeInputsForOIDCUpstream,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: func(r *http.Request, refreshToken string, _ string) {
+					r.Body = happyRefreshRequestBody(refreshToken).
+						WithGrantType("refresh_token ").
+						with("id_token_hint", someIDTokenHint).
+						ReadCloser()
+				},
+				want: happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+					upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+					refreshedUpstreamTokensWithIDAndRefreshTokens(),
+				),
+			},
+		},
+		{
+			name: "refresh grant with id_token_hint param in a multipart form body and grant_type with extra whitespace ignores the param",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			authcodeExchange: happyAuthcodeExchangeInputsForOIDCUpstream,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: func(r *http.Request, refreshToken string, _ string) {
+					var buf bytes.Buffer
+					w := multipart.NewWriter(&buf)
+					for k, v := range happyRefreshRequestBody(refreshToken).WithGrantType("refresh_token ").with("id_token_hint", someIDTokenHint) {
+						require.NoError(t, w.WriteField(k, v[0]))
+					}
+					require.NoError(t, w.Close())
+					r.Body = io.NopCloser(&buf)
+					r.ContentLength = int64(buf.Len())
+					r.Header.Set("Content-Type", w.FormDataContentType())
+				},
+				want: happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+					upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+					refreshedUpstreamTokensWithIDAndRefreshTokens(),
+				),
+			},
+		},
+		{
+			// Fosite currently only reads params from the POST body, so it would not see this param anyway,
+			// but this guards against that behavior changing in the future.
+			name: "refresh grant with id_token_hint query param ignores the param before being parsed by fosite",
+			idps: testidplister.NewUpstreamIDPListerBuilder().WithOIDC(
+				upstreamOIDCIdentityProviderBuilder().WithValidatedAndMergedWithUserInfoTokens(&oidctypes.Token{
+					IDToken: &oidctypes.IDToken{
+						Claims: map[string]any{
+							"sub": goodUpstreamSubject,
+						},
+					},
+				}).WithRefreshedTokens(refreshedUpstreamTokensWithIDAndRefreshTokens()).Build()),
+			authcodeExchange: happyAuthcodeExchangeInputsForOIDCUpstream,
+			refreshRequest: refreshRequestInputs{
+				modifyTokenRequest: func(r *http.Request, _ string, _ string) {
+					r.URL.RawQuery = url.Values{"id_token_hint": {someIDTokenHint}}.Encode()
+				},
+				want: happyRefreshTokenResponseForOpenIDAndOfflineAccess(
+					upstreamOIDCCustomSessionDataWithNewRefreshToken(oidcUpstreamRefreshedRefreshToken),
+					refreshedUpstreamTokensWithIDAndRefreshTokens(),
 				),
 			},
 		},
@@ -5439,6 +5751,23 @@ func (b body) WithRedirectURI(redirectURI string) body {
 
 func (b body) WithPKCE(verifier string) body {
 	return b.with("code_verifier", verifier)
+}
+
+// paddedToEncodedSize adds a "padding" param, which is ignored by the token endpoint, sized so that
+// the form-encoded body is exactly the requested number of bytes.
+func (b body) paddedToEncodedSize(t *testing.T, size int) body {
+	t.Helper()
+	b = b.with("padding", "p")
+	b = b.with("padding", strings.Repeat("p", size-len(url.Values(b).Encode())+1))
+	require.Len(t, url.Values(b).Encode(), size)
+	return b
+}
+
+// setRequestBody replaces the body of the request with the form-encoded body.
+func setRequestBody(r *http.Request, b body) {
+	encoded := url.Values(b).Encode()
+	r.Body = io.NopCloser(strings.NewReader(encoded))
+	r.ContentLength = int64(len(encoded))
 }
 
 func (b body) ReadCloser() io.ReadCloser {

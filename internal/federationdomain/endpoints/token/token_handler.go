@@ -52,11 +52,18 @@ func NewHandler(
 	auditLogger plog.AuditLogger,
 ) http.Handler {
 	return httperr.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
+
 		if err := auditLogger.AuditRequestParams(r, paramsSafeToLog()); err != nil {
 			oauthHelper.WriteAccessError(r.Context(), w, nil, err)
 			return nil
 		}
 		auditLogBasicAuthClientID(r, auditLogger)
+
+		// Ignore the optional id_token_hint param by removing it before fosite sees the request.
+		// It is not meaningful for any grant type which Pinniped supports at the token endpoint.
+		r.Form.Del("id_token_hint")
+		r.PostForm.Del("id_token_hint")
 
 		session := psession.NewPinnipedSession()
 		accessRequest, err := oauthHelper.NewAccessRequest(r.Context(), r, session)

@@ -4,10 +4,12 @@
 package callback
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -84,6 +86,9 @@ const (
 
 	transformationUsernamePrefix = "username_prefix:"
 	transformationGroupsPrefix   = "groups_prefix:"
+
+	// The callback endpoint limits the size of the request body to 1 MB.
+	maxRequestBodyBytes = 1 << 20
 )
 
 var (
@@ -222,6 +227,36 @@ func TestCallbackEndpoint(t *testing.T) {
 
 	prefixUsernameAndGroupsPipeline := transformtestutil.NewPrefixingPipeline(t, transformationUsernamePrefix, transformationGroupsPrefix)
 	rejectAuthPipeline := transformtestutil.NewRejectAllAuthPipeline(t)
+
+	happyOIDCFormPostState := happyOIDCUpstreamStateParam().WithAuthorizeRequestParams(
+		shallowCopyAndModifyQuery(
+			happyDownstreamRequestParamsQuery,
+			map[string]string{"response_mode": "form_post"},
+		).Encode(),
+	).Build(t, happyStateCodec)
+
+	happyPostBodyWithEncodedSize := func(size int) string {
+		params := url.Values{
+			"code":    []string{happyUpstreamAuthcode},
+			"padding": []string{""},
+			"state":   []string{happyOIDCFormPostState.String()},
+		}
+		params.Set("padding", strings.Repeat("p", size-len(params.Encode())))
+		require.Len(t, params.Encode(), size)
+		return params.Encode()
+	}
+
+	happyMultipartBodyLargerThan := func(size int) (string, string) {
+		var buf bytes.Buffer
+		w := multipart.NewWriter(&buf)
+		require.NoError(t, w.WriteField("code", happyUpstreamAuthcode))
+		require.NoError(t, w.WriteField("state", happyOIDCFormPostState.String()))
+		require.NoError(t, w.WriteField("padding", strings.Repeat("p", size)))
+		require.NoError(t, w.Close())
+		require.Greater(t, buf.Len(), size)
+		return w.FormDataContentType(), buf.String()
+	}
+	largeMultipartContentType, largeMultipartBody := happyMultipartBodyLargerThan(maxRequestBodyBytes)
 
 	tests := []struct {
 		name string
@@ -1458,6 +1493,98 @@ func TestCallbackEndpoint(t *testing.T) {
 			},
 		},
 		{
+			name:                              "POST with a form body which is exactly the maximum allowed size",
+			idps:                              testidplister.NewUpstreamIDPListerBuilder().WithOIDC(happyOIDCUpstream().Build()),
+			method:                            http.MethodPost,
+			body:                              happyPostBodyWithEncodedSize(maxRequestBodyBytes),
+			path:                              (&requestPath{}).String(),
+			headers:                           map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+			csrfCookie:                        happyCSRFCookie,
+			wantStatus:                        http.StatusOK,
+			wantContentType:                   "text/html;charset=UTF-8",
+			wantBodyFormResponseRegexp:        `<code id="manual-auth-code">(.+)</code>`,
+			wantDownstreamIDTokenSubject:      oidcUpstreamIssuer + "?idpName=" + happyOIDCUpstreamIDPName + "&sub=" + oidcUpstreamSubjectQueryEscaped,
+			wantDownstreamIDTokenUsername:     oidcUpstreamUsername,
+			wantDownstreamIDTokenGroups:       oidcUpstreamGroupMembership,
+			wantDownstreamRequestedScopes:     happyDownstreamScopesRequested,
+			wantDownstreamGrantedScopes:       happyDownstreamScopesGranted,
+			wantDownstreamNonce:               downstreamNonce,
+			wantDownstreamClientID:            downstreamPinnipedClientID,
+			wantDownstreamPKCEChallenge:       downstreamPKCEChallenge,
+			wantDownstreamPKCEChallengeMethod: downstreamPKCEChallengeMethod,
+			wantDownstreamCustomSessionData:   happyDownstreamCustomSessionDataForOIDCUpstream,
+			wantOIDCAuthcodeExchangeCall: &expectedOIDCAuthcodeExchange{
+				performedByUpstreamName: happyOIDCUpstreamIDPName,
+				args:                    happyOIDCUpstreamExchangeAuthcodeAndValidateTokenArgs,
+			},
+			wantAuditLogs: func(encodedStateParam stateparam.Encoded, sessionID string) []testutil.WantedAuditLog {
+				return []testutil.WantedAuditLog{
+					testutil.WantAuditLog("HTTP Request Parameters", map[string]any{
+						"params": map[string]any{"code": "redacted", "padding": "redacted", "state": "redacted"},
+					}),
+					testutil.WantAuditLog("AuthorizeID From Parameters", map[string]any{
+						"authorizeID": encodedStateParam.AuthorizeID(),
+					}),
+					testutil.WantAuditLog("Using Upstream IDP", map[string]any{
+						"displayName":  "upstream-oidc-idp-name",
+						"resourceName": "upstream-oidc-idp-name",
+						"resourceUID":  "upstream-oidc-resource-uid",
+						"type":         "oidc",
+					}),
+					testutil.WantAuditLog("Identity From Upstream IDP", map[string]any{
+						"upstreamIDPDisplayName":  "upstream-oidc-idp-name",
+						"upstreamIDPType":         "oidc",
+						"upstreamIDPResourceName": "upstream-oidc-idp-name",
+						"upstreamIDPResourceUID":  "upstream-oidc-resource-uid",
+						"personalInfo": map[string]any{
+							"upstreamUsername": "test-pinniped-username",
+							"upstreamGroups":   []any{"test-pinniped-group-0", "test-pinniped-group-1"},
+						},
+					}),
+					testutil.WantAuditLog("Session Started", map[string]any{
+						"sessionID": sessionID,
+						"warnings":  []any{}, // json: []
+						"personalInfo": map[string]any{
+							"username":         "test-pinniped-username",
+							"groups":           []any{"test-pinniped-group-0", "test-pinniped-group-1"},
+							"subject":          "https://my-upstream-issuer.com?idpName=upstream-oidc-idp-name&sub=abc123-some+guid",
+							"additionalClaims": map[string]any{}, // json: {}
+						},
+					}),
+				}
+			},
+		},
+		{
+			name:            "POST with a form body which is one byte larger than the maximum allowed size",
+			idps:            testidplister.NewUpstreamIDPListerBuilder().WithOIDC(happyOIDCUpstream().Build()),
+			method:          http.MethodPost,
+			body:            happyPostBodyWithEncodedSize(maxRequestBodyBytes + 1),
+			path:            (&requestPath{}).String(),
+			headers:         map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+			csrfCookie:      happyCSRFCookie,
+			wantStatus:      http.StatusBadRequest,
+			wantContentType: htmlContentType,
+			wantBody:        "Bad Request: error parsing request params\n",
+			wantAuditLogs: func(encodedStateParam stateparam.Encoded, sessionID string) []testutil.WantedAuditLog {
+				return []testutil.WantedAuditLog{} // couldn't parse params for auditing of params
+			},
+		},
+		{
+			name:            "POST with a multipart form body which is larger than the maximum allowed size",
+			idps:            testidplister.NewUpstreamIDPListerBuilder().WithOIDC(happyOIDCUpstream().Build()),
+			method:          http.MethodPost,
+			body:            largeMultipartBody,
+			path:            (&requestPath{}).String(),
+			headers:         map[string]string{"Content-Type": largeMultipartContentType},
+			csrfCookie:      happyCSRFCookie,
+			wantStatus:      http.StatusBadRequest,
+			wantContentType: htmlContentType,
+			wantBody:        "Bad Request: error parsing request params\n",
+			wantAuditLogs: func(encodedStateParam stateparam.Encoded, sessionID string) []testutil.WantedAuditLog {
+				return []testutil.WantedAuditLog{} // couldn't parse params for auditing of params
+			},
+		},
+		{
 			name:            "state param was not signed correctly, has expired, or otherwise cannot be decoded for any reason",
 			idps:            testidplister.NewUpstreamIDPListerBuilder().WithOIDC(happyOIDCUpstream().Build()),
 			method:          http.MethodGet,
@@ -2299,7 +2426,7 @@ func TestCallbackEndpoint(t *testing.T) {
 
 			if test.wantAuditLogs != nil {
 				encodedStateParam := testutil.GetStateParamFromRequestURL(t, test.path)
-				if test.body != "" {
+				if test.body != "" && !strings.HasPrefix(test.headers["Content-Type"], "multipart/") {
 					// Assume that the state param was sent in a form post body.
 					encodedStateParam = testutil.GetStateParamFromRequestBody(t, test.body)
 				}
