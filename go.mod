@@ -5,8 +5,8 @@ go 1.27.0
 require (
 	cel.dev/cel-go v0.33.2
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
-	github.com/chromedp/cdproto v0.159.0
-	github.com/chromedp/chromedp v0.23.0
+	github.com/chromedp/cdproto v0.160.1
+	github.com/chromedp/chromedp v0.23.1
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/coreos/go-semver v0.3.1
 	github.com/creack/pty v1.1.24
