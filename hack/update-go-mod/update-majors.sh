@@ -30,6 +30,11 @@ for m in $modules; do
     # Skip github.com/go-jose/go-jose/v3 because we are using both v3 and v4.
     continue
   fi
+  if [[ "$m" == "github.com/go-jose/go-jose/v4" ]]; then
+    # Skip github.com/go-jose/go-jose/v4 for now because v5 exists but has not yet been released.
+    # Once v5 has been released at https://github.com/go-jose/go-jose/releases then remove this if/continue block.
+    continue
+  fi
   next_version=$(echo "$m" | awk -F '/v' '{ printf("%s/v%d\n", $1, $2 + 1) }')
   set +e
   go get "${next_version}@latest"
