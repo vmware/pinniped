@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-jose/go-jose/v4"
-	josejwt "github.com/go-jose/go-jose/v4/jwt"
+	"github.com/go-jose/go-jose/v5"
+	josejwt "github.com/go-jose/go-jose/v5/jwt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

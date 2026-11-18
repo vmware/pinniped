@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v5"
 	"github.com/sclevine/spec"
 	"github.com/stretchr/testify/require"
 	kubefake "k8s.io/client-go/kubernetes/fake"

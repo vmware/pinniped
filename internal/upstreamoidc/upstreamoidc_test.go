@@ -17,7 +17,7 @@ import (
 	"unsafe"
 
 	coreosoidc "github.com/coreos/go-oidc/v3/oidc"
-	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v5"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/oauth2"
