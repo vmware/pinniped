@@ -207,6 +207,18 @@ impersonation_proxy_spec:
     #@schema/validation min_len=1
     load_balancer_ip: ""
 
+#@schema/title "Pre-authentication API access"
+#@ pre_authn_apis_access_desc = "Who may call the TokenCredentialRequest and WhoAmIRequest APIs. Options are 'everyone' or \
+#@ 'impersonation-proxy'. If everyone, they are granted to the system:authenticated and system:unauthenticated groups, \
+#@ which the TokenCredentialRequest API strategy needs because its clients call the Kubernetes API server without a credential. \
+#@ If impersonation-proxy, they are granted only to the impersonation proxy's service account, which authorizes anonymous \
+#@ TokenCredentialRequests itself and forwards them with its own credentials. Use impersonation-proxy on clusters that refuse \
+#@ RBAC bindings to those groups (e.g. GKE clusters without --enable-insecure-binding-system-unauthenticated). \
+#@ WhoAmIRequests then need your own bindings to pinniped-concierge-pre-authn-apis for the users or groups that call them."
+#@schema/desc pre_authn_apis_access_desc
+#@schema/validation one_of=["everyone", "impersonation-proxy"]
+pre_authn_apis_access: everyone
+
 #@schema/title "HTTPS proxy"
 #@ https_proxy_desc = "Set the standard golang HTTPS_PROXY and NO_PROXY environment variables on the Concierge containers. \
 #@ These will be used when the Concierge makes backend-to-backend calls to authenticators using HTTPS, \

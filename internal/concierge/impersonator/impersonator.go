@@ -313,7 +313,7 @@ func newInternal(
 					// When KAS does the check, it may run the check against our service account and not the requesting user
 					// (due to a bug in the code or any other internal SAR checks that the request processing does).
 					// This also handles the impersonate verb to allow for nested impersonation.
-					decision, reason, err := delegatingAuthorizer.Authorize(ctx, a)
+					decision, reason, err := authorizeUnlessAnonymousTokenCredReq(ctx, a, delegatingAuthorizer)
 
 					// make it easier to detect when the impersonation proxy is authorizing a request vs KAS
 					switch len(reason) {
@@ -493,6 +493,45 @@ func isTokenCredReq(reqInfo *genericapirequest.RequestInfo) bool {
 	}
 
 	return true
+}
+
+// authorizeUnlessAnonymousTokenCredReq allows the anonymous login call, which needs no RBAC grant to system:anonymous
+// because getTransportForUser sends it as our service account, and asks delegate about every other request.
+func authorizeUnlessAnonymousTokenCredReq(ctx context.Context, a authorizer.Attributes, delegate authorizer.Authorizer) (authorizer.Decision, string, error) {
+	if isAnonymousTokenCredReq(a) {
+		return authorizer.DecisionAllow, "anonymous TokenCredentialRequest", nil
+	}
+	return delegate.Authorize(ctx, a)
+}
+
+// isAnonymousTokenCredReq reports whether a is system:anonymous creating a TokenCredentialRequest.
+func isAnonymousTokenCredReq(a authorizer.Attributes) bool {
+	return a.GetUser() != nil &&
+		a.GetUser().GetName() == user.Anonymous &&
+		a.IsResourceRequest() &&
+		a.GetVerb() == "create" &&
+		a.GetSubresource() == "" &&
+		isTokenCredReq(&genericapirequest.RequestInfo{APIGroup: a.GetAPIGroup(), Resource: a.GetResource()})
+}
+
+// isAnonymousTokenCredReqFromContext applies isAnonymousTokenCredReq to the user and request info in ctx.
+func isAnonymousTokenCredReqFromContext(ctx context.Context) bool {
+	userInfo, ok := genericapirequest.UserFrom(ctx)
+	if !ok {
+		return false
+	}
+	reqInfo, ok := genericapirequest.RequestInfoFrom(ctx)
+	if !ok {
+		return false
+	}
+	return isAnonymousTokenCredReq(authorizer.AttributesRecord{
+		User:            userInfo,
+		Verb:            reqInfo.Verb,
+		APIGroup:        reqInfo.APIGroup,
+		Resource:        reqInfo.Resource,
+		Subresource:     reqInfo.Subresource,
+		ResourceRequest: reqInfo.IsResourceRequest,
+	})
 }
 
 // No-op wrapping around RequestFunc to allow for comparisons.
@@ -721,6 +760,10 @@ func ensureNoImpersonationHeaders(r *http.Request) error {
 }
 
 func getTransportForUser(ctx context.Context, userInfo user.Info, delegate, delegateAnonymous http.RoundTripper, ae *auditEventUserInfo, token string, authenticator authenticator.Request) (http.RoundTripper, error) {
+	if isAnonymousTokenCredReqFromContext(ctx) {
+		return delegate, nil // authorized by customReasonAuthorizer; sent as our service account, without impersonation
+	}
+
 	if canImpersonateFully(userInfo) {
 		return standardImpersonationRoundTripper(userInfo, ae, delegate)
 	}

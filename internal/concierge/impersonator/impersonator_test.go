@@ -996,6 +996,7 @@ func TestImpersonator(t *testing.T) {
 			// will proxy incoming calls to this fake server.
 			testKubeAPIServerWasCalled := false
 			var testKubeAPIServerSawHeaders http.Header
+			var testKubeAPIServerSawTCRHeaders []http.Header
 			testKubeAPIServer, testKubeAPIServerCA := tlsserver.TestServerIPv4(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				tlsConfigFunc := func(rootCAs *x509.CertPool) *tls.Config {
 					// Requests to get configmaps, nodes, flowcontrol requests, and healthz requests
@@ -1112,6 +1113,7 @@ func TestImpersonator(t *testing.T) {
 
 				case "/apis/login.concierge.pinniped.dev/v1alpha1/tokencredentialrequests":
 					require.Equal(t, http.MethodPost, r.Method)
+					testKubeAPIServerSawTCRHeaders = append(testKubeAPIServerSawTCRHeaders, r.Header)
 
 					w.Header().Add("Content-Type", "application/json; charset=UTF-8")
 					_, _ = w.Write([]byte(`{}`))
@@ -1119,6 +1121,7 @@ func TestImpersonator(t *testing.T) {
 
 				case "/apis/login.concierge.walrus.tld/v1alpha1/tokencredentialrequests":
 					require.Equal(t, http.MethodPost, r.Method)
+					testKubeAPIServerSawTCRHeaders = append(testKubeAPIServerSawTCRHeaders, r.Header)
 
 					w.Header().Add("Content-Type", "application/json; charset=UTF-8")
 					_, _ = w.Write([]byte(`{}`))
@@ -1170,6 +1173,9 @@ func TestImpersonator(t *testing.T) {
 				delegate := authz.AuthorizerFunc
 				authz.AuthorizerFunc = func(ctx context.Context, a authorizer.Attributes) (authorizer.Decision, string, error) {
 					recorder.record(a)
+					if a.GetVerb() == "create" && a.GetResource() == "tokencredentialrequests" {
+						return delegate(ctx, a) // its delegating authorizer here allows only system:masters
+					}
 					switch a.GetVerb() {
 					case "create", "get", "list":
 						return authorizer.DecisionAllow, "standard verbs are allowed in tests", nil
@@ -1324,6 +1330,13 @@ func TestImpersonator(t *testing.T) {
 				}, metav1.CreateOptions{})
 			require.NoError(t, errTCROtherGroup)
 
+			// anonymous TCRs are sent with the impersonator's service account token, without impersonation
+			require.Len(t, testKubeAPIServerSawTCRHeaders, 2)
+			for _, h := range testKubeAPIServerSawTCRHeaders {
+				require.Equal(t, "Bearer some-service-account-token", h.Get("Authorization"))
+				require.NoError(t, ensureNoImpersonationHeaders(&http.Request{Header: h}))
+			}
+
 			// these calls should only work when anonymous auth is enabled
 
 			anonymousConfig := kubeclient.SecureAnonymousClientConfig(clientKubeconfig)
@@ -1396,6 +1409,15 @@ func TestImpersonator(t *testing.T) {
 				require.Equal(t, `{"hello": "birds"}`, string(ducksBody))
 			}
 
+			// a same-named resource in another API group is not the login call, so the delegating authorizer denies it
+			notTCRCreateBody, errNotTCRCreate := rc.Post().Resource("tokencredentialrequests").Body([]byte(`{}`)).DoRaw(ctx)
+			if tt.anonymousAuthForOtherAPIsDisabled {
+				require.True(t, apierrors.IsUnauthorized(errNotTCRCreate), errNotTCRCreate)
+			} else {
+				require.True(t, apierrors.IsForbidden(errNotTCRCreate), errNotTCRCreate)
+				require.Equal(t, `{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"tokencredentialrequests.not-concierge.walrus.tld is forbidden: User \"system:anonymous\" cannot create resource \"tokencredentialrequests\" in API group \"not-concierge.walrus.tld\" at the cluster scope: decision made by impersonation-proxy.concierge.pinniped.dev","reason":"Forbidden","details":{"group":"not-concierge.walrus.tld","kind":"tokencredentialrequests"},"code":403}`+"\n", string(notTCRCreateBody))
+			}
+
 			// this should always fail as unauthorized (even for TCR) because the cert is not valid
 
 			badCertConfig := kubeclient.SecureAnonymousClientConfig(clientKubeconfig)
@@ -1451,6 +1473,10 @@ func TestImpersonator(t *testing.T) {
 						User: &user.DefaultInfo{Name: "system:anonymous", UID: "", Groups: []string{"system:unauthenticated"}, Extra: nil},
 						Verb: "list", Namespace: "", APIGroup: "not-concierge.walrus.tld", APIVersion: "v1", Resource: "ducks", Subresource: "", Name: "", ResourceRequest: true, Path: "/apis/not-concierge.walrus.tld/v1/ducks",
 					},
+					authorizer.AttributesRecord{
+						User: &user.DefaultInfo{Name: "system:anonymous", UID: "", Groups: []string{"system:unauthenticated"}, Extra: nil},
+						Verb: "create", Namespace: "", APIGroup: "not-concierge.walrus.tld", APIVersion: "v1", Resource: "tokencredentialrequests", Subresource: "", Name: "", ResourceRequest: true, Path: "/apis/not-concierge.walrus.tld/v1/tokencredentialrequests",
+					},
 				)
 			}
 			require.ElementsMatch(t, wantAuthorizerAttributes, recorder.attributes)
@@ -1480,6 +1506,7 @@ func TestImpersonatorHTTPHandler(t *testing.T) {
 		requestAuditEventUser             user.Info
 		requestAuditEventImpersonatedUser user.Info
 		requestToken                      string
+		requestInfo                       *request.RequestInfo // overrides the default non-resource GET
 		authenticator                     authenticator.Request
 		kubeAPIServerStatusCode           int
 
@@ -2168,6 +2195,100 @@ func TestImpersonatorHTTPHandler(t *testing.T) {
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
+			name: "anonymous TokenCredentialRequest is sent with the service account and no impersonation",
+			requestHeaders: map[string][]string{
+				"User-Agent":   {"test-user-agent"},
+				"Content-Type": {"application/json"},
+			},
+			requestUser:           &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}},
+			requestAuditEventUser: &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}},
+			requestInfo:           tcrRequestInfo("create", "login.concierge.pinniped.dev", "tokencredentialrequests"),
+			wantKubeAPIServerRequestHeaders: map[string][]string{
+				"Accept-Encoding": {"gzip"}, // added by the transport because the request has none
+				"Authorization":   {"Bearer some-service-account-token"},
+				"User-Agent":      {"test-user-agent"},
+				"Content-Type":    {"application/json"},
+			},
+			wantHTTPBody:   "successful proxied response",
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name: "anonymous TokenCredentialRequest with a custom API group suffix is sent with the service account",
+			requestHeaders: map[string][]string{
+				"User-Agent": {"test-user-agent"},
+			},
+			requestUser:           &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}},
+			requestAuditEventUser: &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}},
+			requestInfo:           tcrRequestInfo("create", "login.concierge.walrus.tld", "tokencredentialrequests"),
+			wantKubeAPIServerRequestHeaders: map[string][]string{
+				"Accept-Encoding": {"gzip"}, // added by the transport because the request has none
+				"Authorization":   {"Bearer some-service-account-token"},
+				"User-Agent":      {"test-user-agent"},
+			},
+			wantHTTPBody:   "successful proxied response",
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name: "anonymous list of TokenCredentialRequests still impersonates system:anonymous",
+			requestHeaders: map[string][]string{
+				"User-Agent": {"test-user-agent"},
+			},
+			requestUser:           &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}},
+			requestAuditEventUser: &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}},
+			requestInfo:           tcrRequestInfo("list", "login.concierge.pinniped.dev", "tokencredentialrequests"),
+			wantKubeAPIServerRequestHeaders: map[string][]string{
+				"Accept-Encoding":   {"gzip"}, // added by the transport because the request has none
+				"Authorization":     {"Bearer some-service-account-token"},
+				"Impersonate-User":  {"system:anonymous"},
+				"Impersonate-Group": {"system:unauthenticated"},
+				"User-Agent":        {"test-user-agent"},
+			},
+			wantHTTPBody:   "successful proxied response",
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name: "anonymous create of another resource still impersonates system:anonymous",
+			requestHeaders: map[string][]string{
+				"User-Agent": {"test-user-agent"},
+			},
+			requestUser:           &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}},
+			requestAuditEventUser: &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}},
+			requestInfo:           tcrRequestInfo("create", "not-concierge.walrus.tld", "tokencredentialrequests"),
+			wantKubeAPIServerRequestHeaders: map[string][]string{
+				"Accept-Encoding":   {"gzip"}, // added by the transport because the request has none
+				"Authorization":     {"Bearer some-service-account-token"},
+				"Impersonate-User":  {"system:anonymous"},
+				"Impersonate-Group": {"system:unauthenticated"},
+				"User-Agent":        {"test-user-agent"},
+			},
+			wantHTTPBody:   "successful proxied response",
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name: "authenticated user TokenCredentialRequest is still impersonated",
+			requestHeaders: map[string][]string{
+				"User-Agent": {"test-user-agent"},
+			},
+			requestUser: &user.DefaultInfo{
+				Name:   testUser,
+				Groups: testGroups,
+				Extra:  testExtra,
+			},
+			requestAuditEventUser: &user.DefaultInfo{Name: testUser},
+			requestInfo:           tcrRequestInfo("create", "login.concierge.pinniped.dev", "tokencredentialrequests"),
+			wantKubeAPIServerRequestHeaders: map[string][]string{
+				"Accept-Encoding":           {"gzip"}, // added by the transport because the request has none
+				"Authorization":             {"Bearer some-service-account-token"},
+				"Impersonate-Extra-Extra-1": {"some", "extra", "stuff"},
+				"Impersonate-Extra-Extra-2": {"some", "more", "extra", "stuff"},
+				"Impersonate-Group":         {"test-group-1", "test-group-2"},
+				"Impersonate-User":          {"test-user"},
+				"User-Agent":                {"test-user-agent"},
+			},
+			wantHTTPBody:   "successful proxied response",
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
 			name: "user is authenticated but the kube API request returns an error",
 			requestHeaders: map[string][]string{
 				"User-Agent": {"test-user-agent"},
@@ -2271,6 +2392,9 @@ func TestImpersonatorHTTPHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			r := newRequest(t, tt.requestHeaders, tt.requestUser, tt.requestAuditEventUser, tt.requestAuditEventImpersonatedUser, tt.requestToken)
+			if tt.requestInfo != nil {
+				r = r.WithContext(request.WithRequestInfo(r.Context(), tt.requestInfo))
+			}
 			wantKubeAPIServerRequestHeaders := tt.wantKubeAPIServerRequestHeaders
 
 			// take the isUpgradeRequest branch randomly to make sure we exercise both branches
@@ -2602,4 +2726,54 @@ func Test_isRequestForHealthCheck(t *testing.T) {
 		got := isRequestForHealthCheck(&http.Request{})
 		require.False(t, got)
 	})
+}
+
+func tcrRequestInfo(verb, apiGroup, resource string) *request.RequestInfo {
+	return &request.RequestInfo{
+		IsResourceRequest: true,
+		Verb:              verb,
+		APIGroup:          apiGroup,
+		APIVersion:        "v1alpha1",
+		Resource:          resource,
+		Path:              "/apis/" + apiGroup + "/v1alpha1/" + resource,
+	}
+}
+
+func Test_isAnonymousTokenCredReq(t *testing.T) {
+	anonymous := &user.DefaultInfo{Name: user.Anonymous, Groups: []string{user.AllUnauthenticated}}
+	tcr := func(u user.Info, verb, apiGroup, resource, subresource string) authorizer.AttributesRecord {
+		return authorizer.AttributesRecord{
+			User: u, Verb: verb, APIGroup: apiGroup, APIVersion: "v1alpha1",
+			Resource: resource, Subresource: subresource, ResourceRequest: true,
+		}
+	}
+
+	tests := []struct {
+		name  string
+		attrs authorizer.Attributes
+		want  bool
+	}{
+		{name: "anonymous create TCR", attrs: tcr(anonymous, "create", "login.concierge.pinniped.dev", "tokencredentialrequests", ""), want: true},
+		{name: "anonymous create TCR with custom API group suffix", attrs: tcr(anonymous, "create", "login.concierge.walrus.tld", "tokencredentialrequests", ""), want: true},
+		{name: "anonymous list TCR", attrs: tcr(anonymous, "list", "login.concierge.pinniped.dev", "tokencredentialrequests", "")},
+		{name: "anonymous get TCR", attrs: tcr(anonymous, "get", "login.concierge.pinniped.dev", "tokencredentialrequests", "")},
+		{name: "anonymous create TCR subresource", attrs: tcr(anonymous, "create", "login.concierge.pinniped.dev", "tokencredentialrequests", "status")},
+		{name: "anonymous create same-named resource in another group", attrs: tcr(anonymous, "create", "not-concierge.walrus.tld", "tokencredentialrequests", "")},
+		{name: "anonymous create other resource in login group", attrs: tcr(anonymous, "create", "login.concierge.pinniped.dev", "ducks", "")},
+		{name: "anonymous create WhoAmIRequest", attrs: tcr(anonymous, "create", "identity.concierge.pinniped.dev", "whoamirequests", "")},
+		{name: "anonymous impersonate", attrs: tcr(anonymous, "impersonate", "", "users", "")},
+		{
+			name: "anonymous non-resource request",
+			attrs: authorizer.AttributesRecord{
+				User: anonymous, Verb: "create", Path: "/apis/login.concierge.pinniped.dev/v1alpha1/tokencredentialrequests",
+			},
+		},
+		{name: "authenticated create TCR", attrs: tcr(&user.DefaultInfo{Name: "test-user", Groups: []string{user.AllAuthenticated}}, "create", "login.concierge.pinniped.dev", "tokencredentialrequests", "")},
+		{name: "no user", attrs: tcr(nil, "create", "login.concierge.pinniped.dev", "tokencredentialrequests", "")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isAnonymousTokenCredReq(tt.attrs))
+		})
+	}
 }
